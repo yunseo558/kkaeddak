@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from kkaeddak.db.base import Base
@@ -72,21 +72,41 @@ class RoutineProfileRepository(Repository[RoutineProfile]):
 class ScheduleEventRepository(Repository[ScheduleEvent]):
     model_type = ScheduleEvent
 
+    async def get_by_client_id(self, owner_id: UUID, client_id: str) -> ScheduleEvent | None:
+        statement = select(ScheduleEvent).where(
+            ScheduleEvent.owner_id == owner_id,
+            ScheduleEvent.client_id == client_id,
+        )
+        return await self.first(statement)
+
     async def list_between(
         self,
         owner_id: UUID,
         starts_at: datetime,
         ends_at: datetime,
         *,
+        after: tuple[datetime, UUID] | None = None,
         limit: int = 100,
     ) -> list[ScheduleEvent]:
+        conditions = [
+            ScheduleEvent.owner_id == owner_id,
+            ScheduleEvent.starts_at < ends_at,
+            ScheduleEvent.ends_at > starts_at,
+        ]
+        if after is not None:
+            cursor_time, cursor_id = after
+            conditions.append(
+                or_(
+                    ScheduleEvent.starts_at > cursor_time,
+                    and_(
+                        ScheduleEvent.starts_at == cursor_time,
+                        ScheduleEvent.id > cursor_id,
+                    ),
+                )
+            )
         statement = (
             select(ScheduleEvent)
-            .where(
-                ScheduleEvent.owner_id == owner_id,
-                ScheduleEvent.starts_at < ends_at,
-                ScheduleEvent.ends_at > starts_at,
-            )
+            .where(*conditions)
             .order_by(ScheduleEvent.starts_at, ScheduleEvent.id)
             .limit(limit)
         )
