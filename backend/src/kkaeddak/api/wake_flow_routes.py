@@ -5,7 +5,7 @@ from statistics import fmean
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Path, Query, status
+from fastapi import APIRouter, Path, Query, Request, status
 
 from kkaeddak.api.dependencies import CurrentSession, DatabaseSession, IdempotencyKey
 from kkaeddak.core.errors import AppError
@@ -34,26 +34,15 @@ from kkaeddak.schemas.wake import (
     WakePlanDetail,
     WakePlanResponse,
 )
+from kkaeddak.services.ai import AiProvider, AiService, PreparationAiRequest, PreparationCandidate
 
 router = APIRouter()
-
-PREPARATION_LABELS = {
-    "PACK_BAG": "가방 미리 준비하기",
-    "SHOWER": "전날 샤워하기",
-    "PREPARE_CLOTHES": "입을 옷 미리 준비하기",
-    "PREPARE_BREAKFAST": "아침 식사 미리 준비하기",
-    "CHARGE_DEVICES": "기기 미리 충전하기",
-}
 
 
 def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
-
-
-def _preparation_label(code: str) -> str:
-    return PREPARATION_LABELS.get(code, code.replace("_", " ").title())
 
 
 def _task_response(task: PreparationTask) -> PreparationTaskResponse:
@@ -126,6 +115,7 @@ async def create_preparation_suggestions(
     payload: PreparationSuggestionCreate,
     current: CurrentSession,
     database: DatabaseSession,
+    request: Request,
 ) -> PreparationSuggestionsResponse:
     event = await ScheduleEventRepository(database).get(payload.event_id)
     if event is None or event.owner_id != current.owner_id:
@@ -135,34 +125,47 @@ async def create_preparation_suggestions(
             message="The schedule event was not found.",
         )
 
-    repository = PreparationTaskRepository(database)
-    suggestions: list[PreparationSuggestion] = []
+    candidates: list[PreparationCandidate] = []
     seen_codes: set[str] = set()
     for candidate in payload.available_routine_tasks:
-        if (
-            not candidate.movable_to_night
-            or candidate.code in seen_codes
-            or len(suggestions) >= payload.max_suggestions
-        ):
+        if not candidate.movable_to_night or candidate.code in seen_codes:
             continue
         seen_codes.add(candidate.code)
-        task = await repository.get_by_event_and_code(event.id, candidate.code)
+        candidates.append(PreparationCandidate(code=candidate.code, minutes=candidate.minutes))
+
+    if not candidates:
+        return PreparationSuggestionsResponse(suggestions=[], total_potential_minutes=0)
+
+    provider: AiProvider | None = request.app.state.ai_provider
+    choices, source = await AiService(database, provider).suggest_preparation(
+        PreparationAiRequest(
+            category=event.category,
+            location_mode=event.location_mode,
+            candidates=candidates,
+            max_suggestions=payload.max_suggestions,
+        )
+    )
+    candidate_minutes = {candidate.code: candidate.minutes for candidate in candidates}
+    repository = PreparationTaskRepository(database)
+    suggestions: list[PreparationSuggestion] = []
+    for choice in choices:
+        task = await repository.get_by_event_and_code(event.id, choice.code)
         if task is None:
             task = await repository.add(
                 PreparationTask(
                     event_id=event.id,
-                    code=candidate.code,
-                    label=_preparation_label(candidate.code),
-                    minutes_saved=candidate.minutes,
+                    code=choice.code,
+                    label=choice.label,
+                    minutes_saved=candidate_minutes[choice.code],
                     status=PrepStatus.SUGGESTED,
-                    source="TEMPLATE",
+                    source=source.value,
                     revision=1,
                 )
             )
         else:
-            task.label = _preparation_label(candidate.code)
-            task.minutes_saved = candidate.minutes
-            task.source = "TEMPLATE"
+            task.label = choice.label
+            task.minutes_saved = candidate_minutes[choice.code]
+            task.source = source.value
         suggestions.append(
             PreparationSuggestion(
                 id=task.id,

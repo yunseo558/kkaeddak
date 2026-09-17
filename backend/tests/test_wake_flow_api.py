@@ -363,7 +363,7 @@ async def test_wake_plan_is_not_visible_to_another_session(api_client: AsyncClie
 
 
 @pytest.mark.anyio
-async def test_next_phase_ai_route_remains_unimplemented(api_client: AsyncClient) -> None:
+async def test_ai_explanation_uses_template_without_provider(api_client: AsyncClient) -> None:
     session_id = await _create_demo(api_client, scenario_id="empty")
 
     response = await api_client.post(
@@ -375,5 +375,6 @@ async def test_next_phase_ai_route_remains_unimplemented(api_client: AsyncClient
         },
     )
 
-    assert response.status_code == 501
-    assert response.json()["error"]["code"] == "NOT_IMPLEMENTED"
+    assert response.status_code == 200
+    assert response.json()["source"] == "TEMPLATE"
+    assert "수면 시간이 짧은 상황" in response.json()["explanation"]
