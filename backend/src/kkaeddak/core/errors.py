@@ -54,8 +54,14 @@ class AppError(Exception):
 
 DEFAULT_ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     400: {"model": ErrorResponse, "description": "Invalid request"},
+    401: {"model": ErrorResponse, "description": "Invalid or expired session"},
+    403: {"model": ErrorResponse, "description": "Consent or permission required"},
     404: {"model": ErrorResponse, "description": "Resource not found"},
+    409: {"model": ErrorResponse, "description": "Revision or resource conflict"},
+    422: {"model": ErrorResponse, "description": "Disallowed privacy field"},
+    429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
     500: {"model": ErrorResponse, "description": "Internal server error"},
+    503: {"model": ErrorResponse, "description": "Temporary dependency failure"},
 }
 
 

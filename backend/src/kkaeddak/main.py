@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 
 from kkaeddak import __version__
+from kkaeddak.api.router import api_router
 from kkaeddak.core.config import Settings, get_settings
 from kkaeddak.core.errors import DEFAULT_ERROR_RESPONSES, register_exception_handlers
 from kkaeddak.middleware.request_id import RequestIdMiddleware
@@ -20,6 +21,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = resolved_settings
     app.add_middleware(RequestIdMiddleware)
     register_exception_handlers(app)
+    app.include_router(api_router, prefix=resolved_settings.api_v1_prefix)
     return app
 
 
