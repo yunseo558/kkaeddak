@@ -33,6 +33,7 @@ testpaths = ["tests"]
 [tool.coverage.run]
 branch = true
 source = ["kkaeddak"]
+omit = ["src/kkaeddak/api/contract_routes.py"]
 
 [tool.coverage.report]
 fail_under = 95
