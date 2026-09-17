@@ -1,30 +1,13 @@
 """OpenAPI-first route contracts without persistence or business behavior."""
 
-from datetime import date
-from typing import Annotated, Never
-from uuid import UUID
+from typing import Never
 
-from fastapi import APIRouter, Depends, Path, Query, status
+from fastapi import APIRouter, Depends
 
-from kkaeddak.api.dependencies import IdempotencyKey, session_headers
+from kkaeddak.api.dependencies import session_headers
 from kkaeddak.core.errors import AppError
 from kkaeddak.schemas.ai import ExplanationCreate, ExplanationResponse
 from kkaeddak.schemas.health import HealthResponse
-from kkaeddak.schemas.history import HistorySummaryResponse
-from kkaeddak.schemas.preparation import (
-    PreparationSuggestionCreate,
-    PreparationSuggestionsResponse,
-    PreparationTaskResponse,
-    PreparationTaskUpdate,
-)
-from kkaeddak.schemas.wake import (
-    WakeOutcomeCreate,
-    WakePlanCreate,
-    WakePlanDecisionResponse,
-    WakePlanDecisionUpdate,
-    WakePlanDetail,
-    WakePlanResponse,
-)
 
 router = APIRouter()
 session_dependency = Depends(session_headers)
@@ -37,94 +20,6 @@ def contract_only() -> Never:
         code="NOT_IMPLEMENTED",
         message="This API contract is not implemented yet.",
     )
-
-
-@router.post(
-    "/preparation-suggestions",
-    response_model=PreparationSuggestionsResponse,
-    dependencies=[session_dependency],
-    tags=["preparation"],
-    summary="Suggest tasks that can be completed the night before",
-)
-async def create_preparation_suggestions(payload: PreparationSuggestionCreate) -> Never:
-    contract_only()
-
-
-@router.patch(
-    "/preparation-tasks/{task_id}",
-    response_model=PreparationTaskResponse,
-    dependencies=[session_dependency],
-    tags=["preparation"],
-    summary="Update a preparation task status",
-)
-async def update_preparation_task(
-    task_id: Annotated[UUID, Path()], payload: PreparationTaskUpdate
-) -> Never:
-    contract_only()
-
-
-@router.post(
-    "/wake-plans",
-    response_model=WakePlanResponse,
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[session_dependency],
-    tags=["wake-plan"],
-    summary="Synchronize a locally generated wake plan",
-)
-async def create_wake_plan(payload: WakePlanCreate, idempotency_key: IdempotencyKey) -> Never:
-    contract_only()
-
-
-@router.get(
-    "/wake-plans/{localDate}",
-    response_model=WakePlanDetail,
-    dependencies=[session_dependency],
-    tags=["wake-plan"],
-    summary="Get the latest wake plan for a local date",
-)
-async def get_wake_plan(
-    local_date: Annotated[date, Path(alias="localDate")],
-) -> Never:
-    contract_only()
-
-
-@router.patch(
-    "/wake-plans/{plan_id}/decision",
-    response_model=WakePlanDecisionResponse,
-    dependencies=[session_dependency],
-    tags=["wake-plan"],
-    summary="Record a wake plan decision",
-)
-async def update_wake_plan_decision(
-    plan_id: Annotated[UUID, Path()], payload: WakePlanDecisionUpdate
-) -> Never:
-    contract_only()
-
-
-@router.post(
-    "/wake-outcomes",
-    status_code=status.HTTP_202_ACCEPTED,
-    response_model=None,
-    dependencies=[session_dependency],
-    tags=["wake-outcome"],
-    summary="Store an opted-in aggregate wake outcome",
-)
-async def create_wake_outcome(payload: WakeOutcomeCreate, idempotency_key: IdempotencyKey) -> Never:
-    contract_only()
-
-
-@router.get(
-    "/history/summary",
-    response_model=HistorySummaryResponse,
-    dependencies=[session_dependency],
-    tags=["history"],
-    summary="Get aggregate wake outcome history",
-)
-async def get_history_summary(
-    from_date: Annotated[date, Query(alias="from")],
-    to_date: Annotated[date, Query(alias="to")],
-) -> Never:
-    contract_only()
 
 
 @router.post(

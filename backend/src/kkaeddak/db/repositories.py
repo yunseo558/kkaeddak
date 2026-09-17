@@ -5,6 +5,7 @@ from uuid import UUID
 
 from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from kkaeddak.db.base import Base
 from kkaeddak.db.models import (
@@ -116,6 +117,28 @@ class ScheduleEventRepository(Repository[ScheduleEvent]):
 class PreparationTaskRepository(Repository[PreparationTask]):
     model_type = PreparationTask
 
+    async def get_for_owner(self, task_id: UUID, owner_id: UUID) -> PreparationTask | None:
+        statement = (
+            select(PreparationTask)
+            .join(ScheduleEvent)
+            .where(
+                PreparationTask.id == task_id,
+                ScheduleEvent.owner_id == owner_id,
+            )
+        )
+        return await self.first(statement)
+
+    async def get_by_event_and_code(
+        self,
+        event_id: UUID,
+        code: str,
+    ) -> PreparationTask | None:
+        statement = select(PreparationTask).where(
+            PreparationTask.event_id == event_id,
+            PreparationTask.code == code,
+        )
+        return await self.first(statement)
+
     async def list_for_event(self, event_id: UUID) -> list[PreparationTask]:
         statement = (
             select(PreparationTask)
@@ -128,18 +151,31 @@ class PreparationTaskRepository(Repository[PreparationTask]):
 class WakePlanRepository(Repository[WakePlan]):
     model_type = WakePlan
 
+    async def get_for_owner(self, plan_id: UUID, owner_id: UUID) -> WakePlan | None:
+        statement = (
+            select(WakePlan)
+            .options(selectinload(WakePlan.steps))
+            .where(WakePlan.id == plan_id, WakePlan.owner_id == owner_id)
+        )
+        return await self.first(statement)
+
     async def get_latest(self, owner_id: UUID, local_date: date) -> WakePlan | None:
         statement = (
             select(WakePlan)
+            .options(selectinload(WakePlan.steps))
             .where(WakePlan.owner_id == owner_id, WakePlan.local_date == local_date)
-            .order_by(WakePlan.revision.desc())
+            .order_by(WakePlan.revision.desc(), WakePlan.created_at.desc(), WakePlan.id.desc())
         )
         return await self.first(statement)
 
     async def get_by_idempotency_key(self, owner_id: UUID, idempotency_key: str) -> WakePlan | None:
-        statement = select(WakePlan).where(
-            WakePlan.owner_id == owner_id,
-            WakePlan.idempotency_key == idempotency_key,
+        statement = (
+            select(WakePlan)
+            .options(selectinload(WakePlan.steps))
+            .where(
+                WakePlan.owner_id == owner_id,
+                WakePlan.idempotency_key == idempotency_key,
+            )
         )
         return await self.first(statement)
 
@@ -149,6 +185,24 @@ class WakeOutcomeRepository(Repository[WakeOutcomeSummary]):
 
     async def get_by_plan_id(self, plan_id: UUID) -> WakeOutcomeSummary | None:
         return await self.get(plan_id)
+
+    async def list_between(
+        self,
+        owner_id: UUID,
+        from_date: date,
+        to_date: date,
+    ) -> list[WakeOutcomeSummary]:
+        statement = (
+            select(WakeOutcomeSummary)
+            .join(WakePlan)
+            .where(
+                WakePlan.owner_id == owner_id,
+                WakePlan.local_date >= from_date,
+                WakePlan.local_date <= to_date,
+            )
+            .order_by(WakePlan.local_date, WakeOutcomeSummary.plan_id)
+        )
+        return list(await self.session.scalars(statement))
 
 
 class ConsentRecordRepository(Repository[ConsentRecord]):
