@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
     log_level: LogLevel = "INFO"
+    database_url: str = "postgresql+asyncpg://kkaeddak:kkaeddak@localhost:5432/kkaeddak"
+    database_echo: bool = False
+    database_pool_size: int = Field(default=5, ge=1, le=20)
 
     @field_validator("app_name")
     @classmethod
@@ -41,6 +44,14 @@ class Settings(BaseSettings):
             raise ValueError("api_v1_prefix must start with '/'")
         if value != "/" and value.endswith("/"):
             raise ValueError("api_v1_prefix must not end with '/'")
+        return value
+
+    @field_validator("database_url")
+    @classmethod
+    def validate_database_url(cls, value: str) -> str:
+        supported_prefixes = ("postgresql+asyncpg://", "sqlite+aiosqlite://")
+        if not value.startswith(supported_prefixes):
+            raise ValueError("database_url must use postgresql+asyncpg or sqlite+aiosqlite")
         return value
 
     @model_validator(mode="after")
