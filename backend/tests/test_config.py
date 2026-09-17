@@ -41,3 +41,8 @@ def test_environment_variables_use_project_prefix(monkeypatch: pytest.MonkeyPatc
 
     assert settings.environment == "test"
     assert settings.log_level == "WARNING"
+
+
+def test_database_url_rejects_unsupported_driver() -> None:
+    with pytest.raises(ValidationError, match=r"postgresql\+asyncpg or sqlite\+aiosqlite"):
+        Settings(database_url="postgresql://localhost/kkaeddak", _env_file=None)
