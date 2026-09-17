@@ -10,10 +10,16 @@ from kkaeddak.api.router import api_router
 from kkaeddak.core.config import Settings, get_settings
 from kkaeddak.core.errors import DEFAULT_ERROR_RESPONSES, register_exception_handlers
 from kkaeddak.db.session import create_database_engine, create_session_factory
+from kkaeddak.middleware.privacy_fields import PrivacyFieldMiddleware
 from kkaeddak.middleware.request_id import RequestIdMiddleware
+from kkaeddak.services.ai import AiProvider
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    *,
+    ai_provider: AiProvider | None = None,
+) -> FastAPI:
     """Create an application after validating its environment settings."""
     resolved_settings = settings or get_settings()
 
@@ -35,6 +41,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = resolved_settings
+    app.state.ai_provider = ai_provider
+    app.add_middleware(PrivacyFieldMiddleware)
     app.add_middleware(RequestIdMiddleware)
     register_exception_handlers(app)
     app.include_router(api_router, prefix=resolved_settings.api_v1_prefix)
