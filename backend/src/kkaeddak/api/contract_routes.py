@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends, Path, Query, status
 from kkaeddak.api.dependencies import IdempotencyKey, session_headers
 from kkaeddak.core.errors import AppError
 from kkaeddak.schemas.ai import ExplanationCreate, ExplanationResponse
-from kkaeddak.schemas.common import UtcDatetime
 from kkaeddak.schemas.health import HealthResponse
 from kkaeddak.schemas.history import HistorySummaryResponse
 from kkaeddak.schemas.preparation import (
@@ -17,18 +16,6 @@ from kkaeddak.schemas.preparation import (
     PreparationSuggestionsResponse,
     PreparationTaskResponse,
     PreparationTaskUpdate,
-)
-from kkaeddak.schemas.profile import ProfileResponse, ProfileUpdate
-from kkaeddak.schemas.routine import RoutineProfileResponse, RoutineProfileUpdate
-from kkaeddak.schemas.schedule import (
-    ScheduleEventsBatchCreate,
-    ScheduleEventsBatchResponse,
-    ScheduleEventsResponse,
-)
-from kkaeddak.schemas.session import (
-    CurrentSessionResponse,
-    DemoSessionCreate,
-    DemoSessionResponse,
 )
 from kkaeddak.schemas.wake import (
     WakeOutcomeCreate,
@@ -50,99 +37,6 @@ def contract_only() -> Never:
         code="NOT_IMPLEMENTED",
         message="This API contract is not implemented yet.",
     )
-
-
-@router.post(
-    "/demo-sessions",
-    response_model=DemoSessionResponse,
-    status_code=status.HTTP_201_CREATED,
-    tags=["session"],
-    summary="Create a seeded anonymous demo session",
-)
-async def create_demo_session(payload: DemoSessionCreate) -> Never:
-    contract_only()
-
-
-@router.get(
-    "/me",
-    response_model=CurrentSessionResponse,
-    dependencies=[session_dependency],
-    tags=["session"],
-    summary="Get the current session",
-)
-async def get_current_session() -> Never:
-    contract_only()
-
-
-@router.get(
-    "/profile",
-    response_model=ProfileResponse,
-    dependencies=[session_dependency],
-    tags=["profile"],
-    summary="Get profile settings",
-)
-async def get_profile() -> Never:
-    contract_only()
-
-
-@router.put(
-    "/profile",
-    response_model=ProfileResponse,
-    dependencies=[session_dependency],
-    tags=["profile"],
-    summary="Replace profile settings",
-)
-async def replace_profile(payload: ProfileUpdate) -> Never:
-    contract_only()
-
-
-@router.get(
-    "/routines",
-    response_model=RoutineProfileResponse,
-    dependencies=[session_dependency],
-    tags=["routine"],
-    summary="Get the morning routine profile",
-)
-async def get_routines() -> Never:
-    contract_only()
-
-
-@router.put(
-    "/routines",
-    response_model=RoutineProfileResponse,
-    dependencies=[session_dependency],
-    tags=["routine"],
-    summary="Replace the morning routine profile",
-)
-async def replace_routines(payload: RoutineProfileUpdate) -> Never:
-    contract_only()
-
-
-@router.post(
-    "/schedule-events:batch",
-    response_model=ScheduleEventsBatchResponse,
-    dependencies=[session_dependency],
-    tags=["schedule"],
-    summary="Store a batch of normalized schedule events",
-)
-async def create_schedule_events(payload: ScheduleEventsBatchCreate) -> Never:
-    contract_only()
-
-
-@router.get(
-    "/schedule-events",
-    response_model=ScheduleEventsResponse,
-    dependencies=[session_dependency],
-    tags=["schedule"],
-    summary="List normalized schedule events",
-)
-async def list_schedule_events(
-    from_at: Annotated[UtcDatetime, Query(alias="from")],
-    to_at: Annotated[UtcDatetime, Query(alias="to")],
-    cursor: Annotated[str | None, Query(max_length=512)] = None,
-    limit: Annotated[int, Query(ge=1, le=100)] = 20,
-) -> Never:
-    contract_only()
 
 
 @router.post(

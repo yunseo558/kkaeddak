@@ -2,7 +2,7 @@
 
 KKAEDDAK의 FastAPI 백엔드입니다.
 
-현재 구현 범위는 프로젝트 기반, 환경설정 검증, 표준 오류 응답, request ID 전파, OpenAPI 우선 API 계약과 데이터베이스 기반입니다. 계약 경로는 아직 저장·조회 로직을 수행하지 않으며 명시적인 `501 NOT_IMPLEMENTED`를 반환합니다.
+현재 구현 범위는 프로젝트 기반, OpenAPI 계약, 데이터베이스 계층과 데모 세션·프로필·루틴·정규화 일정 API입니다. 준비 작업, 기상 계획, 결과, AI와 헬스체크 경로는 후속 단계 전까지 명시적인 `501 NOT_IMPLEMENTED`를 반환합니다.
 
 ## 요구 사항
 
@@ -19,6 +19,8 @@ cp .env.example .env
 ```
 
 환경변수는 `KKAEDDAK_` 접두사를 사용합니다. 잘못된 값은 애플리케이션 시작 시 검증 오류를 발생시킵니다.
+
+`POST /api/v1/demo-sessions`로 발급한 `sessionId`는 24시간 동안 유효합니다. 이후 세션 API에는 `X-Demo-Session: <sessionId>` 헤더를 전달합니다. `exam-morning` 시나리오는 기본 프로필, 아침 루틴과 다음 오전 9시 시험 일정을 생성합니다.
 
 ## 검증
 

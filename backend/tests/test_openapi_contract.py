@@ -65,14 +65,7 @@ def test_openapi_uses_standard_errors_and_required_idempotency_key() -> None:
 
 def test_contract_route_is_explicitly_not_implemented() -> None:
     with TestClient(app) as client:
-        response = client.post(
-            "/api/v1/demo-sessions",
-            json={
-                "timezone": "Asia/Seoul",
-                "locale": "ko-KR",
-                "scenarioId": "exam-morning",
-            },
-        )
+        response = client.get("/api/v1/health")
 
     assert response.status_code == 501
     assert response.json()["error"] == {

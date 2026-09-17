@@ -36,6 +36,7 @@ testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
+concurrency = ["greenlet", "thread"]
 source = ["kkaeddak"]
 omit = ["src/kkaeddak/api/contract_routes.py"]
 
