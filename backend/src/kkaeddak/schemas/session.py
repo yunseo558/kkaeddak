@@ -11,7 +11,11 @@ from kkaeddak.schemas.common import APIModel, Locale, TimezoneName, UtcDatetime
 class DemoSessionCreate(APIModel):
     timezone: TimezoneName
     locale: Locale
-    scenario_id: str = Field(min_length=1, max_length=64, examples=["exam-morning"])
+    scenario_id: str = Field(
+        min_length=1,
+        max_length=64,
+        examples=["regular-class", "exam-morning", "tired-interview"],
+    )
 
 
 class DemoSessionResponse(APIModel):

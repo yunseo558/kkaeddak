@@ -106,6 +106,42 @@ async def test_demo_session_seeds_profile_routine_and_exam(api_client: AsyncClie
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("scenario_id", "category", "importance", "display_title"),
+    [
+        ("regular-class", "CLASS", "NORMAL", "오전 수업"),
+        ("exam-morning", "EXAM", "IMPORTANT", "오전 시험"),
+        ("tired-interview", "INTERVIEW", "IMPORTANT", "오전 면접"),
+    ],
+)
+async def test_documented_demo_scenarios_seed_normalized_schedule(
+    api_client: AsyncClient,
+    scenario_id: str,
+    category: str,
+    importance: str,
+    display_title: str,
+) -> None:
+    created = await _create_demo(api_client, scenario_id=scenario_id)
+    schedule = await api_client.get(
+        "/api/v1/schedule-events",
+        headers=_headers(created["sessionId"]),
+        params={
+            "from": datetime.now(UTC).isoformat(),
+            "to": (datetime.now(UTC) + timedelta(days=2)).isoformat(),
+        },
+    )
+
+    assert created["seeded"] is True
+    assert schedule.status_code == 200
+    item = schedule.json()["items"][0]
+    assert item["clientId"] == f"seed-{scenario_id}"
+    assert item["category"] == category
+    assert item["importance"] == importance
+    assert item["locationMode"] == "ONSITE"
+    assert item["displayTitle"] == display_title
+
+
+@pytest.mark.anyio
 async def test_session_header_is_required_and_validated(api_client: AsyncClient) -> None:
     missing = await api_client.get("/api/v1/me")
     invalid = await api_client.get(

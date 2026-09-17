@@ -135,7 +135,9 @@
           },
           "scenarioId": {
             "examples": [
-              "exam-morning"
+              "regular-class",
+              "exam-morning",
+              "tired-interview"
             ],
             "maxLength": 64,
             "minLength": 1,
