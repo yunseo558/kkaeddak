@@ -2,6 +2,7 @@
 
 import base64
 import json
+from dataclasses import dataclass
 from datetime import UTC, datetime, time, timedelta
 from typing import Annotated
 from uuid import UUID
@@ -81,13 +82,69 @@ def _schedule_response(event: ScheduleEvent) -> ScheduleEventResponse:
     )
 
 
-def _next_exam_window(now: datetime, timezone: str) -> tuple[datetime, datetime]:
+def _next_event_window(
+    now: datetime,
+    timezone: str,
+    *,
+    hour: int,
+    minute: int,
+    duration_minutes: int,
+) -> tuple[datetime, datetime]:
     local_now = now.astimezone(ZoneInfo(timezone))
-    exam_date = local_now.date()
-    starts_local = datetime.combine(exam_date, time(hour=9), tzinfo=local_now.tzinfo)
+    event_date = local_now.date()
+    starts_local = datetime.combine(
+        event_date,
+        time(hour=hour, minute=minute),
+        tzinfo=local_now.tzinfo,
+    )
     if starts_local <= local_now:
         starts_local += timedelta(days=1)
-    return starts_local.astimezone(UTC), (starts_local + timedelta(minutes=90)).astimezone(UTC)
+    return (
+        starts_local.astimezone(UTC),
+        (starts_local + timedelta(minutes=duration_minutes)).astimezone(UTC),
+    )
+
+
+@dataclass(frozen=True)
+class DemoSchedule:
+    hour: int
+    minute: int
+    duration_minutes: int
+    category: str
+    importance: Importance
+    location_mode: LocationMode
+    display_title: str
+
+
+DEMO_SCHEDULES = {
+    "regular-class": DemoSchedule(
+        hour=10,
+        minute=0,
+        duration_minutes=90,
+        category="CLASS",
+        importance=Importance.NORMAL,
+        location_mode=LocationMode.ONSITE,
+        display_title="오전 수업",
+    ),
+    "exam-morning": DemoSchedule(
+        hour=9,
+        minute=0,
+        duration_minutes=90,
+        category="EXAM",
+        importance=Importance.IMPORTANT,
+        location_mode=LocationMode.ONSITE,
+        display_title="오전 시험",
+    ),
+    "tired-interview": DemoSchedule(
+        hour=8,
+        minute=30,
+        duration_minutes=60,
+        category="INTERVIEW",
+        importance=Importance.IMPORTANT,
+        location_mode=LocationMode.ONSITE,
+        display_title="오전 면접",
+    ),
+}
 
 
 async def _seed_demo(
@@ -133,20 +190,27 @@ async def _seed_demo(
             revision=1,
         )
     )
-    if demo_session.scenario_id != "exam-morning":
+    schedule = DEMO_SCHEDULES.get(demo_session.scenario_id)
+    if schedule is None:
         return False
 
-    starts_at, ends_at = _next_exam_window(now, demo_session.timezone)
+    starts_at, ends_at = _next_event_window(
+        now,
+        demo_session.timezone,
+        hour=schedule.hour,
+        minute=schedule.minute,
+        duration_minutes=schedule.duration_minutes,
+    )
     await ScheduleEventRepository(database).add(
         ScheduleEvent(
             owner_id=demo_session.id,
-            client_id="seed-exam-morning",
+            client_id=f"seed-{demo_session.scenario_id}",
             starts_at=starts_at,
             ends_at=ends_at,
-            category="EXAM",
-            importance=Importance.IMPORTANT,
-            location_mode=LocationMode.ONSITE,
-            display_title="오전 시험",
+            category=schedule.category,
+            importance=schedule.importance,
+            location_mode=schedule.location_mode,
+            display_title=schedule.display_title,
         )
     )
     return True

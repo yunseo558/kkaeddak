@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from kkaeddak.main import app
+from kkaeddak.schemas.session import DemoSessionCreate
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 
@@ -79,3 +80,18 @@ def test_openapi_snapshot_is_current() -> None:
     expected = json.loads((BACKEND_ROOT / "openapi.json").read_text(encoding="utf-8"))
 
     assert app.openapi() == expected
+
+
+def test_frontend_postman_example_matches_the_openapi_contract() -> None:
+    collection = json.loads(
+        (
+            BACKEND_ROOT / "generated" / "postman" / "kkaeddak-demo.postman_collection.json"
+        ).read_text(encoding="utf-8")
+    )
+    requests = {item["request"]["url"]["raw"]: item["request"] for item in collection["item"]}
+
+    create_request = requests["{{baseUrl}}/api/v1/demo-sessions"]
+    payload = json.loads(create_request["body"]["raw"])
+    assert DemoSessionCreate.model_validate(payload).scenario_id == "exam-morning"
+    assert "{{baseUrl}}/api/v1/me" in requests
+    assert "{{baseUrl}}/api/v1/schedule-events?from={{from}}&to={{to}}" in requests

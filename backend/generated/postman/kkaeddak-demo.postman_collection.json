@@ -1,0 +1,110 @@
+{
+  "info": {
+    "_postman_id": "706e7487-4ad1-47c2-a417-f3419213bb7d",
+    "name": "KKAEDDAK demo contract",
+    "description": "OpenAPI 계약 기반 데모 세션 확인용 컬렉션",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create exam morning demo session",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('created', () => pm.response.to.have.status(201));",
+              "pm.collectionVariables.set('sessionId', pm.response.json().sessionId);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"timezone\": \"Asia/Seoul\",\n  \"locale\": \"ko-KR\",\n  \"scenarioId\": \"exam-morning\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/demo-sessions",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "demo-sessions"]
+        }
+      }
+    },
+    {
+      "name": "Get current demo session",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Demo-Session",
+            "value": "{{sessionId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "me"]
+        }
+      }
+    },
+    {
+      "name": "List seeded schedules",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Demo-Session",
+            "value": "{{sessionId}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/schedule-events?from={{from}}&to={{to}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "schedule-events"],
+          "query": [
+            {
+              "key": "from",
+              "value": "{{from}}"
+            },
+            {
+              "key": "to",
+              "value": "{{to}}"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "sessionId",
+      "value": ""
+    },
+    {
+      "key": "from",
+      "value": "2026-09-18T00:00:00Z"
+    },
+    {
+      "key": "to",
+      "value": "2026-09-20T00:00:00Z"
+    }
+  ]
+}

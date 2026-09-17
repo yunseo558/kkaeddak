@@ -20,7 +20,7 @@ cp .env.example .env
 
 환경변수는 `KKAEDDAK_` 접두사를 사용합니다. 잘못된 값은 애플리케이션 시작 시 검증 오류를 발생시킵니다.
 
-`POST /api/v1/demo-sessions`로 발급한 `sessionId`는 24시간 동안 유효합니다. 이후 세션 API에는 `X-Demo-Session: <sessionId>` 헤더를 전달합니다. `exam-morning` 시나리오는 기본 프로필, 아침 루틴과 다음 오전 9시 시험 일정을 생성합니다.
+`POST /api/v1/demo-sessions`로 발급한 `sessionId`는 24시간 동안 유효합니다. 이후 세션 API에는 `X-Demo-Session: <sessionId>` 헤더를 전달합니다. `regular-class`, `exam-morning`, `tired-interview` 시나리오는 각각 오전 수업, 오전 시험, 오전 면접 일정을 포함하는 기본 프로필과 아침 루틴을 생성합니다.
 
 기상 계획과 집계 결과 등록에는 `Idempotency-Key` 헤더가 필요합니다. 계획과 준비 작업의 변경 요청은 최신 `revision`을 전달해야 하며, 집계 결과는 프로필에서 `allowAggregateOutcomeSync`를 활성화한 경우에만 저장됩니다. 원시 건강·센서 데이터는 이 API 범위에 포함하지 않습니다.
 
@@ -44,6 +44,16 @@ cd backend
 .venv/bin/python scripts/export_openapi.py
 .venv/bin/pytest tests/test_openapi_contract.py
 ```
+
+프론트에는 OpenAPI로부터 재생성한 TypeScript 클라이언트로 연결합니다.
+
+```bash
+cd backend/generated/typescript
+npm ci
+npm test
+```
+
+사용 방법과 데모 시나리오, 에러 코드 UX 매핑은 [`generated/frontend-handoff.md`](generated/frontend-handoff.md)로 함께 제공합니다.
 
 ## 데이터베이스
 
