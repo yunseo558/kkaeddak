@@ -8,9 +8,11 @@ import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 
 import { createDemoSession } from "../api/create-demo-session";
 import { useDemoSessionStore } from "../model/demo-session-store";
+import { saveScenarioHealthInput } from "../model/scenario-health-input";
 import { scenarioIdSchema, scenarios } from "../model/scenarios";
 
 const formSchema = z.object({
@@ -21,6 +23,9 @@ type FormValues = z.infer<typeof formSchema>;
 
 export function DemoStart() {
   const router = useRouter();
+  const onboardingCompleted = useCurrentFlowStore(
+    (state) => state.onboardingCompleted,
+  );
   const startLocal = useDemoSessionStore((state) => state.startLocal);
   const startServer = useDemoSessionStore((state) => state.startServer);
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
@@ -36,6 +41,7 @@ export function DemoStart() {
 
   const onSubmit = handleSubmit(async ({ scenarioId }) => {
     setFallbackMessage(null);
+    await saveScenarioHealthInput(scenarioId);
 
     try {
       const session = await mutation.mutateAsync(scenarioId);
@@ -51,7 +57,7 @@ export function DemoStart() {
       );
     }
 
-    router.push("/tomorrow");
+    router.push(onboardingCompleted ? "/tomorrow" : "/onboarding");
   });
 
   return (
