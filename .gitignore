@@ -27,6 +27,9 @@ node_modules/
 .next/
 coverage/
 *.tsbuildinfo
+playwright-report/
+test-results/
+frontend/.e2e/
 
 # IDE
 .idea/
@@ -34,4 +37,3 @@ coverage/
 
 # Logs
 *.log
-

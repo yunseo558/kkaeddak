@@ -2,7 +2,7 @@
 
 KKAEDDAK의 FastAPI 백엔드입니다.
 
-현재 구현 범위는 프로젝트 기반, OpenAPI 계약, 데이터베이스 계층과 데모 세션·프로필·루틴·정규화 일정·준비 작업·기상 계획·집계 결과·추천 이유 API입니다. 헬스체크 경로는 후속 단계 전까지 명시적인 `501 NOT_IMPLEMENTED`를 반환합니다.
+현재 구현 범위는 프로젝트 기반, OpenAPI 계약, 데이터베이스 계층과 데모 세션·프로필·루틴·정규화 일정·준비 작업·기상 계획·집계 결과·추천 이유 API와 운영 헬스체크입니다.
 
 ## 요구 사항
 
@@ -67,3 +67,28 @@ cp .env.example .env
 ```
 
 초기 마이그레이션은 서버가 소유하는 비민감 데이터 테이블만 생성합니다. 원시 건강·생리·심박·위치·센서 데이터는 스키마에 포함하지 않습니다.
+
+## 운영 배포
+
+Railway 백엔드는 루트의 `.railway/railway.ts`와 `backend/Dockerfile`을 사용합니다. Railway 환경의 공유 변수에 실제 Vercel 원본을 먼저 등록합니다.
+
+```dotenv
+KKAEDDAK_CORS_ALLOWED_ORIGINS=["https://<vercel-domain>"]
+```
+
+Railway CLI 5.42.1 이상으로 프로젝트를 연결하고 IaC 변경을 검토·적용합니다.
+
+```bash
+railway login
+railway link
+railway config plan
+railway config apply
+```
+
+IaC는 PostgreSQL, API, 매시 실행되는 만료 세션 정리 서비스를 함께 정의합니다. API 배포 전에 `alembic upgrade head`가 실행되고 `/api/v1/health`가 API·DB·마이그레이션 상태를 검사합니다. 정리 서비스는 같은 이미지에서 다음 명령을 실행하고 종료합니다.
+
+```bash
+python -m kkaeddak.jobs.cleanup_expired_sessions
+```
+
+운영 CORS는 와일드카드를 허용하지 않으며 HTTPS 원본을 최소 하나 명시해야 시작됩니다. IaC 적용 후 API 서비스에 Railway 생성 도메인을 발급하고 그 주소를 Vercel의 `KKAEDDAK_BACKEND_ORIGIN`으로 설정합니다.

@@ -4,9 +4,11 @@ from pathlib import Path
 
 import pytest
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, inspect
 
 from alembic import command
+from kkaeddak.api.contract_routes import EXPECTED_MIGRATION_HEAD
 from tests.test_database_models import EXPECTED_TABLES
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -41,3 +43,9 @@ def test_initial_migration_upgrades_and_downgrades(
     remaining_tables = set(inspect(sync_engine).get_table_names())
     assert remaining_tables <= {"alembic_version"}
     sync_engine.dispose()
+
+
+def test_operational_health_head_matches_alembic_head() -> None:
+    assert ScriptDirectory.from_config(_config(Path("unused.db"))).get_current_head() == (
+        EXPECTED_MIGRATION_HEAD
+    )

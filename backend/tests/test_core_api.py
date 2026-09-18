@@ -106,6 +106,21 @@ async def test_demo_session_seeds_profile_routine_and_exam(api_client: AsyncClie
 
 
 @pytest.mark.anyio
+async def test_health_reports_api_and_database_without_requiring_a_session(
+    api_client: AsyncClient,
+) -> None:
+    response = await api_client.get("/api/v1/health")
+
+    assert response.status_code == 503
+    assert response.json() == {
+        "status": "degraded",
+        "api": "ok",
+        "database": "ok",
+        "migrationVersion": None,
+    }
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("scenario_id", "category", "importance", "display_title"),
     [

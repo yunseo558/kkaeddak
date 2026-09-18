@@ -290,7 +290,10 @@ export function OnboardingFlow() {
             {step < 3 ? (
               <button
                 className="min-h-11 flex-1 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
-                onClick={moveForward}
+                onClick={(event) => {
+                  event.preventDefault();
+                  void moveForward();
+                }}
                 type="button"
               >
                 다음

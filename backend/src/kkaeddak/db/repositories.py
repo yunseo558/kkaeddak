@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from uuid import UUID
 
-from sqlalchemy import Select, and_, or_, select
+from sqlalchemy import Select, and_, delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -18,6 +18,7 @@ from kkaeddak.db.models import (
     UserProfile,
     WakeOutcomeSummary,
     WakePlan,
+    WakePlanStep,
 )
 
 
@@ -54,6 +55,42 @@ class DemoSessionRepository(Repository[DemoSession]):
             DemoSession.expires_at > now,
         )
         return await self.first(statement)
+
+    async def delete_expired(self, now: datetime, *, limit: int = 1_000) -> int:
+        expired_ids = list(
+            await self.session.scalars(
+                select(DemoSession.id)
+                .where(DemoSession.expires_at <= now)
+                .order_by(DemoSession.expires_at, DemoSession.id)
+                .limit(limit)
+            )
+        )
+        if not expired_ids:
+            return 0
+
+        event_ids = select(ScheduleEvent.id).where(ScheduleEvent.owner_id.in_(expired_ids))
+        plan_ids = select(WakePlan.id).where(WakePlan.owner_id.in_(expired_ids))
+        await self.session.execute(
+            delete(PreparationTask).where(PreparationTask.event_id.in_(event_ids))
+        )
+        await self.session.execute(
+            delete(WakeOutcomeSummary).where(WakeOutcomeSummary.plan_id.in_(plan_ids))
+        )
+        await self.session.execute(delete(WakePlanStep).where(WakePlanStep.plan_id.in_(plan_ids)))
+        await self.session.execute(delete(WakePlan).where(WakePlan.owner_id.in_(expired_ids)))
+        await self.session.execute(
+            delete(ScheduleEvent).where(ScheduleEvent.owner_id.in_(expired_ids))
+        )
+        await self.session.execute(
+            delete(ConsentRecord).where(ConsentRecord.owner_id.in_(expired_ids))
+        )
+        await self.session.execute(
+            delete(RoutineProfile).where(RoutineProfile.user_id.in_(expired_ids))
+        )
+        await self.session.execute(delete(UserProfile).where(UserProfile.user_id.in_(expired_ids)))
+        await self.session.execute(delete(DemoSession).where(DemoSession.id.in_(expired_ids)))
+        await self.session.flush()
+        return len(expired_ids)
 
 
 class UserProfileRepository(Repository[UserProfile]):

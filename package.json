@@ -1,0 +1,12 @@
+{
+  "name": "kkaeddak-infrastructure",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:railway": "tsc --noEmit --module nodenext --moduleResolution nodenext --target es2022 .railway/railway.ts"
+  },
+  "devDependencies": {
+    "railway": "^3.11.0",
+    "typescript": "^5.9.2"
+  }
+}

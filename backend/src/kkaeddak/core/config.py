@@ -2,6 +2,7 @@
 
 from functools import lru_cache
 from typing import Literal, Self
+from urllib.parse import urlsplit
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -28,6 +29,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://kkaeddak:kkaeddak@localhost:5432/kkaeddak"
     database_echo: bool = False
     database_pool_size: int = Field(default=5, ge=1, le=20)
+    cors_allowed_origins: list[str] = Field(default_factory=list)
 
     @field_validator("app_name")
     @classmethod
@@ -46,18 +48,48 @@ class Settings(BaseSettings):
             raise ValueError("api_v1_prefix must not end with '/'")
         return value
 
-    @field_validator("database_url")
+    @field_validator("database_url", mode="before")
     @classmethod
     def validate_database_url(cls, value: str) -> str:
+        if value.startswith("postgres://"):
+            value = value.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif value.startswith("postgresql://"):
+            value = value.replace("postgresql://", "postgresql+asyncpg://", 1)
         supported_prefixes = ("postgresql+asyncpg://", "sqlite+aiosqlite://")
         if not value.startswith(supported_prefixes):
             raise ValueError("database_url must use postgresql+asyncpg or sqlite+aiosqlite")
         return value
 
+    @field_validator("cors_allowed_origins")
+    @classmethod
+    def validate_cors_allowed_origins(cls, values: list[str]) -> list[str]:
+        normalized: list[str] = []
+        for value in values:
+            origin = value.strip().rstrip("/")
+            parsed = urlsplit(origin)
+            if (
+                origin == "*"
+                or parsed.scheme not in {"http", "https"}
+                or not parsed.netloc
+                or parsed.path
+                or parsed.query
+                or parsed.fragment
+            ):
+                raise ValueError("cors origins must be explicit http(s) origins without paths")
+            if origin not in normalized:
+                normalized.append(origin)
+        return normalized
+
     @model_validator(mode="after")
     def validate_production_debug(self) -> Self:
         if self.environment == "production" and self.debug:
             raise ValueError("debug must be disabled in production")
+        if self.environment == "production" and not self.cors_allowed_origins:
+            raise ValueError("production requires at least one explicit CORS origin")
+        if self.environment == "production" and any(
+            not origin.startswith("https://") for origin in self.cors_allowed_origins
+        ):
+            raise ValueError("production CORS origins must use https")
         return self
 
 
