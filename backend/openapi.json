@@ -483,6 +483,11 @@
             "title": "Minutessaved",
             "type": "integer"
           },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          },
           "source": {
             "examples": [
               "PACK_BAG"
@@ -490,6 +495,9 @@
             "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
             "title": "Source",
             "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PrepStatus"
           }
         },
         "required": [
@@ -497,7 +505,9 @@
           "code",
           "label",
           "minutesSaved",
-          "source"
+          "source",
+          "status",
+          "revision"
         ],
         "title": "PreparationSuggestion",
         "type": "object"

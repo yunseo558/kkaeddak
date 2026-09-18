@@ -149,6 +149,11 @@ async def test_preparation_suggestions_and_revision_update(api_client: AsyncClie
         "SHOWER",
     ]
     assert suggested.json()["totalPotentialMinutes"] == 25
+    assert [item["status"] for item in suggested.json()["suggestions"]] == [
+        "SUGGESTED",
+        "SUGGESTED",
+    ]
+    assert [item["revision"] for item in suggested.json()["suggestions"]] == [1, 1]
     assert [item["id"] for item in repeated.json()["suggestions"]] == [
         item["id"] for item in suggested.json()["suggestions"]
     ]

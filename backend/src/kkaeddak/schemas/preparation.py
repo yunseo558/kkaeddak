@@ -26,6 +26,8 @@ class PreparationSuggestion(APIModel):
     label: str = Field(min_length=1, max_length=80)
     minutes_saved: int = Field(ge=1, le=180)
     source: Code
+    status: PrepStatus
+    revision: int = Field(ge=1)
 
 
 class PreparationSuggestionsResponse(APIModel):
