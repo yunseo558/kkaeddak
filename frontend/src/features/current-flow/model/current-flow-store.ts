@@ -38,6 +38,7 @@ type CurrentFlowState = {
   setOnboardingCompleted: (completed: boolean) => void;
   setOnboardingDraft: (draft: OnboardingDraft) => void;
   setOnboardingStep: (step: number) => void;
+  setEditingPlanId: (planId: string | null) => void;
 };
 
 const initialState = {
@@ -56,6 +57,7 @@ export const useCurrentFlowStore = create<CurrentFlowState>()(
         set({ onboardingCompleted }),
       setOnboardingDraft: (onboardingDraft) => set({ onboardingDraft }),
       setOnboardingStep: (onboardingStep) => set({ onboardingStep }),
+      setEditingPlanId: (editingPlanId) => set({ editingPlanId }),
     }),
     {
       name: "kkaeddak-current-flow",

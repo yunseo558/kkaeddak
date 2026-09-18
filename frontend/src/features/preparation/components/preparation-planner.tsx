@@ -1,12 +1,11 @@
 "use client";
 
 import type { components } from "@kkaeddak/api-client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 
 import { AppShell } from "@/components/layout/app-shell";
 import {
-  getPreparationSuggestions,
   updatePreparationTask,
 } from "@/features/tomorrow/api/tomorrow-api";
 import {
@@ -15,18 +14,16 @@ import {
   sumCompletedPreparationMinutes,
   sumRoutineMinutes,
 } from "@/features/tomorrow/lib/schedule-calculation";
-import { createLocalPreparationSuggestions } from "@/features/tomorrow/model/local-fixtures";
 import type { PreparationSuggestions } from "@/features/tomorrow/model/tomorrow-data";
 import { useTomorrowOverview } from "@/features/tomorrow/model/use-tomorrow-overview";
 
+import {
+  preparationQueryKey,
+  usePreparationSuggestions,
+} from "../model/use-preparation-suggestions";
+
 type PrepStatus = components["schemas"]["PrepStatus"];
 type PreparationSuggestion = components["schemas"]["PreparationSuggestion"];
-
-const preparationQueryKey = (
-  mode: string | null,
-  sessionId: string | null,
-  eventId: string | null,
-) => ["preparation-suggestions", mode, sessionId, eventId] as const;
 
 export function PreparationPlanner() {
   const queryClient = useQueryClient();
@@ -39,25 +36,10 @@ export function PreparationPlanner() {
   const overview = overviewQuery.data;
   const eventId = overview?.event?.id ?? null;
   const queryKey = preparationQueryKey(mode, sessionId, eventId);
-  const suggestionsQuery = useQuery({
-    queryKey,
-    enabled: Boolean(overview?.event),
-    queryFn: () => {
-      if (!overview?.event) {
-        throw new Error("A schedule event is required");
-      }
-      if (mode === "local") {
-        return Promise.resolve(createLocalPreparationSuggestions(overview));
-      }
-      if (!sessionId) {
-        throw new Error("A demo session is required");
-      }
-      return getPreparationSuggestions(
-        sessionId,
-        overview.event.id,
-        overview.routine.routineTasks,
-      );
-    },
+  const suggestionsQuery = usePreparationSuggestions({
+    mode,
+    overview,
+    sessionId,
   });
 
   const mutation = useMutation({
@@ -282,12 +264,20 @@ export function PreparationPlanner() {
           </p>
         ) : null}
 
-        <Link
-          className="inline-flex min-h-11 items-center font-semibold text-brand"
-          href="/tomorrow"
-        >
-          내일 대시보드로 돌아가기
-        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          <Link
+            className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+            href="/plan"
+          >
+            기상 계획 만들기
+          </Link>
+          <Link
+            className="inline-flex min-h-11 items-center font-semibold text-brand"
+            href="/tomorrow"
+          >
+            내일 대시보드로 돌아가기
+          </Link>
+        </div>
       </div>
     </AppShell>
   );

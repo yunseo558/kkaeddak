@@ -19,12 +19,21 @@ type PreparationTaskResponse =
   components["schemas"]["PreparationTaskResponse"];
 type RoutineProfileResponse = components["schemas"]["RoutineProfileResponse"];
 type ScheduleEventsResponse = components["schemas"]["ScheduleEventsResponse"];
+type WakePlanCreate = components["schemas"]["WakePlanCreate"];
+type WakePlanDecisionUpdate =
+  components["schemas"]["WakePlanDecisionUpdate"];
+type WakePlanDecisionResponse =
+  components["schemas"]["WakePlanDecisionResponse"];
+type WakePlanDetail = components["schemas"]["WakePlanDetail"];
+type WakePlanResponse = components["schemas"]["WakePlanResponse"];
 
 const sessions = new Map<string, ScenarioId>();
 const preparationTasks = new Map<
   string,
   PreparationSuggestionsResponse["suggestions"][number]
 >();
+const wakePlans = new Map<string, WakePlanDetail>();
+const wakePlanIdempotency = new Map<string, string>();
 
 function getScenarioFromRequest(request: Request): ScenarioId {
   const sessionId = request.headers.get("X-Demo-Session");
@@ -112,6 +121,89 @@ export const handlers = [
         });
       }
       return HttpResponse.json(updated);
+    },
+  ),
+  http.post<never, WakePlanCreate, WakePlanResponse>(
+    "/api/v1/wake-plans",
+    async ({ request }) => {
+      const body = await request.json();
+      const idempotencyKey = request.headers.get("Idempotency-Key") ?? "";
+      const existingId = wakePlanIdempotency.get(idempotencyKey);
+      if (existingId) {
+        const existing = wakePlans.get(existingId) as WakePlanDetail;
+        return HttpResponse.json(
+          {
+            id: existing.id,
+            revision: existing.revision,
+            status: existing.status,
+          },
+          { status: 201 },
+        );
+      }
+
+      const id = crypto.randomUUID();
+      const detail: WakePlanDetail = {
+        ...body,
+        id,
+        revision: 1,
+        status: "PROPOSED",
+      };
+      wakePlans.set(id, detail);
+      wakePlanIdempotency.set(idempotencyKey, id);
+      return HttpResponse.json(
+        { id, revision: 1, status: "PROPOSED" },
+        { status: 201 },
+      );
+    },
+  ),
+  http.get<{ localDate: string }, never, WakePlanDetail>(
+    "/api/v1/wake-plans/:localDate",
+    ({ params }) => {
+      const plan = Array.from(wakePlans.values()).find(
+        (candidate) => candidate.localDate === params.localDate,
+      );
+      return plan
+        ? HttpResponse.json(plan)
+        : HttpResponse.json(
+            {
+              error: {
+                code: "WAKE_PLAN_NOT_FOUND",
+                message: "The wake plan was not found.",
+                requestId: crypto.randomUUID(),
+              },
+            } as never,
+            { status: 404 },
+          );
+    },
+  ),
+  http.patch<
+    { plan_id: string },
+    WakePlanDecisionUpdate,
+    WakePlanDecisionResponse
+  >(
+    "/api/v1/wake-plans/:plan_id/decision",
+    async ({ params, request }) => {
+      const body = await request.json();
+      const plan = wakePlans.get(params.plan_id);
+      const status =
+        body.decision === "APPROVE"
+          ? ("APPROVED" as const)
+          : body.decision === "EDIT"
+            ? ("EDITED" as const)
+            : ("DECLINED" as const);
+      const revision = (plan?.revision ?? body.revision) + 1;
+      if (plan) {
+        wakePlans.set(params.plan_id, {
+          ...plan,
+          firstAlarmAt:
+            body.changes?.firstAlarmAt ?? plan.firstAlarmAt,
+          finalAlarmAt:
+            body.changes?.finalAlarmAt ?? plan.finalAlarmAt,
+          status,
+          revision,
+        });
+      }
+      return HttpResponse.json({ status, revision });
     },
   ),
 ];
