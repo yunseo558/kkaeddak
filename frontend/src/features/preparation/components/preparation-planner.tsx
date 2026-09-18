@@ -4,6 +4,7 @@ import type { components } from "@kkaeddak/api-client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 
+import { ApiErrorState } from "@/components/foundation/api-error-state";
 import { AppShell } from "@/components/layout/app-shell";
 import {
   updatePreparationTask,
@@ -16,6 +17,7 @@ import {
 } from "@/features/tomorrow/lib/schedule-calculation";
 import type { PreparationSuggestions } from "@/features/tomorrow/model/tomorrow-data";
 import { useTomorrowOverview } from "@/features/tomorrow/model/use-tomorrow-overview";
+import { getApiStatus } from "@/lib/api/api-recovery";
 
 import {
   preparationQueryKey,
@@ -83,9 +85,12 @@ export function PreparationPlanner() {
       );
       return { previous };
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
+      }
+      if (getApiStatus(error) === 409) {
+        void queryClient.invalidateQueries({ queryKey });
       }
     },
     onSuccess: (result) => {
@@ -139,19 +144,14 @@ export function PreparationPlanner() {
   ) {
     return (
       <AppShell currentStep="준비" eyebrow="전날 준비">
-        <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
-          <h1 className="text-2xl font-bold">준비 작업을 불러오지 못했습니다</h1>
-          <button
-            className="mt-6 min-h-11 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
-            onClick={() => {
-              void overviewQuery.refetch();
-              void suggestionsQuery.refetch();
-            }}
-            type="button"
-          >
-            다시 시도
-          </button>
-        </section>
+        <ApiErrorState
+          error={overviewQuery.error ?? suggestionsQuery.error}
+          onRetry={() => {
+            void overviewQuery.refetch();
+            void suggestionsQuery.refetch();
+          }}
+          title="준비 작업을 불러오지 못했습니다"
+        />
       </AppShell>
     );
   }
@@ -259,9 +259,17 @@ export function PreparationPlanner() {
         </section>
 
         {mutation.isError ? (
-          <p aria-live="polite" className="text-sm text-danger">
-            상태를 저장하지 못해 이전 값으로 되돌렸습니다. 다시 시도해 주세요.
-          </p>
+          <ApiErrorState
+            error={mutation.error}
+            onRetry={() => {
+              if (getApiStatus(mutation.error) === 409) {
+                void suggestionsQuery.refetch();
+              } else if (mutation.variables) {
+                mutation.mutate(mutation.variables);
+              }
+            }}
+            title="준비 작업 상태를 저장하지 못했습니다"
+          />
         ) : null}
 
         <div className="flex flex-wrap items-center gap-4">

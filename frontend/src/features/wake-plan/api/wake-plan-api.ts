@@ -8,6 +8,7 @@ import { pickAllowedApiPayload } from "@/lib/privacy/api-payload";
 
 type WakePlanCreate = components["schemas"]["WakePlanCreate"];
 type WakePlanResponse = components["schemas"]["WakePlanResponse"];
+type WakePlanDetail = components["schemas"]["WakePlanDetail"];
 type WakePlanDecisionUpdate =
   components["schemas"]["WakePlanDecisionUpdate"];
 type WakePlanDecisionResponse =
@@ -15,7 +16,7 @@ type WakePlanDecisionResponse =
 
 export class WakePlanRequestError extends Error {
   constructor(
-    readonly operation: "create" | "decision",
+    readonly operation: "create" | "decision" | "get",
     readonly status: number,
   ) {
     super(`${operation} wake plan request failed with status ${status}`);
@@ -106,6 +107,24 @@ export async function updateWakePlanDecision(
 
   if (!data || error) {
     throw new WakePlanRequestError("decision", response.status);
+  }
+  return data;
+}
+
+export async function getWakePlan(
+  sessionId: string,
+  localDate: string,
+): Promise<WakePlanDetail> {
+  const { data, error, response } = await apiClient.GET(
+    "/api/v1/wake-plans/{localDate}",
+    {
+      headers: demoSessionHeaders(sessionId),
+      params: { path: { localDate } },
+    },
+  );
+
+  if (!data || error) {
+    throw new WakePlanRequestError("get", response.status);
   }
   return data;
 }

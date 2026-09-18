@@ -4,6 +4,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
 import { MockProvider } from "@/mocks/mock-provider";
+import {
+  apiRetryDelay,
+  shouldRetryApiRequest,
+} from "@/lib/api/api-recovery";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -11,10 +15,13 @@ export function AppProviders({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            retry: 1,
+            networkMode: "always",
+            retry: shouldRetryApiRequest,
+            retryDelay: apiRetryDelay,
             staleTime: 30_000,
           },
           mutations: {
+            networkMode: "always",
             retry: 0,
           },
         },
