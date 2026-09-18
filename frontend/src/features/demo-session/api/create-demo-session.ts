@@ -1,6 +1,7 @@
 import type { components } from "@kkaeddak/api-client";
 
 import { apiClient } from "@/lib/api/client";
+import { pickAllowedApiPayload } from "@/lib/privacy/api-payload";
 
 import type { ScenarioId } from "../model/scenarios";
 
@@ -17,11 +18,17 @@ export class DemoSessionRequestError extends Error {
 export function createDemoSessionPayload(
   scenarioId: ScenarioId,
 ): DemoSessionCreate {
-  return {
+  const source = {
     locale: "ko-KR",
     scenarioId,
     timezone: "Asia/Seoul",
   };
+
+  return pickAllowedApiPayload(source, [
+    "locale",
+    "scenarioId",
+    "timezone",
+  ]);
 }
 
 export async function createDemoSession(
