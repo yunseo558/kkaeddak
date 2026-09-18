@@ -5,6 +5,7 @@
 ## 프로젝트 구조
 
 - `backend/`: FastAPI 기반 백엔드
+- `frontend/`: Next.js App Router 기반 웹 데모
 - `01_아이디어_확정_및_제출문안.docx`: 제품 아이디어와 대회 제출 문안
 - `02_백엔드_기술서_API_v1.docx`: 백엔드 기술 결정과 API 계약
 - `03_프론트엔드_기술서.docx`: 프론트엔드 기술 문서
@@ -24,3 +25,13 @@
 - PostgreSQL 16+
 - OpenAPI 3.1
 
+## 프론트엔드 기술 기준
+
+- Next.js App Router와 TypeScript
+- Tailwind CSS
+- TanStack Query와 Zustand
+- React Hook Form과 Zod
+- IndexedDB와 MSW
+- OpenAPI 생성 TypeScript 클라이언트
+
+로컬 실행과 검증 방법은 [`frontend/README.md`](frontend/README.md)를 참고합니다.
