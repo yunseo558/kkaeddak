@@ -49,6 +49,9 @@ export function useWakeRecommendation() {
       const personalBaseline = wakeModels.find(
         (model) => model.id === "personal",
       )?.baseline.sleepDurationMinutes;
+      const historyProtocolAdjustment = wakeModels.find(
+        (model) => model.id === "personal",
+      )?.parameters.protocolAdjustment;
       const completedPreparationMinutes = sumCompletedPreparationMinutes(
         preparationQuery.data.suggestions,
       );
@@ -64,6 +67,7 @@ export function useWakeRecommendation() {
         completedPreparationMinutes,
         deadlineAt,
         healthInput,
+        historyProtocolAdjustment,
         importance: overview.event.importance,
         maxProtocolLevel: overview.routine.alarmPreferences.maxProtocolLevel,
         personalSleepBaselineMinutes: personalBaseline,
