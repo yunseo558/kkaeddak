@@ -16,6 +16,7 @@ type RecommendationInput = {
   completedPreparationMinutes: number;
   deadlineAt: string;
   healthInput: HealthInputRecord | null;
+  historyProtocolAdjustment?: number;
   importance: Importance;
   maxProtocolLevel: number;
   personalSleepBaselineMinutes?: number;
@@ -50,7 +51,11 @@ export function calculateWakeRecommendation(
     input.personalSleepBaselineMinutes ?? DEFAULT_SLEEP_BASELINE_MINUTES;
   const health = input.healthInput;
   const reasonCodes: string[] = [];
-  let riskScore = 0;
+  const historyProtocolAdjustment = Math.max(
+    0,
+    Math.min(2, input.historyProtocolAdjustment ?? 0),
+  );
+  let riskScore = historyProtocolAdjustment;
 
   if (!health) {
     reasonCodes.push("LOW_MODEL_CONFIDENCE");
@@ -80,6 +85,12 @@ export function calculateWakeRecommendation(
     reasonCodes.push("IMPORTANT_EVENT");
     riskScore += 1;
   }
+  if (
+    historyProtocolAdjustment > 0 &&
+    !reasonCodes.includes("RECENT_FIRST_ALARM_FAILURE")
+  ) {
+    reasonCodes.push("RECENT_FIRST_ALARM_FAILURE");
+  }
   if (input.completedPreparationMinutes > 0) {
     reasonCodes.push("PREP_TASKS_COMPLETED");
   }
@@ -89,7 +100,7 @@ export function calculateWakeRecommendation(
     : input.personalSleepBaselineMinutes === undefined
       ? "MEDIUM"
       : "HIGH";
-  const recommendedLevel = riskScore <= 1 ? 1 : riskScore <= 3 ? 2 : 3;
+  const recommendedLevel = riskScore === 0 ? 1 : riskScore <= 3 ? 2 : 3;
   const protocolLevel = Math.max(
     1,
     Math.min(recommendedLevel, input.maxProtocolLevel),

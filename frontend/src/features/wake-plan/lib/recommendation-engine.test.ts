@@ -78,4 +78,15 @@ describe("calculateWakeRecommendation", () => {
     expect(result.plan.reasonCodes).toContain("LOW_MODEL_CONFIDENCE");
     expect(result.plan.requiresApproval).toBe(true);
   });
+
+  it("strengthens the next plan after a learned late outcome", () => {
+    const result = calculateWakeRecommendation({
+      ...baseInput,
+      healthInput: createScenarioHealthInput("regular-class"),
+      historyProtocolAdjustment: 1,
+    });
+
+    expect(result.plan.protocolLevel).toBe(2);
+    expect(result.plan.reasonCodes).toContain("RECENT_FIRST_ALARM_FAILURE");
+  });
 });

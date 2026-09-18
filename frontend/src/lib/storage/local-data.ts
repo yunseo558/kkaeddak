@@ -1,4 +1,7 @@
+import type { components } from "@kkaeddak/api-client";
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
+
+type WakeOutcome = components["schemas"]["WakeOutcome"];
 
 export const LOCAL_DATABASE_NAME = "kkaeddak-local";
 export const LOCAL_DATABASE_VERSION = 1;
@@ -34,7 +37,12 @@ export type WakeEventRecord = {
   id: string;
   eventType: string;
   occurredAt: string;
+  alarmStepsUsed?: number;
+  confirmedAt?: string | null;
+  localDate?: string;
+  outcome?: WakeOutcome;
   planId?: string;
+  userCorrection?: boolean;
 };
 
 interface KkaeddakLocalDatabase extends DBSchema {

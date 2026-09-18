@@ -65,6 +65,13 @@ describe("WakePlanReview", () => {
     expect(useCurrentFlowStore.getState().editingPlanId).toBe(
       "00000000-0000-4000-8000-000000000030",
     );
+    expect(useCurrentFlowStore.getState().activeWakePlan).toMatchObject({
+      id: "00000000-0000-4000-8000-000000000030",
+      protocolLevel: 2,
+    });
+    expect(
+      screen.getByRole("link", { name: "기상 실행 시작" }),
+    ).toHaveAttribute("href", "/wake");
   });
 
   it("validates and saves an edited alarm window", async () => {

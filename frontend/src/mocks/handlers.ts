@@ -17,6 +17,8 @@ type PreparationTaskUpdate =
   components["schemas"]["PreparationTaskUpdate"];
 type PreparationTaskResponse =
   components["schemas"]["PreparationTaskResponse"];
+type HistorySummaryResponse = components["schemas"]["HistorySummaryResponse"];
+type ProfileResponse = components["schemas"]["ProfileResponse"];
 type RoutineProfileResponse = components["schemas"]["RoutineProfileResponse"];
 type ScheduleEventsResponse = components["schemas"]["ScheduleEventsResponse"];
 type WakePlanCreate = components["schemas"]["WakePlanCreate"];
@@ -26,6 +28,7 @@ type WakePlanDecisionResponse =
   components["schemas"]["WakePlanDecisionResponse"];
 type WakePlanDetail = components["schemas"]["WakePlanDetail"];
 type WakePlanResponse = components["schemas"]["WakePlanResponse"];
+type WakeOutcomeCreate = components["schemas"]["WakeOutcomeCreate"];
 
 const sessions = new Map<string, ScenarioId>();
 const preparationTasks = new Map<
@@ -34,6 +37,7 @@ const preparationTasks = new Map<
 >();
 const wakePlans = new Map<string, WakePlanDetail>();
 const wakePlanIdempotency = new Map<string, string>();
+const wakeOutcomes = new Map<string, WakeOutcomeCreate>();
 
 function getScenarioFromRequest(request: Request): ScenarioId {
   const sessionId = request.headers.get("X-Demo-Session");
@@ -66,6 +70,19 @@ export const handlers = [
       );
       return HttpResponse.json(overview.routine);
     },
+  ),
+  http.get<never, never, ProfileResponse>(
+    "/api/v1/profile",
+    () =>
+      HttpResponse.json({
+        allowAggregateOutcomeSync: false,
+        allowImportantEventDetection: true,
+        automationMode: "RECOMMEND_ONLY",
+        locale: "ko-KR",
+        revision: 1,
+        timezone: "Asia/Seoul",
+        updatedAt: new Date().toISOString(),
+      }),
   ),
   http.get<never, never, ScheduleEventsResponse>(
     "/api/v1/schedule-events",
@@ -204,6 +221,45 @@ export const handlers = [
         });
       }
       return HttpResponse.json({ status, revision });
+    },
+  ),
+  http.post<never, WakeOutcomeCreate, never>(
+    "/api/v1/wake-outcomes",
+    async ({ request }) => {
+      const body = await request.json();
+      wakeOutcomes.set(body.planId, body);
+      return new HttpResponse(null, { status: 202 });
+    },
+  ),
+  http.get<never, never, HistorySummaryResponse>(
+    "/api/v1/history/summary",
+    ({ request }) => {
+      const url = new URL(request.url);
+      const fromDate = url.searchParams.get("from") ?? "2026-01-01";
+      const toDate = url.searchParams.get("to") ?? "2026-12-31";
+      const outcomes = Array.from(wakeOutcomes.values());
+      const onTimeSessions = outcomes.filter(
+        (outcome) => outcome.outcome === "CONFIRMED_ON_TIME",
+      ).length;
+      const lateSessions = outcomes.filter(
+        (outcome) => outcome.outcome === "CONFIRMED_LATE",
+      ).length;
+      return HttpResponse.json({
+        averageAlarmSteps:
+          outcomes.length > 0
+            ? outcomes.reduce(
+                (total, outcome) => total + outcome.alarmStepsUsed,
+                0,
+              ) / outcomes.length
+            : null,
+        fromDate,
+        lateSessions,
+        onTimeSessions,
+        toDate,
+        totalSessions: outcomes.length,
+        unconfirmedSessions:
+          outcomes.length - onTimeSessions - lateSessions,
+      });
     },
   ),
 ];

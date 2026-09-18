@@ -70,6 +70,10 @@ function WakePlanEditor({
   const setEditingPlanId = useCurrentFlowStore(
     (state) => state.setEditingPlanId,
   );
+  const setActiveWakePlan = useCurrentFlowStore(
+    (state) => state.setActiveWakePlan,
+  );
+  const setWakeResult = useCurrentFlowStore((state) => state.setWakeResult);
   const [displayPlan, setDisplayPlan] = useState(recommendation.plan);
   const [serverPlan, setServerPlan] = useState<WakePlanResponse | null>(null);
   const [editing, setEditing] = useState(false);
@@ -131,14 +135,23 @@ function WakePlanEditor({
       return { changes, created, decisionResult };
     },
     onSuccess: ({ changes, created, decisionResult }) => {
+      const acceptedPlan = changes
+        ? {
+            ...displayPlan,
+            firstAlarmAt: changes.firstAlarmAt ?? displayPlan.firstAlarmAt,
+            finalAlarmAt: changes.finalAlarmAt ?? displayPlan.finalAlarmAt,
+          }
+        : displayPlan;
       setServerPlan({ ...created, ...decisionResult });
       setEditingPlanId(created.id);
+      setWakeResult(null);
+      setActiveWakePlan(
+        decisionResult.status === "DECLINED"
+          ? null
+          : { ...acceptedPlan, id: created.id },
+      );
       if (changes) {
-        setDisplayPlan((current) => ({
-          ...current,
-          firstAlarmAt: changes.firstAlarmAt ?? current.firstAlarmAt,
-          finalAlarmAt: changes.finalAlarmAt ?? current.finalAlarmAt,
-        }));
+        setDisplayPlan(acceptedPlan);
       }
       setEditing(false);
     },
@@ -321,9 +334,19 @@ function WakePlanEditor({
       ) : null}
 
       {serverPlan ? (
-        <p aria-live="polite" className="rounded-xl bg-brand-soft p-4 font-semibold text-brand">
-          계획 상태: {statusLabels[serverPlan.status] ?? serverPlan.status}
-        </p>
+        <div className="rounded-xl bg-brand-soft p-4">
+          <p aria-live="polite" className="font-semibold text-brand">
+            계획 상태: {statusLabels[serverPlan.status] ?? serverPlan.status}
+          </p>
+          {serverPlan.status === "APPROVED" || serverPlan.status === "EDITED" ? (
+            <Link
+              className="mt-3 inline-flex min-h-11 items-center rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+              href="/wake"
+            >
+              기상 실행 시작
+            </Link>
+          ) : null}
+        </div>
       ) : null}
       {mutation.isError ? (
         <p aria-live="polite" className="text-sm text-danger">
