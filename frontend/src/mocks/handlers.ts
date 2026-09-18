@@ -19,6 +19,7 @@ type PreparationTaskResponse =
   components["schemas"]["PreparationTaskResponse"];
 type HistorySummaryResponse = components["schemas"]["HistorySummaryResponse"];
 type ProfileResponse = components["schemas"]["ProfileResponse"];
+type ProfileUpdate = components["schemas"]["ProfileUpdate"];
 type RoutineProfileResponse = components["schemas"]["RoutineProfileResponse"];
 type ScheduleEventsResponse = components["schemas"]["ScheduleEventsResponse"];
 type WakePlanCreate = components["schemas"]["WakePlanCreate"];
@@ -38,10 +39,30 @@ const preparationTasks = new Map<
 const wakePlans = new Map<string, WakePlanDetail>();
 const wakePlanIdempotency = new Map<string, string>();
 const wakeOutcomes = new Map<string, WakeOutcomeCreate>();
+const profiles = new Map<string, ProfileResponse>();
 
 function getScenarioFromRequest(request: Request): ScenarioId {
   const sessionId = request.headers.get("X-Demo-Session");
   return (sessionId && sessions.get(sessionId)) || "exam-morning";
+}
+
+function getProfileFromRequest(request: Request): ProfileResponse {
+  const sessionId = request.headers.get("X-Demo-Session") ?? "local";
+  const stored = profiles.get(sessionId);
+  if (stored) {
+    return stored;
+  }
+  const profile: ProfileResponse = {
+    allowAggregateOutcomeSync: false,
+    allowImportantEventDetection: true,
+    automationMode: "RECOMMEND_ONLY",
+    locale: "ko-KR",
+    revision: 1,
+    timezone: "Asia/Seoul",
+    updatedAt: new Date().toISOString(),
+  };
+  profiles.set(sessionId, profile);
+  return profile;
 }
 
 export const handlers = [
@@ -73,16 +94,21 @@ export const handlers = [
   ),
   http.get<never, never, ProfileResponse>(
     "/api/v1/profile",
-    () =>
-      HttpResponse.json({
-        allowAggregateOutcomeSync: false,
-        allowImportantEventDetection: true,
-        automationMode: "RECOMMEND_ONLY",
-        locale: "ko-KR",
-        revision: 1,
-        timezone: "Asia/Seoul",
+    ({ request }) => HttpResponse.json(getProfileFromRequest(request)),
+  ),
+  http.put<never, ProfileUpdate, ProfileResponse>(
+    "/api/v1/profile",
+    async ({ request }) => {
+      const body = await request.json();
+      const sessionId = request.headers.get("X-Demo-Session") ?? "local";
+      const updated: ProfileResponse = {
+        ...body,
+        revision: body.revision + 1,
         updatedAt: new Date().toISOString(),
-      }),
+      };
+      profiles.set(sessionId, updated);
+      return HttpResponse.json(updated);
+    },
   ),
   http.get<never, never, ScheduleEventsResponse>(
     "/api/v1/schedule-events",

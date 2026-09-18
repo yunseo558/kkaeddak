@@ -7,14 +7,17 @@ import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
+import { ApiErrorState } from "@/components/foundation/api-error-state";
 import { AppShell } from "@/components/layout/app-shell";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 import { formatKoreanTime } from "@/features/tomorrow/lib/schedule-calculation";
+import { getApiStatus } from "@/lib/api/api-recovery";
 
 import {
   createWakePlan,
   createWakePlanDecisionPayload,
   createWakePlanIdempotencyKey,
+  getWakePlan,
   updateWakePlanDecision,
 } from "../api/wake-plan-api";
 import { getVisibleReasons } from "../lib/reason-copy";
@@ -93,12 +96,14 @@ function WakePlanEditor({
   const mutation = useMutation({
     mutationFn: async ({
       changes,
+      createdPlan,
       decision,
     }: {
       changes?: WakePlanDecisionChanges;
+      createdPlan?: WakePlanResponse;
       decision: PlanDecision;
     }) => {
-      let created = serverPlan;
+      let created = createdPlan ?? serverPlan;
       if (!created) {
         created =
           mode === "local"
@@ -349,9 +354,50 @@ function WakePlanEditor({
         </div>
       ) : null}
       {mutation.isError ? (
-        <p aria-live="polite" className="text-sm text-danger">
-          계획을 저장하지 못했습니다. 현재 화면을 유지한 채 다시 시도해 주세요.
-        </p>
+        <ApiErrorState
+          error={mutation.error}
+          onRetry={async () => {
+            if (!mutation.variables) {
+              return;
+            }
+            if (
+              mode === "server" &&
+              sessionId &&
+              getApiStatus(mutation.error) === 409
+            ) {
+              const latest = await getWakePlan(
+                sessionId,
+                recommendation.plan.localDate,
+              );
+              const refreshedPlan = {
+                id: latest.id,
+                revision: latest.revision,
+                status: latest.status,
+              };
+              setServerPlan(refreshedPlan);
+              setDisplayPlan({
+                deadlineAt: latest.deadlineAt,
+                finalAlarmAt: latest.finalAlarmAt,
+                firstAlarmAt: latest.firstAlarmAt,
+                importance: latest.importance,
+                localDate: latest.localDate,
+                modelVersion: latest.modelVersion,
+                protocolLevel: latest.protocolLevel,
+                reasonCodes: latest.reasonCodes,
+                requiresApproval: latest.requiresApproval,
+                steps: latest.steps,
+                timezone: latest.timezone,
+              });
+              mutation.mutate({
+                ...mutation.variables,
+                createdPlan: refreshedPlan,
+              });
+            } else {
+              mutation.mutate(mutation.variables);
+            }
+          }}
+          title="기상 계획을 저장하지 못했습니다"
+        />
       ) : null}
 
       <Link className="inline-flex min-h-11 items-center font-semibold text-brand" href="/prepare">
@@ -409,16 +455,19 @@ export function WakePlanReview() {
   ) {
     return (
       <AppShell currentStep="계획" eyebrow="기상 계획">
-        <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
-          <h1 className="text-2xl font-bold">기상 계획을 계산하지 못했습니다</h1>
-          <button
-            className="mt-6 min-h-11 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
-            onClick={() => recommendationQuery.refetch()}
-            type="button"
-          >
-            다시 계산
-          </button>
-        </section>
+        <ApiErrorState
+          error={
+            overviewQuery.error ??
+            preparationQuery.error ??
+            recommendationQuery.error
+          }
+          onRetry={() => {
+            void overviewQuery.refetch();
+            void preparationQuery.refetch();
+            void recommendationQuery.refetch();
+          }}
+          title="기상 계획을 계산하지 못했습니다"
+        />
       </AppShell>
     );
   }

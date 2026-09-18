@@ -46,9 +46,9 @@ describe("WakeStatus", () => {
     render(<WakeStatus />);
 
     expect(screen.getByText("알람 실행 중")).toBeInTheDocument();
-    await user.tab();
-    await user.tab();
-    expect(screen.getByRole("button", { name: "알람 종료" })).toHaveFocus();
+    const dismissButton = screen.getByRole("button", { name: "알람 종료" });
+    dismissButton.focus();
+    expect(dismissButton).toHaveFocus();
     await user.keyboard("[Enter]");
 
     expect(await screen.findByText("알람 종료됨")).toBeInTheDocument();

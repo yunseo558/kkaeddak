@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 
+import { ApiErrorState } from "@/components/foundation/api-error-state";
+import { TimezoneNotice } from "@/components/foundation/timezone-notice";
 import { AppShell } from "@/components/layout/app-shell";
 import { getScenario } from "@/features/demo-session/model/scenarios";
+import { useDemoSessionStore } from "@/features/demo-session/model/demo-session-store";
 
 import {
   calculateWakeDeadline,
@@ -21,7 +24,9 @@ const importanceLabels = {
 } as const;
 
 export function TomorrowDashboard() {
-  const { mode, query, ready, scenarioId } = useTomorrowOverview();
+  const startLocal = useDemoSessionStore((state) => state.startLocal);
+  const { mode, offlineFallback, query, ready, scenarioId } =
+    useTomorrowOverview();
   const scenario = scenarioId ? getScenario(scenarioId) : null;
 
   if (!ready || !scenario) {
@@ -53,17 +58,11 @@ export function TomorrowDashboard() {
   if (query.isError) {
     return (
       <AppShell currentStep="분석" eyebrow="내일 분석">
-        <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
-          <h1 className="text-2xl font-bold">일정을 불러오지 못했습니다</h1>
-          <p className="mt-3 text-muted">현재 데모 상황은 그대로 유지됩니다.</p>
-          <button
-            className="mt-6 min-h-11 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
-            onClick={() => query.refetch()}
-            type="button"
-          >
-            다시 시도
-          </button>
-        </section>
+        <ApiErrorState
+          error={query.error}
+          onRetry={() => void query.refetch()}
+          title="일정을 불러오지 못했습니다"
+        />
       </AppShell>
     );
   }
@@ -75,8 +74,15 @@ export function TomorrowDashboard() {
         <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
           <h1 className="text-2xl font-bold">예정된 일정이 없습니다</h1>
           <p className="mt-3 text-muted">
-            현재 단계에서는 일정이 있을 때의 역산 흐름을 제공합니다.
+            선택한 시나리오의 평소 패턴으로 로컬 계획을 계속 만들 수 있습니다.
           </p>
+          <button
+            className="mt-6 min-h-11 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+            onClick={() => startLocal(scenario.id)}
+            type="button"
+          >
+            평소 패턴으로 계속
+          </button>
         </section>
       </AppShell>
     );
@@ -97,7 +103,11 @@ export function TomorrowDashboard() {
         <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm font-semibold text-brand">
-              {mode === "server" ? "서버 일정 연결됨" : "로컬 전용 데모"}
+              {offlineFallback
+                ? "오프라인 로컬 계산"
+                : mode === "server"
+                  ? "서버 일정 연결됨"
+                  : "로컬 전용 데모"}
             </p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
               {scenario.name}
@@ -108,6 +118,8 @@ export function TomorrowDashboard() {
             일정 부담 {demand}
           </span>
         </header>
+
+        <TimezoneNotice scheduleTimezone="Asia/Seoul" />
 
         <section className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
           <article className="rounded-[var(--radius-card)] border border-border bg-surface p-6 shadow-[0_8px_24px_rgba(20,32,43,0.08)] sm:p-8">

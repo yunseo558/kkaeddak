@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { useDemoSessionStore } from "@/features/demo-session/model/demo-session-store";
+import { useOnlineStatus } from "@/lib/network/use-online-status";
 
 import { getTomorrowOverview } from "../api/tomorrow-api";
 import { createLocalTomorrowOverview } from "./local-fixtures";
@@ -14,9 +15,12 @@ export const tomorrowOverviewQueryKey = (
 ) => ["tomorrow-overview", mode, sessionId, scenarioId] as const;
 
 export function useTomorrowOverview() {
-  const mode = useDemoSessionStore((state) => state.mode);
+  const storedMode = useDemoSessionStore((state) => state.mode);
   const scenarioId = useDemoSessionStore((state) => state.scenarioId);
   const sessionId = useDemoSessionStore((state) => state.sessionId);
+  const online = useOnlineStatus();
+  const offlineFallback = storedMode === "server" && !online;
+  const mode = offlineFallback ? "local" : storedMode;
   const ready = Boolean(mode && scenarioId && (mode === "local" || sessionId));
 
   const query = useQuery({
@@ -36,5 +40,5 @@ export function useTomorrowOverview() {
     },
   });
 
-  return { mode, query, ready, scenarioId, sessionId };
+  return { mode, offlineFallback, query, ready, scenarioId, sessionId };
 }

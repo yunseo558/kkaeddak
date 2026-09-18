@@ -33,7 +33,6 @@
 }
 
 html {
-  min-width: 320px;
   background: var(--background);
 }
 
@@ -44,10 +43,12 @@ body {
   color: var(--text-primary);
   font-family:
     Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-wrap: anywhere;
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -60,4 +61,21 @@ label {
 :focus-visible {
   outline: 3px solid color-mix(in srgb, var(--brand) 70%, white);
   outline-offset: 3px;
+}
+
+label:has(input:focus-visible),
+label:has(select:focus-visible) {
+  outline: 3px solid color-mix(in srgb, var(--brand) 70%, white);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

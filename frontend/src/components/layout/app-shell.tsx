@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
+
+import { useOnlineStatus } from "@/lib/network/use-online-status";
 
 const STEPS = ["소개", "분석", "준비", "계획", "결과"] as const;
 
@@ -10,10 +14,21 @@ type AppShellProps = {
 };
 
 export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
+  const online = useOnlineStatus();
+
   return (
     <div className="min-h-screen px-4 py-6 sm:px-8">
+      <a
+        className="fixed left-4 top-4 z-50 -translate-y-24 rounded-[var(--radius-control)] bg-brand px-4 py-3 font-semibold text-white transition-transform focus:translate-y-0"
+        href="#main-content"
+      >
+        본문으로 건너뛰기
+      </a>
       <header className="mx-auto flex w-full max-w-5xl items-center justify-between">
-        <Link className="text-lg font-bold tracking-tight" href="/">
+        <Link
+          className="inline-flex min-h-11 items-center text-lg font-bold tracking-tight"
+          href="/"
+        >
           깨딱
         </Link>
         <span className="text-sm text-muted">샘플 데이터 데모</span>
@@ -40,7 +55,22 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
         </ol>
       </nav>
 
-      <main className="mx-auto mt-8 w-full max-w-5xl">
+      {!online ? (
+        <p
+          aria-live="polite"
+          className="mx-auto mt-4 w-full max-w-5xl rounded-xl bg-brand-soft px-4 py-3 text-sm font-semibold text-brand"
+          role="status"
+        >
+          오프라인 상태입니다. 로컬 기능은 계속 사용할 수 있고 서버 동기화는
+          연결 후 다시 시도합니다.
+        </p>
+      ) : null}
+
+      <main
+        className="mx-auto mt-8 w-full max-w-5xl"
+        id="main-content"
+        tabIndex={-1}
+      >
         {eyebrow ? (
           <p className="mb-2 text-sm font-semibold text-brand">{eyebrow}</p>
         ) : null}

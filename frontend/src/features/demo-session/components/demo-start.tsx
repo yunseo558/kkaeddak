@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
+import { useOnlineStatus } from "@/lib/network/use-online-status";
 
 import { createDemoSession } from "../api/create-demo-session";
 import { useDemoSessionStore } from "../model/demo-session-store";
@@ -28,6 +29,7 @@ export function DemoStart() {
   );
   const startLocal = useDemoSessionStore((state) => state.startLocal);
   const startServer = useDemoSessionStore((state) => state.startServer);
+  const online = useOnlineStatus();
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
   const { control, handleSubmit, register } = useForm<FormValues>({
     defaultValues: { scenarioId: "exam-morning" },
@@ -37,11 +39,21 @@ export function DemoStart() {
 
   const mutation = useMutation({
     mutationFn: createDemoSession,
+    networkMode: "always",
   });
 
   const onSubmit = handleSubmit(async ({ scenarioId }) => {
     setFallbackMessage(null);
     await saveScenarioHealthInput(scenarioId);
+
+    if (!online) {
+      startLocal(scenarioId);
+      setFallbackMessage(
+        "오프라인 상태라 로컬 전용 데모로 계속 진행합니다.",
+      );
+      router.push(onboardingCompleted ? "/tomorrow" : "/onboarding");
+      return;
+    }
 
     try {
       const session = await mutation.mutateAsync(scenarioId);

@@ -1,28 +1,40 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
+import { useDemoSessionStore } from "@/features/demo-session/model/demo-session-store";
 import {
   localDataStore,
   type LocalStorageMode,
 } from "@/lib/storage/local-data";
 
 import { resetLocalData } from "../lib/reset-local-data";
+import { updateOutcomeSyncConsent } from "../api/privacy-api";
 
 export function PrivacySettings() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const draft = useCurrentFlowStore((state) => state.onboardingDraft);
   const setDraft = useCurrentFlowStore((state) => state.setOnboardingDraft);
+  const mode = useDemoSessionStore((state) => state.mode);
+  const sessionId = useDemoSessionStore((state) => state.sessionId);
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [storageMode, setStorageMode] =
     useState<LocalStorageMode>("persistent");
+  const consentMutation = useMutation({
+    mutationFn: async () => {
+      if (mode !== "server" || !sessionId) {
+        return null;
+      }
+      return updateOutcomeSyncConsent(sessionId, draft.outcomeSync);
+    },
+  });
 
   useEffect(() => {
     void localDataStore.resolveMode().then(setStorageMode);
@@ -80,6 +92,26 @@ export function PrivacySettings() {
               </span>
             </span>
           </label>
+          <button
+            className="mt-4 min-h-11 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white disabled:opacity-60"
+            disabled={consentMutation.isPending}
+            onClick={() => consentMutation.mutate()}
+            type="button"
+          >
+            {consentMutation.isPending ? "설정 저장 중…" : "동기화 설정 저장"}
+          </button>
+          {consentMutation.isSuccess ? (
+            <p aria-live="polite" className="mt-3 text-sm text-success">
+              {mode === "server"
+                ? "서버 집계 동의 설정을 저장했습니다."
+                : "로컬 동의 설정을 저장했습니다."}
+            </p>
+          ) : null}
+          {consentMutation.isError ? (
+            <p aria-live="polite" className="mt-3 text-sm text-danger">
+              서버 설정을 저장하지 못했습니다. 로컬 설정은 유지됩니다.
+            </p>
+          ) : null}
         </section>
 
         <section className="rounded-[var(--radius-card)] border border-danger/40 bg-surface p-5 sm:p-6">
