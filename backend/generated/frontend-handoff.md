@@ -34,6 +34,10 @@ OpenAPI 변경 이력은 Git 히스토리로 관리합니다. 이 단계에서�
 | `429` | 잠시 후 재시도 안내 |
 | `500`, `503` | 재시도 버튼을 제공하고 문제 발생 시나리오를 유지 |
 
+## 준비 작업 갱신
+
+`POST /api/v1/preparation-suggestions`의 각 항목은 `status`와 최신 `revision`을 함께 반환한다. `PATCH /api/v1/preparation-tasks/{task_id}`에는 해당 `revision`을 그대로 보내고, 성공 응답의 새 `revision`으로 로컬 캐시를 교체한다. 완료 시간 계산에는 `COMPLETED` 상태만 반영한다.
+
 ## 8단계로 남긴 항목
 
 배포·CORS 허용 도메인과 운영 헬스체크 구현은 다음 단계에서 확정합니다. 현 단계에서는 운영 CORS 정책이나 배포 주소 모니터링을 추가하지 않습니다.

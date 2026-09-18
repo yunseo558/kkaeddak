@@ -173,6 +173,8 @@ async def create_preparation_suggestions(
                 label=task.label,
                 minutes_saved=task.minutes_saved,
                 source=task.source,
+                status=task.status,
+                revision=task.revision,
             )
         )
 

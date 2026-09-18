@@ -479,11 +479,14 @@ export interface components {
             label: string;
             /** Minutessaved */
             minutesSaved: number;
+            /** Revision */
+            revision: number;
             /**
              * Source
              * @example PACK_BAG
              */
             source: string;
+            status: components["schemas"]["PrepStatus"];
         };
         /** PreparationSuggestionCreate */
         PreparationSuggestionCreate: {
