@@ -1,5 +1,5 @@
-import { DemoStart } from "@/features/demo-session/components/demo-start";
+import { ServiceHome } from "@/features/service/components/service-home";
 
 export default function HomePage() {
-  return <DemoStart />;
+  return <ServiceHome />;
 }

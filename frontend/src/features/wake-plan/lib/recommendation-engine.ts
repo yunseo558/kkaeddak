@@ -67,6 +67,7 @@ export function calculateWakeRecommendation(
     ) {
       reasonCodes.push("SHORTER_SLEEP_THAN_BASELINE");
       riskScore += 1;
+      if (health.sleepDurationMinutes < baseline - 90) riskScore += 1;
     }
     if (health.activityLevel === "high") {
       reasonCodes.push("HIGH_ACTIVITY_DEVIATION");

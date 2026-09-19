@@ -1,0 +1,100 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useServiceStore } from "../model/service-store";
+import { advanceAutomation, serviceAction } from "../lib/service-actions";
+import { startAlarmSound, stopAlarmSound } from "../lib/alarm-audio";
+import { clockTime, localDate } from "../model/service-policy";
+
+export function DemoControls() {
+  const store = useServiceStore();
+  const router = useRouter();
+  if (!store.calendarConnected) return null;
+  const canRing =
+    !!store.plan && ["APPROVED", "EDITED"].includes(store.plan.status);
+  return (
+    <aside className="demo-console" aria-label="데모 조작부">
+      <span className="console-label">PRESENTATION CONTROLS</span>
+      <h2>시간을 건너뛰어 확인하기</h2>
+      <p>
+        캘린더·수면은 샘플 데이터입니다.
+        <br />
+        계획 저장과 결과 학습은 실제로 실행됩니다.
+      </p>
+      <button
+        disabled={store.busy || !canRing}
+        onClick={() =>
+          void serviceAction(async () => {
+            await startAlarmSound();
+            store.set({
+              alarmStage: "ringing",
+              virtualNow: store.plan!.firstAlarmAt,
+            });
+            router.push("/");
+          })
+        }
+      >
+        알람 지금 울리기
+      </button>
+      {store.alarmStage === "ringing" && (
+        <button
+          onClick={() => {
+            stopAlarmSound();
+            store.set({ alarmStage: "confirm" });
+          }}
+        >
+          소리 끄기
+        </button>
+      )}
+      <button
+        disabled={store.busy || store.alarmStage !== "idle"}
+        onClick={() =>
+          void serviceAction(async () => {
+            await advanceAutomation();
+            router.push("/");
+          })
+        }
+      >
+        다음 자동화 시각으로 · {store.automationTime}
+      </button>
+      <button
+        disabled={store.busy || store.alarmStage !== "idle"}
+        onClick={() =>
+          void serviceAction(async () => {
+            await advanceAutomation(true);
+            router.push("/");
+          })
+        }
+      >
+        14일 학습 후 확인
+      </button>
+      <label>
+        수면 샘플
+        <select
+          aria-label="수면 샘플"
+          value={store.sleepMinutes}
+          disabled={store.busy}
+          onChange={(e) => store.set({ sleepMinutes: Number(e.target.value) })}
+        >
+          <option value={420}>평소 수면 · 7시간</option>
+          <option value={435}>충분한 수면 · 7시간 15분</option>
+          <option value={300}>5시간 수면 · 활동 많음 · 피곤함</option>
+        </select>
+      </label>
+      <p>
+        수면 선택은 다음 자동화 실행에 반영됩니다. 알람 재생에는 기기의 음량이
+        필요합니다.
+      </p>
+      {store.virtualNow && (
+        <p className="console-clock">
+          가상 시각 · {localDate(store.virtualNow)}{" "}
+          {clockTime(store.virtualNow)}
+        </p>
+      )}
+      {store.preview && (
+        <p>학습 미리보기: 샘플 기상 기록이 포함되어 있습니다.</p>
+      )}
+      {store.message && <p role="alert">{store.message}</p>}
+    </aside>
+  );
+}

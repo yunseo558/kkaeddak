@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { useServiceStore } from "@/features/service/model/service-store";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 import {
   localDataStore,
@@ -26,11 +27,11 @@ const STEP_FIELDS: Array<Array<keyof OnboardingValues>> = [
   ["automationMode", "outcomeSync"],
 ];
 
-const inputClassName =
-  "field-control mt-2 min-h-12 w-full px-4 py-3";
+const inputClassName = "field-control mt-2 min-h-12 w-full px-4 py-3";
 
 export function OnboardingFlow() {
   const router = useRouter();
+  const service = useServiceStore();
   const draft = useCurrentFlowStore((state) => state.onboardingDraft);
   const storedStep = useCurrentFlowStore((state) => state.onboardingStep);
   const setCompleted = useCurrentFlowStore(
@@ -74,7 +75,7 @@ export function OnboardingFlow() {
     setDraft(values);
     setCompleted(true);
     setStoredStep(0);
-    router.push("/tomorrow");
+    router.push("/calendar");
   });
 
   return (
@@ -88,8 +89,7 @@ export function OnboardingFlow() {
             {STEP_LABELS[step]}
           </h1>
           <p className="mt-3 text-muted">
-            추천 계산에 필요한 기본 설정만 입력합니다. 건강 원본은 서버로 보내지
-            않습니다.
+            평소 아침에 맞춰 설정해 주세요. 나중에 바꿀 수 있어요.
           </p>
         </header>
 
@@ -102,7 +102,11 @@ export function OnboardingFlow() {
               aria-current={index === step ? "step" : undefined}
               className="progress-step text-center text-xs"
               data-state={
-                index === step ? "active" : index < step ? "complete" : "pending"
+                index === step
+                  ? "active"
+                  : index < step
+                    ? "complete"
+                    : "pending"
               }
               key={label}
             >
@@ -170,7 +174,7 @@ export function OnboardingFlow() {
           ) : null}
 
           {step === 1 ? (
-            <div className="grid gap-5 sm:grid-cols-3">
+            <div className="grid gap-5">
               {[
                 ["washMinutes", "씻기"],
                 ["breakfastMinutes", "아침 식사"],
@@ -192,6 +196,25 @@ export function OnboardingFlow() {
                   />
                 </label>
               ))}
+              <label className="font-semibold">
+                이동 시간(분)
+                <input
+                  className={inputClassName}
+                  type="number"
+                  min={0}
+                  max={180}
+                  required
+                  value={service.commuteMinutes}
+                  onChange={(e) =>
+                    service.set({
+                      commuteMinutes: Math.max(
+                        0,
+                        Math.min(180, Number(e.target.value)),
+                      ),
+                    })
+                  }
+                />
+              </label>
               {errors.washMinutes ||
               errors.breakfastMinutes ||
               errors.bagMinutes ? (
@@ -204,6 +227,22 @@ export function OnboardingFlow() {
 
           {step === 2 ? (
             <div className="space-y-6">
+              <label className="block font-semibold">
+                매일 알람을 정할 시각
+                <input
+                  className={inputClassName}
+                  type="time"
+                  required
+                  value={service.automationTime}
+                  onChange={(e) => {
+                    if (e.target.value)
+                      service.set({ automationTime: e.target.value });
+                  }}
+                />
+                <span className="mt-2 block text-sm font-normal text-muted">
+                  이 시각에 내일 일정과 수면 기록을 확인해요.
+                </span>
+              </label>
               <label className="block font-semibold">
                 선호 알람 개수
                 <select
@@ -243,10 +282,15 @@ export function OnboardingFlow() {
                       value="automatic"
                       {...register("automationMode")}
                     />
-                    자동 적용
+                    적응 기간 후 자동 적용
                   </label>
                 </div>
               </fieldset>
+              <p className="text-sm leading-6 text-muted">
+                처음 14일은 계획을 확인받아요. 10일 이상 기록하고 최근 5회 중
+                4회 제시간에 일어나면 일반 일정부터 자동 적용해요. 중요한 일정은
+                계속 확인받아요.
+              </p>
 
               <div className="accent-panel p-5 text-sm leading-6">
                 <strong className="block">로컬 처리 원칙</strong>

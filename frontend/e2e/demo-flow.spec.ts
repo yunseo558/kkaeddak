@@ -7,7 +7,7 @@ const scenarios = [
 ] as const;
 
 async function startScenario(page: Page, scenario: (typeof scenarios)[number]) {
-  await page.goto("/");
+  await page.goto("/demo");
   await page.waitForLoadState("networkidle");
   await page.getByText(scenario, { exact: true }).click();
   await expect(page.getByRole("radio", { name: new RegExp(scenario) })).toBeChecked();
@@ -20,7 +20,8 @@ async function startScenario(page: Page, scenario: (typeof scenarios)[number]) {
   }
   const completeButton = page.getByRole("button", { name: "설정 완료" });
   await completeButton.press("Enter");
-  await expect(page).toHaveURL(/\/tomorrow$/);
+  await expect(page).toHaveURL(/\/calendar$/);
+  await page.goto("/tomorrow");
   await expect(
     page.getByRole("heading", { level: 1, name: scenario }),
   ).toBeVisible();

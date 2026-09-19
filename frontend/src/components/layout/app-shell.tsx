@@ -5,6 +5,9 @@ import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { useOnlineStatus } from "@/lib/network/use-online-status";
+import { useServiceStore } from "@/features/service/model/service-store";
+import { clockTime } from "@/features/service/model/service-policy";
+import { DemoControls } from "@/features/service/components/demo-controls";
 
 type AppStep = "소개" | "분석" | "준비" | "계획" | "결과";
 
@@ -16,6 +19,8 @@ type AppShellProps = {
 
 export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
   const online = useOnlineStatus();
+  const connected = useServiceStore((s) => s.calendarConnected);
+  const virtualNow = useServiceStore((s) => s.virtualNow);
 
   return (
     <div className="app-canvas">
@@ -29,7 +34,7 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
         <div className="iphone-screen">
           <div className="iphone-status-bar" aria-hidden="true">
             <time className="iphone-time" dateTime="09:41">
-              9:41
+              {virtualNow ? clockTime(virtualNow) : "9:41"}
             </time>
             <span className="dynamic-island" />
             <div className="iphone-status-icons">
@@ -63,7 +68,7 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
               <Link
                 aria-label="개인정보 설정"
                 className="header-icon-button"
-                href="/settings/privacy"
+                href="/settings"
               >
                 <svg aria-hidden="true" viewBox="0 0 24 24">
                   <path d="M12 15.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z" />
@@ -83,15 +88,28 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
               </p>
             ) : null}
 
-            <main className="mt-4 w-full px-5 pb-16" id="main-content" tabIndex={-1}>
+            <main
+              className="mt-4 w-full px-5 pb-16"
+              id="main-content"
+              tabIndex={-1}
+            >
               {eyebrow ? <p className="page-eyebrow">{eyebrow}</p> : null}
               {children}
             </main>
           </div>
 
           <div className="iphone-home-indicator" aria-hidden="true" />
+          {connected && (
+            <nav className="service-tabbar" aria-label="주 메뉴">
+              <Link href="/">아침</Link>
+              <Link href="/calendar">캘린더</Link>
+              <Link href="/history">기록</Link>
+              <Link href="/settings">설정</Link>
+            </nav>
+          )}
         </div>
       </div>
+      {connected && <DemoControls />}
     </div>
   );
 }

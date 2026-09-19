@@ -1,5 +1,5 @@
-import { WakeHistorySummary } from "@/features/wake-result/components/wake-history-summary";
+import { ServiceHistory } from "@/features/service/components/service-history";
 
 export default function HistoryPage() {
-  return <WakeHistorySummary />;
+  return <ServiceHistory />;
 }
