@@ -5,12 +5,9 @@ import { onboardingSchema } from "./onboarding-schema";
 const validInput = {
   usualWakeTime: "07:00",
   recentFirstAlarmSucceeded: true,
-  washMinutes: 20,
-  breakfastMinutes: 15,
-  bagMinutes: 10,
   preferredAlarmCount: 2,
   keepSafetyAlarm: true,
-  automationMode: "suggest" as const,
+  automationMode: "automatic" as const,
   outcomeSync: false,
 };
 
@@ -19,12 +16,12 @@ describe("onboardingSchema", () => {
     expect(onboardingSchema.parse(validInput)).toEqual(validInput);
   });
 
-  it("rejects invalid time and routine duration values", () => {
+  it("rejects invalid time and alarm count values", () => {
     expect(
       onboardingSchema.safeParse({
         ...validInput,
         usualWakeTime: "25:00",
-        washMinutes: -1,
+        preferredAlarmCount: 4,
       }).success,
     ).toBe(false);
   });

@@ -18,13 +18,13 @@ import {
   type OnboardingValues,
 } from "../model/onboarding-schema";
 
-const STEP_LABELS = ["기상 습관", "준비 루틴", "알람 선호", "개인정보"];
+const STEP_LABELS = ["기상 습관", "일정 유형", "알람 설정", "개인정보"];
 
 const STEP_FIELDS: Array<Array<keyof OnboardingValues>> = [
   ["usualWakeTime", "recentFirstAlarmSucceeded"],
-  ["washMinutes", "breakfastMinutes", "bagMinutes"],
+  [],
   ["preferredAlarmCount", "keepSafetyAlarm"],
-  ["automationMode", "outcomeSync"],
+  ["outcomeSync"],
 ];
 
 const inputClassName = "field-control mt-2 min-h-12 w-full px-4 py-3";
@@ -72,7 +72,12 @@ export function OnboardingFlow() {
   };
 
   const complete = handleSubmit((values) => {
-    setDraft(values);
+    const nextValues = { ...values, automationMode: "automatic" as const };
+    setDraft(nextValues);
+    service.set({
+      preferredAlarmCount: nextValues.preferredAlarmCount,
+      keepSafetyAlarm: nextValues.keepSafetyAlarm,
+    });
     setCompleted(true);
     setStoredStep(0);
     router.push("/calendar");
@@ -175,53 +180,43 @@ export function OnboardingFlow() {
 
           {step === 1 ? (
             <div className="grid gap-5">
-              {[
-                ["washMinutes", "씻기"],
-                ["breakfastMinutes", "아침 식사"],
-                ["bagMinutes", "가방 챙기기"],
-              ].map(([name, label]) => (
-                <label className="font-semibold" key={name}>
-                  {label}
+              <p className="text-sm leading-6 text-muted">
+                AI가 일정 이름을 보고 아래 유형 중 하나로 분류해요. 시간은 일정
+                시작 전에 기상을 완료할 기준을 뜻해요.
+              </p>
+              {service.scheduleTypes.map((scheduleType) => (
+                <label className="font-semibold" key={scheduleType.code}>
+                  {scheduleType.label}
                   <span className="mt-1 block text-xs font-normal text-muted">
-                    소요 시간(분)
+                    일정 시작 전 기상 완료 기준(분)
                   </span>
                   <input
                     className={inputClassName}
-                    min={0}
-                    max={180}
+                    min={15}
+                    max={300}
                     type="number"
-                    {...register(name as keyof OnboardingValues, {
-                      valueAsNumber: true,
-                    })}
+                    value={scheduleType.wakeLeadMin}
+                    onChange={(event) =>
+                      service.set({
+                        scheduleTypes: service.scheduleTypes.map((item) =>
+                          item.code === scheduleType.code
+                            ? {
+                                ...item,
+                                wakeLeadMin: Math.max(
+                                  15,
+                                  Math.min(300, Number(event.target.value)),
+                                ),
+                              }
+                            : item,
+                        ),
+                      })
+                    }
                   />
                 </label>
               ))}
-              <label className="font-semibold">
-                이동 시간(분)
-                <input
-                  className={inputClassName}
-                  type="number"
-                  min={0}
-                  max={180}
-                  required
-                  value={service.commuteMinutes}
-                  onChange={(e) =>
-                    service.set({
-                      commuteMinutes: Math.max(
-                        0,
-                        Math.min(180, Number(e.target.value)),
-                      ),
-                    })
-                  }
-                />
-              </label>
-              {errors.washMinutes ||
-              errors.breakfastMinutes ||
-              errors.bagMinutes ? (
-                <p className="text-sm text-danger sm:col-span-3">
-                  준비 시간은 0분에서 180분 사이로 입력해 주세요.
-                </p>
-              ) : null}
+              <p className="text-sm text-muted">
+                유형 추가·이름 변경·삭제는 설정에서 언제든 할 수 있어요.
+              </p>
             </div>
           ) : null}
 
@@ -244,6 +239,23 @@ export function OnboardingFlow() {
                 </span>
               </label>
               <label className="block font-semibold">
+                알람 간격
+                <select
+                  className={inputClassName}
+                  value={service.alarmIntervalMinutes}
+                  onChange={(event) =>
+                    service.set({
+                      alarmIntervalMinutes: Number(event.target.value),
+                    })
+                  }
+                >
+                  <option value={5}>5분</option>
+                  <option value={10}>10분</option>
+                  <option value={15}>15분</option>
+                  <option value={20}>20분</option>
+                </select>
+              </label>
+              <label className="block font-semibold">
                 선호 알람 개수
                 <select
                   className={inputClassName}
@@ -263,33 +275,15 @@ export function OnboardingFlow() {
 
           {step === 3 ? (
             <div className="space-y-6">
-              <fieldset>
-                <legend className="font-semibold">계획 적용 방식</legend>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <label className="choice-card rounded-[var(--radius-control)] p-4">
-                    <input
-                      className="mr-2"
-                      type="radio"
-                      value="suggest"
-                      {...register("automationMode")}
-                    />
-                    먼저 제안받기
-                  </label>
-                  <label className="choice-card rounded-[var(--radius-control)] p-4">
-                    <input
-                      className="mr-2"
-                      type="radio"
-                      value="automatic"
-                      {...register("automationMode")}
-                    />
-                    적응 기간 후 자동 적용
-                  </label>
-                </div>
-              </fieldset>
+              <div className="accent-panel p-5 text-sm leading-6">
+                <strong className="block">처음에는 항상 확인받아요</strong>
+                14일 동안은 계획을 승인한 뒤 알람을 설정해요. 학습이 끝나면 일반
+                일정은 자동으로 적용하고, 언제든 수정·취소하거나 다시 확인
+                방식으로 바꿀 수 있어요.
+              </div>
               <p className="text-sm leading-6 text-muted">
-                처음 14일은 계획을 확인받아요. 10일 이상 기록하고 최근 5회 중
-                4회 제시간에 일어나면 일반 일정부터 자동 적용해요. 중요한 일정은
-                계속 확인받아요.
+                14일 전 자동 적용도 설정에서 선택할 수 있지만, 학습 기록이 적어
+                AI 판단 오차가 클 수 있어요.
               </p>
 
               <div className="accent-panel p-5 text-sm leading-6">

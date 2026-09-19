@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ai/schedule-classifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Classify a schedule title into one of the user's categories */
+        post: operations["classify_schedule_api_v1_ai_schedule_classifications_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/demo-sessions": {
         parameters: {
             query?: never;
@@ -267,13 +284,35 @@ export interface components {
     schemas: {
         /** AlarmPreferences */
         AlarmPreferences: {
+            /**
+             * Alarmintervalmin
+             * @default 10
+             */
+            alarmIntervalMin: number;
+            /**
+             * Automationtime
+             * @default 21:00
+             */
+            automationTime: string;
+            /**
+             * Keepsafetyalarm
+             * @default true
+             */
+            keepSafetyAlarm: boolean;
             /** Maxprotocollevel */
             maxProtocolLevel: number;
+            /**
+             * Preferredalarmcount
+             * @default 2
+             */
+            preferredAlarmCount: number;
             /**
              * Preferredfirstchannel
              * @example PACK_BAG
              */
             preferredFirstChannel: string;
+            /** Scheduletypes */
+            scheduleTypes?: components["schemas"]["ScheduleTypeRule"][];
         };
         /** AlarmStep */
         AlarmStep: {
@@ -640,6 +679,39 @@ export interface components {
             /** Movabletonight */
             movableToNight: boolean;
         };
+        /** ScheduleCategoryCandidate */
+        ScheduleCategoryCandidate: {
+            /**
+             * Code
+             * @example PACK_BAG
+             */
+            code: string;
+            /**
+             * Isfallback
+             * @default false
+             */
+            isFallback: boolean;
+            /** Label */
+            label: string;
+        };
+        /** ScheduleClassificationCreate */
+        ScheduleClassificationCreate: {
+            /** Categories */
+            categories: components["schemas"]["ScheduleCategoryCandidate"][];
+            /** Title */
+            title: string;
+        };
+        /** ScheduleClassificationResponse */
+        ScheduleClassificationResponse: {
+            /**
+             * Categorycode
+             * @example PACK_BAG
+             */
+            categoryCode: string;
+            /** Confidence */
+            confidence: number;
+            source: components["schemas"]["ExplanationSource"];
+        };
         /** ScheduleEventInput */
         ScheduleEventInput: {
             /**
@@ -711,6 +783,23 @@ export interface components {
             items: components["schemas"]["ScheduleEventResponse"][];
             /** Nextcursor */
             nextCursor?: string | null;
+        };
+        /** ScheduleTypeRule */
+        ScheduleTypeRule: {
+            /**
+             * Code
+             * @example PACK_BAG
+             */
+            code: string;
+            /**
+             * Isfallback
+             * @default false
+             */
+            isFallback: boolean;
+            /** Label */
+            label: string;
+            /** Wakeleadmin */
+            wakeLeadMin: number;
         };
         /**
          * WakeOutcome
@@ -883,6 +972,114 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExplanationResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid or expired session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or permission required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Revision or resource conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Disallowed privacy field */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Temporary dependency failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    classify_schedule_api_v1_ai_schedule_classifications_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-Session"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleClassificationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleClassificationResponse"];
                 };
             };
             /** @description Invalid request */

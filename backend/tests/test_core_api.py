@@ -95,11 +95,15 @@ async def test_demo_session_seeds_profile_routine_and_exam(api_client: AsyncClie
     assert current.json()["sessionType"] == "DEMO"
     assert profile.json()["automationMode"] == "RECOMMEND_ONLY"
     assert profile.json()["revision"] == 1
-    assert routine.json()["wakeBufferMin"] == 15
-    assert [item["code"] for item in routine.json()["routineTasks"]] == [
-        "SHOWER",
-        "BREAKFAST",
-        "PACK_BAG",
+    assert routine.json()["wakeBufferMin"] == 0
+    assert routine.json()["routineTasks"] == []
+    assert [item["code"] for item in routine.json()["alarmPreferences"]["scheduleTypes"]] == [
+        "CLASS",
+        "WORK",
+        "IMPORTANT",
+        "APPOINTMENT",
+        "EXERCISE",
+        "OTHER",
     ]
     assert schedule.status_code == 200
     assert schedule.json()["items"][0]["category"] == "EXAM"
@@ -200,6 +204,24 @@ async def test_profile_and_routine_updates_enforce_revision(api_client: AsyncCli
             "alarmPreferences": {
                 "preferredFirstChannel": "PHONE_SOUND",
                 "maxProtocolLevel": 3,
+                "preferredAlarmCount": 3,
+                "alarmIntervalMin": 12,
+                "keepSafetyAlarm": True,
+                "automationTime": "22:00",
+                "scheduleTypes": [
+                    {
+                        "code": "CLASS",
+                        "label": "수업",
+                        "wakeLeadMin": 60,
+                        "isFallback": False,
+                    },
+                    {
+                        "code": "OTHER",
+                        "label": "기타",
+                        "wakeLeadMin": 45,
+                        "isFallback": True,
+                    },
+                ],
             },
             "revision": 1,
         },
@@ -213,6 +235,7 @@ async def test_profile_and_routine_updates_enforce_revision(api_client: AsyncCli
     assert routine.status_code == 200
     assert routine.json()["revision"] == 2
     assert routine.json()["alarmPreferences"]["maxProtocolLevel"] == 3
+    assert routine.json()["alarmPreferences"]["scheduleTypes"][0]["wakeLeadMin"] == 60
 
 
 @pytest.mark.anyio

@@ -7,13 +7,35 @@ import type { components } from "@kkaeddak/api-client";
 import type { DailyOutcome } from "./service-policy";
 
 export type CalendarEntry = components["schemas"]["ScheduleEventInput"];
+export type ScheduleTypeRule = components["schemas"]["ScheduleTypeRule"];
+export type ScheduleClassification =
+  components["schemas"]["ScheduleClassificationResponse"];
+export const DEFAULT_SCHEDULE_TYPES: ScheduleTypeRule[] = [
+  { code: "CLASS", label: "수업", wakeLeadMin: 60, isFallback: false },
+  { code: "WORK", label: "출근·업무", wakeLeadMin: 90, isFallback: false },
+  {
+    code: "IMPORTANT",
+    label: "시험·면접",
+    wakeLeadMin: 120,
+    isFallback: false,
+  },
+  {
+    code: "APPOINTMENT",
+    label: "약속·예약",
+    wakeLeadMin: 60,
+    isFallback: false,
+  },
+  { code: "EXERCISE", label: "운동", wakeLeadMin: 45, isFallback: false },
+  { code: "OTHER", label: "기타", wakeLeadMin: 60, isFallback: true },
+];
 export type ServicePlan = ActiveWakePlan & {
   revision: number;
   status: string;
   automatic: boolean;
   eventTitle: string;
   eventAt: string;
-  routineMinutes: number;
+  scheduleTypeLabel: string;
+  wakeLeadMinutes: number;
   sleepMinutes: number;
   reason: string;
 };
@@ -23,7 +45,12 @@ type ServiceState = {
   healthConnected: boolean;
   virtualNow: string | null;
   automationTime: string;
-  commuteMinutes: number;
+  earlyAutomationEnabled: boolean;
+  preferredAlarmCount: number;
+  alarmIntervalMinutes: number;
+  keepSafetyAlarm: boolean;
+  scheduleTypes: ScheduleTypeRule[];
+  classifications: Record<string, ScheduleClassification>;
   events: CalendarEntry[];
   records: DailyOutcome[];
   plan: ServicePlan | null;
@@ -42,7 +69,12 @@ const initial = {
   healthConnected: false,
   virtualNow: null,
   automationTime: "21:00",
-  commuteMinutes: 30,
+  earlyAutomationEnabled: false,
+  preferredAlarmCount: 2,
+  alarmIntervalMinutes: 10,
+  keepSafetyAlarm: true,
+  scheduleTypes: DEFAULT_SCHEDULE_TYPES,
+  classifications: {},
   events: [],
   records: [],
   plan: null,
@@ -68,7 +100,12 @@ export const useServiceStore = create<ServiceState>()(
         healthConnected,
         virtualNow,
         automationTime,
-        commuteMinutes,
+        earlyAutomationEnabled,
+        preferredAlarmCount,
+        alarmIntervalMinutes,
+        keepSafetyAlarm,
+        scheduleTypes,
+        classifications,
         events,
         records,
         plan,
@@ -81,7 +118,12 @@ export const useServiceStore = create<ServiceState>()(
         healthConnected,
         virtualNow,
         automationTime,
-        commuteMinutes,
+        earlyAutomationEnabled,
+        preferredAlarmCount,
+        alarmIntervalMinutes,
+        keepSafetyAlarm,
+        scheduleTypes,
+        classifications,
         events,
         records,
         plan,

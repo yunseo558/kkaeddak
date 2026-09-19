@@ -2,13 +2,14 @@
 
 `/` is the service entry point. The old scenario picker remains at `/demo` for regression testing, with no link from the service UI.
 
-1. First-use survey records wake habits, preparation duration, travel duration, alarm preferences, the daily planning time, and optional automation/outcome-sync consent.
-2. `/calendar` imports a 30-day sample calendar with an 11:00 class. It uses the existing anonymous-session API, saves the survey through the routine/profile APIs, and upserts imported or edited events through `schedule-events:batch`.
-3. The home screen reads tomorrow's first event and the saved routine from the backend. It subtracts preparation, travel and a 15-minute buffer, reads the mock sleep provider locally, and runs the recommendation engine. Health input is never sent to the backend.
-4. The initial plan requires approval. Create, approve, edit and cancel actions use the existing wake-plan APIs with revisions. Calendar edits retire the old plan and calculate a replacement.
-5. The separate presentation controls play an actual Web Audio chime and move the virtual clock to the first alarm. Turning it off prompts for wake confirmation. The response updates local learning and the next recommendation; aggregate sync uses the existing consent-based outcome API.
-6. “Next automation time” moves the virtual clock to the configured time and runs the same fetch/recommend/persist pipeline. The short-sleep sample includes high activity and low condition, yielding three alarm steps and approval.
-7. “After 14 days” adds explicitly marked preview records (without overwriting observed records), advances time, and runs the same eligibility policy. The full record provenance is visible in history and the presentation panel.
+1. First-use survey records wake habits, per-schedule-type wake deadlines, alarm preferences, the daily planning time, and optional outcome-sync consent. The initial automation policy always asks for approval.
+2. `/calendar` imports varied sample events through October 30, 2026. It uses the existing anonymous-session API, saves the survey through the routine/profile APIs, and upserts imported or edited events through `schedule-events:batch`.
+3. Calendar titles are classified against the user's own schedule types through `POST /api/v1/ai/schedule-classifications`. The current safe template classifier is deterministic; the provider boundary can be replaced with a model without exposing calendar notes or health data. Users can override the category on each event.
+4. The home screen reads tomorrow's first event and its category from the backend. It derives the wake-complete deadline from that category's lead time, reads the mock sleep provider locally, and runs the recommendation engine. Health input is never sent to the backend.
+5. Create, approve, edit and cancel actions use the existing wake-plan APIs with revisions. Calendar edits retire the old plan and calculate a replacement.
+6. The separate presentation controls play an actual Web Audio chime and move the virtual clock to the first alarm. Turning it off prompts for wake confirmation. The response updates local learning and the next recommendation; aggregate sync uses the existing consent-based outcome API.
+7. “Next automation time” moves the virtual clock to the configured time and runs the same fetch/recommend/persist pipeline. The short-sleep sample includes high activity and low condition, yielding three alarm steps and approval.
+8. “After 14 days” adds explicitly marked preview records (without overwriting observed records), advances time, and runs the same eligibility policy. The full record provenance is visible in history and the presentation panel.
 
 ## Automation policy
 
@@ -16,6 +17,8 @@ No elapsed-time graduation threshold existed in the repository. This implementat
 
 - At least 14 elapsed days, 10 distinct recorded dates, and 4 on-time wakes in the latest 5 records.
 - User consent is required. Only `NORMAL` events can auto-apply; low confidence and elevated recommendation risk still require approval.
+- A user may explicitly opt into early automation before day 14. The settings screen warns that fewer observations can increase classification and timing errors.
+- After day 14, users can still switch back to Human-in-the-loop approval at any time. Automatically applied plans remain editable and cancellable.
 - Clock advancement alone does not satisfy the policy. The learning preview supplies labeled sample history.
 - The policy is centralized in `src/features/service/model/service-policy.ts` and covered by boundary tests.
 
@@ -29,4 +32,4 @@ No elapsed-time graduation threshold existed in the repository. This implementat
 
 ## Verification
 
-`e2e/service-flow.spec.ts` exercises real FastAPI/SQLite requests for survey, calendar edits, approvals, failure feedback, sleep-sensitive recommendations, automatic application, changes and cancellation on Chromium and WebKit. Legacy scenarios are retained in `e2e/demo-flow.spec.ts`.
+`e2e/service-flow.spec.ts` exercises real FastAPI/SQLite requests for survey, AI schedule classification, the October 30 calendar horizon, category settings, early automation, Human-in-the-loop fallback, calendar edits, approvals, failure feedback, sleep-sensitive recommendations, automatic application, changes and cancellation on Chromium and WebKit. Legacy scenarios are retained in `e2e/demo-flow.spec.ts`.

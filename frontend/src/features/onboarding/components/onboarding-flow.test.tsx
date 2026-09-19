@@ -27,12 +27,12 @@ describe("OnboardingFlow", () => {
 
     await user.click(screen.getByRole("button", { name: "다음" }));
     expect(
-      screen.getByRole("heading", { name: "준비 루틴" }),
+      screen.getByRole("heading", { name: "일정 유형" }),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "다음" }));
     expect(
-      screen.getByRole("heading", { name: "알람 선호" }),
+      screen.getByRole("heading", { name: "알람 설정" }),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "다음" }));

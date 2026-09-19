@@ -28,6 +28,23 @@ describe("automation readiness", () => {
       false,
     );
   });
+  it("allows an explicit early override while keeping human-loop available", () => {
+    expect(
+      automationEligibility({
+        ...base,
+        now: "2026-09-05T00:00:00Z",
+        earlyOverride: true,
+      }).automatic,
+    ).toBe(true);
+    expect(
+      automationEligibility({
+        ...base,
+        now: "2026-09-05T00:00:00Z",
+        earlyOverride: true,
+        consent: false,
+      }).automatic,
+    ).toBe(false);
+  });
   it("keeps important and uncertain plans under approval", () => {
     expect(
       automationEligibility({ ...base, importance: "IMPORTANT" }).automatic,

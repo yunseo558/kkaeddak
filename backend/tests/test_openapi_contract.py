@@ -23,6 +23,7 @@ EXPECTED_OPERATIONS = {
     "/api/v1/wake-outcomes": {"post"},
     "/api/v1/history/summary": {"get"},
     "/api/v1/ai/explanations": {"post"},
+    "/api/v1/ai/schedule-classifications": {"post"},
     "/api/v1/health": {"get"},
 }
 

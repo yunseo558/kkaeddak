@@ -5,11 +5,9 @@ async function setup(page: Page) {
   await page.goto("/");
   await page.getByRole("link", { name: "시작하기" }).click();
   await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("spinbutton", { name: "이동 시간(분)" }).fill("30");
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByLabel("매일 알람을 정할 시각").fill("21:00");
   await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("radio", { name: "적응 기간 후 자동 적용" }).check();
   await page.getByRole("button", { name: "설정 완료" }).click();
   await expect(page).toHaveURL(/\/calendar$/);
   await page.getByRole("button", { name: "샘플 수면 데이터 연결" }).click();
@@ -27,7 +25,7 @@ test("survey, calendar editing, actual plan approval and failed-wake learning", 
   page,
 }) => {
   await setup(page);
-  await expect(page.locator(".service-clock")).toHaveText("09:30");
+  await expect(page.locator(".service-clock")).toHaveText("09:50");
   await expect(page).toHaveScreenshot("service-home.png", {
     animations: "disabled",
   });
@@ -39,7 +37,7 @@ test("survey, calendar editing, actual plan approval and failed-wake learning", 
     page.getByRole("heading", { name: "일정 수정" }),
   ).not.toBeVisible();
   await page.getByRole("link", { name: "기상 계획 확인하기" }).click();
-  await expect(page.locator(".service-clock")).toHaveText("10:30");
+  await expect(page.locator(".service-clock")).toHaveText("10:50");
   await page.getByRole("button", { name: "이 계획 승인" }).click();
   await expect(
     page.getByText("알람이 설정됐어요", { exact: true }),
@@ -62,6 +60,48 @@ test("survey, calendar editing, actual plan approval and failed-wake learning", 
     page.getByRole("button", { name: "이 계획 승인" }),
   ).toBeVisible();
   await expect(page.locator(".alarm-times > div")).toHaveCount(2);
+});
+
+test("AI 일정 유형과 조기 자동화 설정을 실제 서비스 흐름으로 관리한다", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.getByRole("link", { name: "캘린더", exact: true }).click();
+  await expect(page.getByText("10-30", { exact: false })).toBeVisible();
+  await expect(page.getByText(/수업 · AI 분류/).first()).toBeVisible();
+
+  await page.getByRole("link", { name: "설정", exact: true }).click();
+  await expect(
+    page.getByText("14일 전에는 판별 기록이 적어 오차가 많을 수 있어요."),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "필수" })).toBeDisabled();
+  await page.getByLabel("새 유형 이름").fill("공모전");
+  await page.getByLabel("새 유형 기상 시간").fill("150");
+  await page.getByRole("button", { name: "유형 추가" }).click();
+  const customType = page
+    .locator(".schedule-type-row")
+    .filter({ has: page.locator('input[value="공모전"]') });
+  await expect(customType).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await customType.getByRole("button", { name: "삭제" }).click();
+  await expect(page.locator('input[value="공모전"]')).toHaveCount(0);
+  await page.getByLabel("14일 전부터 자동 적용 시작").check();
+  await page.getByRole("button", { name: "설정 저장" }).click();
+  await expect(page.getByRole("status")).toContainText("저장했어요");
+
+  await page.getByRole("button", { name: /다음 자동화 시각으로/ }).click();
+  await expect(
+    page.getByText("자동으로 반영했어요", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "설정", exact: true }).click();
+
+  await page.getByRole("radio", { name: "항상 확인 후 적용" }).check();
+  await page.getByRole("button", { name: "설정 저장" }).click();
+  await expect(
+    page.getByText("Human-in-the-loop 방식으로 사용 중이에요."),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /다음 자동화 시각으로/ }).click();
+  await expect(page.getByRole("button", { name: "이 계획 승인" })).toBeVisible();
 });
 
 test("short sleep stays approval-based; learned routine applies automatically and can be cancelled", async ({
@@ -96,6 +136,16 @@ test("short sleep stays approval-based; learned routine applies automatically an
   await expect(page.getByRole("button", { name: "이 계획 승인" })).toHaveCount(
     0,
   );
+  await page.getByRole("link", { name: "설정", exact: true }).click();
+  await expect(
+    page.getByText("자동 적용 중이며 언제든 확인 방식으로 돌아갈 수 있어요."),
+  ).toBeVisible();
+  await page.getByRole("radio", { name: "항상 확인 후 적용" }).check();
+  await page.getByRole("button", { name: "설정 저장" }).click();
+  await expect(
+    page.getByText("Human-in-the-loop 방식으로 사용 중이에요."),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "아침", exact: true }).click();
   await page.getByRole("button", { name: "시간 변경" }).click();
   await page.getByLabel("첫 알람 시각", { exact: true }).fill("09:20");
   await page.getByRole("button", { name: "변경 저장" }).click();

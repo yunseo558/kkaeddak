@@ -5,6 +5,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { useServiceStore, type CalendarEntry } from "../model/service-store";
 import { atTime, clockTime, localDate } from "../model/service-policy";
 import {
+  classifyScheduleTitle,
   connectCalendar,
   connectHealth,
   editCalendarEvent,
@@ -20,10 +21,12 @@ export function ServiceCalendar() {
   const [time, setTime] = useState("11:00");
   const [date, setDate] = useState("");
   const [important, setImportant] = useState(false);
+  const [category, setCategory] = useState("OTHER");
+  const [manualCategory, setManualCategory] = useState(false);
   const upcoming = [...store.events]
     .filter((e) => e.startsAt > serviceNow())
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-    .slice(0, 7);
+    .slice(0, 40);
   return (
     <AppShell currentStep="분석">
       <div className="service-home">
@@ -43,12 +46,12 @@ export function ServiceCalendar() {
             </span>
           </div>
           <p className="service-muted">
-            첫 일정과 준비 시간을 바탕으로 내일 알람을 정해요. 가져온 일정은
-            여기서 수정할 수 있어요.
+            AI가 일정 이름을 유형으로 분류하고 기상 기준을 계산해요. 가져온
+            일정과 유형은 여기서 수정할 수 있어요.
           </p>
           <p className="service-footnote">
-            현재 연결 소스: 샘플 캘린더. 외부 계정 동기화 없이 11시 수업 일정을
-            가져옵니다.
+            현재 연결 소스: 샘플 캘린더. 2026년 10월 30일까지 수업·회의·시험·
+            면접·약속·운동 일정이 들어 있어요.
           </p>
           <button
             disabled={store.busy}
@@ -105,6 +108,8 @@ export function ServiceCalendar() {
                   setDate(store.plan?.localDate ?? localDate(serviceNow()));
                   setTime("11:00");
                   setImportant(false);
+                  setCategory("OTHER");
+                  setManualCategory(false);
                 }}
               >
                 일정 추가
@@ -121,6 +126,8 @@ export function ServiceCalendar() {
                     setTime(clockTime(event.startsAt));
                     setDate(localDate(event.startsAt));
                     setImportant(event.importance !== "NORMAL");
+                    setCategory(event.category);
+                    setManualCategory(!store.classifications[event.clientId]);
                   }}
                 >
                   <span className="calendar-date">
@@ -131,6 +138,10 @@ export function ServiceCalendar() {
                     <small>
                       {localDate(event.startsAt).slice(5)} ·{" "}
                       {clockTime(event.startsAt)}
+                      {` · ${store.scheduleTypes.find((item) => item.code === event.category)?.label ?? "기타"}`}
+                      {store.classifications[event.clientId]
+                        ? " · AI 분류"
+                        : " · 직접 선택"}
                       {event.importance !== "NORMAL" ? " · 중요" : ""}
                     </small>
                   </span>
@@ -145,6 +156,13 @@ export function ServiceCalendar() {
                   e.preventDefault();
                   void serviceAction(async () => {
                     const startsAt = atTime(date, time);
+                    const classification = manualCategory
+                      ? {
+                          categoryCode: category,
+                          confidence: 1,
+                          source: "TEMPLATE" as const,
+                        }
+                      : await classifyScheduleTitle(title.trim());
                     await editCalendarEvent({
                       ...editing,
                       displayTitle: title.trim(),
@@ -152,7 +170,17 @@ export function ServiceCalendar() {
                       endsAt: new Date(
                         Date.parse(startsAt) + 90 * 60000,
                       ).toISOString(),
-                      importance: important ? "IMPORTANT" : "NORMAL",
+                      category: classification.categoryCode,
+                      importance:
+                        important || classification.categoryCode === "IMPORTANT"
+                          ? "IMPORTANT"
+                          : "NORMAL",
+                    });
+                    store.set({
+                      classifications: {
+                        ...store.classifications,
+                        [editing.clientId]: classification,
+                      },
                     });
                     setEditing(null);
                   });
@@ -168,6 +196,41 @@ export function ServiceCalendar() {
                     onChange={(e) => setTitle(e.target.value)}
                   />
                 </label>
+                <label>
+                  일정 유형
+                  <select
+                    value={category}
+                    onChange={(event) => {
+                      setCategory(event.target.value);
+                      setManualCategory(true);
+                    }}
+                  >
+                    {store.scheduleTypes.map((item) => (
+                      <option key={item.code} value={item.code}>
+                        {item.label} · {item.wakeLeadMin}분 전
+                      </option>
+                    ))}
+                  </select>
+                  <span className="service-footnote">
+                    {manualCategory
+                      ? "직접 선택한 유형을 사용해요."
+                      : "저장할 때 일정 이름을 AI가 다시 분류해요."}
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  className="service-secondary"
+                  disabled={!title.trim() || store.busy}
+                  onClick={() =>
+                    void serviceAction(async () => {
+                      const result = await classifyScheduleTitle(title.trim());
+                      setCategory(result.categoryCode);
+                      setManualCategory(false);
+                    })
+                  }
+                >
+                  AI로 유형 다시 분류
+                </button>
                 <label>
                   날짜
                   <input

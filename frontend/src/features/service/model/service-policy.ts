@@ -31,6 +31,7 @@ export function automationEligibility(input: {
   enrolledAt: string;
   now: string;
   consent: boolean;
+  earlyOverride?: boolean;
   records: DailyOutcome[];
   importance: string;
   requiresApproval: boolean;
@@ -68,7 +69,7 @@ export function automationEligibility(input: {
     ready,
     automatic:
       input.consent &&
-      ready &&
+      (ready || input.earlyOverride === true) &&
       input.importance === "NORMAL" &&
       !input.requiresApproval,
   };

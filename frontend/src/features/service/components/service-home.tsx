@@ -133,7 +133,7 @@ export function ServiceHome() {
           <p className="service-kicker">마지막으로</p>
           <h1>내일 일정을 연결해 주세요</h1>
           <p className="service-muted">
-            첫 일정에 늦지 않도록 준비 시간까지 계산할게요.
+            첫 일정의 유형을 판단해 필요한 기상 시각을 계산할게요.
           </p>
           <Link className="service-primary" href="/calendar">
             캘린더 연결하기
@@ -146,6 +146,7 @@ export function ServiceHome() {
     enrolledAt: store.enrolledAt!,
     now: serviceNow(),
     consent: survey.automationMode === "automatic",
+    earlyOverride: store.earlyAutomationEnabled,
     records: store.records,
     importance: plan?.importance ?? "NORMAL",
     requiresApproval: false,
@@ -373,7 +374,7 @@ export function ServiceHome() {
               <strong>{plan?.eventTitle ?? "일정 연결"}</strong>
               <p className="service-muted">
                 {plan
-                  ? `${clockTime(plan.eventAt)} 시작 · 이동 ${store.commuteMinutes}분`
+                  ? `${clockTime(plan.eventAt)} 시작 · ${plan.scheduleTypeLabel} · ${plan.wakeLeadMinutes}분 전까지 기상`
                   : "캘린더에서 확인하세요"}
               </p>
             </div>
@@ -402,9 +403,13 @@ export function ServiceHome() {
             {Math.min(14, eligibility.elapsedDays)}/14일
           </p>
           <p className="service-footnote">
-            자동 적용{" "}
-            {survey.automationMode === "automatic" ? "동의함" : "사용 안 함"} ·
-            중요한 일정은 항상 확인받아요.
+            {survey.automationMode !== "automatic"
+              ? "항상 확인 후 적용 중"
+              : store.earlyAutomationEnabled
+                ? "조기 자동 적용 중 · 적용 후 수정·취소 가능"
+                : eligibility.ready
+                  ? "자동 적용 중 · 언제든 확인 방식으로 변경 가능"
+                  : "14일 후 자동 적용 · 그전에는 항상 확인"}
           </p>
         </section>
       </div>

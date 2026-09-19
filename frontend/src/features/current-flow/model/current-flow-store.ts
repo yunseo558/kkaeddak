@@ -25,9 +25,6 @@ export type AutomationMode = "automatic" | "suggest";
 export type OnboardingDraft = {
   usualWakeTime: string;
   recentFirstAlarmSucceeded: boolean;
-  washMinutes: number;
-  breakfastMinutes: number;
-  bagMinutes: number;
   preferredAlarmCount: number;
   keepSafetyAlarm: boolean;
   automationMode: AutomationMode;
@@ -37,12 +34,9 @@ export type OnboardingDraft = {
 const initialDraft: OnboardingDraft = {
   usualWakeTime: "07:00",
   recentFirstAlarmSucceeded: true,
-  washMinutes: 20,
-  breakfastMinutes: 15,
-  bagMinutes: 10,
   preferredAlarmCount: 2,
   keepSafetyAlarm: true,
-  automationMode: "suggest",
+  automationMode: "automatic",
   outcomeSync: false,
 };
 

@@ -14,6 +14,8 @@ import { localDataStore } from "@/lib/storage/local-data";
 import {
   useServiceStore,
   type CalendarEntry,
+  type ScheduleClassification,
+  type ScheduleTypeRule,
   type ServicePlan,
 } from "../model/service-store";
 import {
@@ -71,19 +73,87 @@ export async function saveCalendarEvents(events: CalendarEntry[]) {
     throw new Error("일정을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.");
 }
 
+export async function classifyScheduleTitle(
+  title: string,
+  scheduleTypes: ScheduleTypeRule[] = useServiceStore.getState().scheduleTypes,
+): Promise<ScheduleClassification> {
+  const result = await apiClient.POST("/api/v1/ai/schedule-classifications", {
+    headers: demoSessionHeaders(sessionId()),
+    body: {
+      title,
+      categories: scheduleTypes.map(({ code, label, isFallback }) => ({
+        code,
+        label,
+        isFallback,
+      })),
+    },
+  });
+  if (!result.data || result.error)
+    throw new Error(
+      "일정 유형을 판단하지 못했어요. 직접 유형을 선택해 주세요.",
+    );
+  return result.data;
+}
+
+async function classifyCalendarEvents(events: CalendarEntry[]) {
+  const classifications: Record<string, ScheduleClassification> = {};
+  const byTitle = new Map<string, ScheduleClassification>();
+  for (const event of events) {
+    const title = event.displayTitle ?? "일정";
+    let classification = byTitle.get(title);
+    if (!classification) {
+      classification = await classifyScheduleTitle(title);
+      byTitle.set(title, classification);
+    }
+    classifications[event.clientId] = classification;
+  }
+  return {
+    events: events.map((event) => ({
+      ...event,
+      category: classifications[event.clientId].categoryCode,
+    })),
+    classifications,
+  };
+}
+
+export async function saveServicePreferences() {
+  const store = useServiceStore.getState();
+  const headers = demoSessionHeaders(sessionId());
+  const routine = await apiClient.GET("/api/v1/routines", { headers });
+  if (!routine.data || routine.error)
+    throw new Error("알람 설정을 불러오지 못했어요.");
+  const saved = await apiClient.PUT("/api/v1/routines", {
+    headers,
+    body: {
+      revision: routine.data.revision,
+      wakeBufferMin: 0,
+      routineTasks: [],
+      alarmPreferences: {
+        preferredFirstChannel: "PHONE_SOUND",
+        maxProtocolLevel: 3,
+        preferredAlarmCount: store.preferredAlarmCount,
+        alarmIntervalMin: store.alarmIntervalMinutes,
+        keepSafetyAlarm: store.keepSafetyAlarm,
+        automationTime: store.automationTime,
+        scheduleTypes: store.scheduleTypes,
+      },
+    },
+  });
+  if (!saved.data || saved.error)
+    throw new Error("알람 설정을 저장하지 못했어요.");
+}
+
 export async function connectCalendar() {
   const store = useServiceStore.getState();
   let id = useDemoSessionStore.getState().sessionId;
   const expires = useDemoSessionStore.getState().expiresAt;
   if (!id || !expires || Date.parse(expires) <= Date.now()) {
     const session = await createDemoSession("regular-class");
-    useDemoSessionStore
-      .getState()
-      .startServer({
-        sessionId: session.sessionId,
-        expiresAt: session.expiresAt,
-        scenarioId: "regular-class",
-      });
+    useDemoSessionStore.getState().startServer({
+      sessionId: session.sessionId,
+      expiresAt: session.expiresAt,
+      scenarioId: "regular-class",
+    });
     id = session.sessionId;
     store.set({ plan: null });
   }
@@ -99,35 +169,21 @@ export async function connectCalendar() {
     headers,
     body: {
       revision: routine.data.revision,
-      wakeBufferMin: store.commuteMinutes + 15,
-      routineTasks: [
-        {
-          code: "SHOWER",
-          label: "씻기",
-          minutes: survey.washMinutes,
-          movableToNight: true,
-        },
-        {
-          code: "BREAKFAST",
-          label: "아침 식사",
-          minutes: survey.breakfastMinutes,
-          movableToNight: false,
-        },
-        {
-          code: "PACK_BAG",
-          label: "가방 챙기기",
-          minutes: survey.bagMinutes,
-          movableToNight: true,
-        },
-      ],
+      wakeBufferMin: 0,
+      routineTasks: [],
       alarmPreferences: {
         preferredFirstChannel: "PHONE_SOUND",
         maxProtocolLevel: 3,
+        preferredAlarmCount: store.preferredAlarmCount,
+        alarmIntervalMin: store.alarmIntervalMinutes,
+        keepSafetyAlarm: store.keepSafetyAlarm,
+        automationTime: store.automationTime,
+        scheduleTypes: store.scheduleTypes,
       },
     },
   });
   if (!savedRoutine.data || savedRoutine.error)
-    throw new Error("준비 루틴을 저장하지 못했어요.");
+    throw new Error("일정 유형과 알람 설정을 저장하지 못했어요.");
   const savedProfile = await apiClient.PUT("/api/v1/profile", {
     headers,
     body: {
@@ -145,10 +201,13 @@ export async function connectCalendar() {
   if (!savedProfile.data || savedProfile.error)
     throw new Error("알람 설정을 저장하지 못했어요.");
   const today = localDate(serviceNow());
-  const events = store.events.length ? store.events : createMockCalendar(today);
+  const { events, classifications } = await classifyCalendarEvents(
+    createMockCalendar(today),
+  );
   await saveCalendarEvents(events);
   store.set({
     events,
+    classifications,
     calendarConnected: true,
     enrolledAt: store.enrolledAt ?? serviceNow(),
   });
@@ -198,13 +257,16 @@ export async function generateServicePlan() {
   )[0];
   if (!event)
     throw new Error("내일 일정이 없어요. 캘린더에서 일정을 추가해 주세요.");
-  const routineMinutes = routines.data.routineTasks.reduce(
-    (sum, task) => sum + task.minutes,
-    0,
-  );
+  const scheduleTypes = routines.data.alarmPreferences.scheduleTypes?.length
+    ? routines.data.alarmPreferences.scheduleTypes
+    : store.scheduleTypes;
+  const scheduleType =
+    scheduleTypes.find((item) => item.code === event.category) ??
+    scheduleTypes.find((item) => item.isFallback) ??
+    scheduleTypes[0];
+  if (!scheduleType) throw new Error("일정 유형을 먼저 설정해 주세요.");
   const deadlineAt = new Date(
-    Date.parse(event.startsAt) -
-      (routineMinutes + routines.data.wakeBufferMin) * 60000,
+    Date.parse(event.startsAt) - scheduleType.wakeLeadMin * 60000,
   ).toISOString();
   const survey = useCurrentFlowStore.getState().onboardingDraft;
   const recent = [...store.records]
@@ -231,11 +293,15 @@ export async function generateServicePlan() {
     deadlineAt,
     importance: event.importance,
     maxProtocolLevel: Math.max(
-      survey.preferredAlarmCount,
+      store.preferredAlarmCount,
       failures > 0 || store.sleepMinutes < 360 || event.importance !== "NORMAL"
-        ? 3
-        : 2,
+        ? store.keepSafetyAlarm
+          ? 3
+          : store.preferredAlarmCount
+        : store.preferredAlarmCount,
     ),
+    alarmIntervalMinutes: store.alarmIntervalMinutes,
+    preferredProtocolLevel: store.preferredAlarmCount,
     preferredFirstChannel: "PHONE_SOUND",
     personalSleepBaselineMinutes: store.records.length >= 10 ? 420 : undefined,
     historyProtocolAdjustment: Math.max(
@@ -248,6 +314,7 @@ export async function generateServicePlan() {
     enrolledAt: store.enrolledAt ?? now,
     now,
     consent: survey.automationMode === "automatic",
+    earlyOverride: store.earlyAutomationEnabled,
     records: store.records,
     importance: event.importance,
     requiresApproval: recommendation.plan.requiresApproval,
@@ -286,7 +353,7 @@ export async function generateServicePlan() {
       revision: saved.revision,
     });
   const reason = [
-    `수업 전 준비 ${routineMinutes}분 · 이동 ${store.commuteMinutes}분 · 여유 15분`,
+    `${scheduleType.label} 유형 · 일정 ${scheduleType.wakeLeadMin}분 전까지 기상`,
     store.healthConnected
       ? `최근 수면 ${Math.floor(store.sleepMinutes / 60)}시간 ${store.sleepMinutes % 60}분`
       : "수면 데이터 연결 전이라 안전 알람을 포함했어요",
@@ -304,7 +371,8 @@ export async function generateServicePlan() {
     automatic: eligibility.automatic,
     eventTitle: event.displayTitle ?? "내일 일정",
     eventAt: event.startsAt,
-    routineMinutes,
+    scheduleTypeLabel: scheduleType.label,
+    wakeLeadMinutes: scheduleType.wakeLeadMin,
     sleepMinutes: store.sleepMinutes,
     reason,
   };

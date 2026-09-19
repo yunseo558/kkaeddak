@@ -146,6 +146,25 @@ DEMO_SCHEDULES = {
     ),
 }
 
+DEFAULT_SCHEDULE_TYPES = [
+    {"code": "CLASS", "label": "수업", "wake_lead_min": 60, "is_fallback": False},
+    {"code": "WORK", "label": "출근·업무", "wake_lead_min": 90, "is_fallback": False},
+    {
+        "code": "IMPORTANT",
+        "label": "시험·면접",
+        "wake_lead_min": 120,
+        "is_fallback": False,
+    },
+    {
+        "code": "APPOINTMENT",
+        "label": "약속·예약",
+        "wake_lead_min": 60,
+        "is_fallback": False,
+    },
+    {"code": "EXERCISE", "label": "운동", "wake_lead_min": 45, "is_fallback": False},
+    {"code": "OTHER", "label": "기타", "wake_lead_min": 60, "is_fallback": True},
+]
+
 
 async def _seed_demo(
     database: DatabaseSession,
@@ -167,25 +186,16 @@ async def _seed_demo(
     await RoutineProfileRepository(database).add(
         RoutineProfile(
             user_id=demo_session.id,
-            wake_buffer_min=15,
-            routine_tasks=[
-                {"code": "SHOWER", "label": "샤워", "minutes": 20, "movable_to_night": True},
-                {
-                    "code": "BREAKFAST",
-                    "label": "아침 식사",
-                    "minutes": 15,
-                    "movable_to_night": False,
-                },
-                {
-                    "code": "PACK_BAG",
-                    "label": "가방 준비",
-                    "minutes": 10,
-                    "movable_to_night": True,
-                },
-            ],
+            wake_buffer_min=0,
+            routine_tasks=[],
             alarm_preferences={
-                "preferred_first_channel": "WATCH_HAPTIC",
-                "max_protocol_level": 4,
+                "preferred_first_channel": "PHONE_SOUND",
+                "max_protocol_level": 3,
+                "preferred_alarm_count": 2,
+                "alarm_interval_min": 10,
+                "keep_safety_alarm": True,
+                "automation_time": "21:00",
+                "schedule_types": DEFAULT_SCHEDULE_TYPES,
             },
             revision=1,
         )
