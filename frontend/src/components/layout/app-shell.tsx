@@ -6,17 +6,16 @@ import type { ReactNode } from "react";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { useOnlineStatus } from "@/lib/network/use-online-status";
 
-const STEPS = ["소개", "분석", "준비", "계획", "결과"] as const;
+type AppStep = "소개" | "분석" | "준비" | "계획" | "결과";
 
 type AppShellProps = {
   children: ReactNode;
-  currentStep: (typeof STEPS)[number];
+  currentStep: AppStep;
   eyebrow?: string;
 };
 
 export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
   const online = useOnlineStatus();
-  const currentStepIndex = STEPS.indexOf(currentStep);
 
   return (
     <div className="app-canvas">
@@ -26,7 +25,7 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
       >
         본문으로 건너뛰기
       </a>
-      <div className="iphone-shell" aria-label="깨딱 앱 미리보기">
+      <div className="iphone-shell" aria-label="깨딱 앱">
         <div className="iphone-screen">
           <div className="iphone-status-bar" aria-hidden="true">
             <time className="iphone-time" dateTime="09:41">
@@ -52,8 +51,8 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
             </div>
           </div>
 
-          <div className="app-frame">
-            <header className="site-header mx-4 flex items-center justify-between rounded-[22px] px-4 py-2.5">
+          <div className="app-frame" data-flow-step={currentStep}>
+            <header className="site-header mx-5 flex items-center justify-between py-2">
               <Link
                 aria-label="깨딱 홈"
                 className="inline-flex min-h-11 items-center"
@@ -61,31 +60,17 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
               >
                 <BrandLogo className="brand-logo-header" priority />
               </Link>
-              <span className="demo-badge">샘플 데모</span>
+              <Link
+                aria-label="개인정보 설정"
+                className="header-icon-button"
+                href="/settings/privacy"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24">
+                  <path d="M12 15.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z" />
+                  <path d="M19.4 13.5a7.8 7.8 0 0 0 .05-3l1.6-1.25-2-3.46-1.9.77a8.1 8.1 0 0 0-2.6-1.5L14.25 3h-4.5l-.3 2.06a8.1 8.1 0 0 0-2.6 1.5l-1.9-.77-2 3.46 1.6 1.25a7.8 7.8 0 0 0 .05 3L3 14.75l2 3.46 1.9-.77a8.1 8.1 0 0 0 2.55 1.5l.3 2.06h4.5l.3-2.06a8.1 8.1 0 0 0 2.55-1.5l1.9.77 2-3.46-1.6-1.25Z" />
+                </svg>
+              </Link>
             </header>
-
-            <nav aria-label="데모 진행 단계" className="progress-rail mx-4 mt-4">
-              <ol className="grid grid-cols-5 gap-1 text-center text-xs">
-                {STEPS.map((step, index) => {
-                  const active = step === currentStep;
-                  const state = active
-                    ? "active"
-                    : index < currentStepIndex
-                      ? "complete"
-                      : "pending";
-                  return (
-                    <li
-                      aria-current={active ? "step" : undefined}
-                      className="progress-step"
-                      data-state={state}
-                      key={step}
-                    >
-                      {step}
-                    </li>
-                  );
-                })}
-              </ol>
-            </nav>
 
             {!online ? (
               <p
@@ -98,11 +83,7 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
               </p>
             ) : null}
 
-            <main
-              className="mt-7 w-full px-5 pb-16"
-              id="main-content"
-              tabIndex={-1}
-            >
+            <main className="mt-4 w-full px-5 pb-16" id="main-content" tabIndex={-1}>
               {eyebrow ? <p className="page-eyebrow">{eyebrow}</p> : null}
               {children}
             </main>

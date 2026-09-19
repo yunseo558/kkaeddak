@@ -37,7 +37,7 @@ export function ApiErrorState({
             queryClient.clear();
           }}
         >
-          시나리오 다시 선택
+          내일 상황 다시 선택
         </Link>
       ) : recovery.kind === "consent" ? (
         <Link

@@ -33,12 +33,12 @@ export function TomorrowDashboard() {
     return (
       <AppShell currentStep="분석">
         <section className="glass-card rounded-[var(--radius-card)] p-6">
-          <h1 className="text-2xl font-bold">먼저 데모 상황을 선택해 주세요</h1>
+          <h1 className="text-2xl font-bold">먼저 내일 상황을 선택해 주세요</h1>
           <Link
             className="action-primary mt-6 inline-flex min-h-11 items-center px-5 py-3"
             href="/"
           >
-            데모 선택으로 이동
+            상황 선택으로 이동
           </Link>
         </section>
       </AppShell>
@@ -74,7 +74,7 @@ export function TomorrowDashboard() {
         <section className="glass-card rounded-[var(--radius-card)] p-6">
           <h1 className="text-2xl font-bold">예정된 일정이 없습니다</h1>
           <p className="mt-3 text-muted">
-            선택한 시나리오의 평소 패턴으로 로컬 계획을 계속 만들 수 있습니다.
+            저장된 평소 패턴으로 기상 계획을 계속 만들 수 있습니다.
           </p>
           <button
             className="action-primary mt-6 min-h-11 px-5 py-3"
@@ -107,7 +107,7 @@ export function TomorrowDashboard() {
                 ? "오프라인 로컬 계산"
                 : mode === "server"
                   ? "서버 일정 연결됨"
-                  : "로컬 전용 데모"}
+                  : "기기 내 일정"}
             </p>
             <h1 className="display-title mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
               {scenario.name}

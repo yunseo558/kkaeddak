@@ -33,7 +33,7 @@ export function getApiRecoveryPresentation(
       return {
         kind: "session",
         description:
-          "데모 세션이 만료되었습니다. 로컬 데이터는 유지한 채 시나리오를 다시 선택해 주세요.",
+          "세션이 만료되었습니다. 저장된 데이터는 유지한 채 내일 상황을 다시 선택해 주세요.",
       };
     case 403:
       return {

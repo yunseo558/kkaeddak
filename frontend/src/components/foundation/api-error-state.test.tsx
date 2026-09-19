@@ -34,7 +34,7 @@ describe("ApiErrorState", () => {
       </QueryClientProvider>,
     );
 
-    await user.click(screen.getByRole("link", { name: "시나리오 다시 선택" }));
+    await user.click(screen.getByRole("link", { name: "내일 상황 다시 선택" }));
     expect(useDemoSessionStore.getState().sessionId).toBeNull();
     expect(useCurrentFlowStore.getState().onboardingCompleted).toBe(true);
   });

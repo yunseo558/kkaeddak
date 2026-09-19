@@ -311,14 +311,11 @@ label:has(select:focus-visible) {
 }
 
 .site-header {
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.7);
-  box-shadow: var(--shadow-control);
-  backdrop-filter: blur(22px) saturate(1.15);
+  background: transparent;
 }
 
 .brand-logo-header {
-  width: 7.25rem;
+  width: 6.4rem;
   filter: drop-shadow(0 5px 8px rgba(184, 32, 90, 0.09));
 }
 
@@ -327,7 +324,6 @@ label:has(select:focus-visible) {
   filter: drop-shadow(0 20px 24px rgba(184, 32, 90, 0.12));
 }
 
-.demo-badge,
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -343,13 +339,26 @@ label:has(select:focus-visible) {
   box-shadow: inset 0 1px 0 white;
 }
 
-.demo-badge::before {
-  width: 0.5rem;
-  height: 0.5rem;
+.header-icon-button {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid rgba(37, 40, 33, 0.07);
   border-radius: 999px;
-  background: var(--avocado);
-  box-shadow: 0 0 0 4px rgba(183, 217, 90, 0.18);
-  content: "";
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--olive);
+  place-items: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+}
+
+.header-icon-button svg {
+  width: 1.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
 }
 
 .progress-rail {
