@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { useOnlineStatus } from "@/lib/network/use-online-status";
 
 const STEPS = ["소개", "분석", "준비", "계획", "결과"] as const;
@@ -15,37 +16,41 @@ type AppShellProps = {
 
 export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
   const online = useOnlineStatus();
+  const currentStepIndex = STEPS.indexOf(currentStep);
 
   return (
-    <div className="min-h-screen px-4 py-6 sm:px-8">
+    <div className="app-canvas px-4 py-4 sm:px-8 sm:py-6">
       <a
         className="fixed left-4 top-4 z-50 -translate-y-24 rounded-[var(--radius-control)] bg-brand px-4 py-3 font-semibold text-white transition-transform focus:translate-y-0"
         href="#main-content"
       >
         본문으로 건너뛰기
       </a>
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between">
+      <header className="site-header mx-auto flex w-full max-w-5xl items-center justify-between rounded-[22px] px-4 py-2.5 sm:px-5">
         <Link
-          className="inline-flex min-h-11 items-center text-lg font-bold tracking-tight"
+          aria-label="깨딱 홈"
+          className="inline-flex min-h-11 items-center"
           href="/"
         >
-          깨딱
+          <BrandLogo className="brand-logo-header" priority />
         </Link>
-        <span className="text-sm text-muted">샘플 데이터 데모</span>
+        <span className="demo-badge">샘플 데이터 데모</span>
       </header>
 
-      <nav aria-label="데모 진행 단계" className="mx-auto mt-6 w-full max-w-5xl">
+      <nav aria-label="데모 진행 단계" className="progress-rail mx-auto mt-4 w-full max-w-5xl sm:mt-5">
         <ol className="grid grid-cols-5 gap-1 text-center text-xs sm:gap-2 sm:text-sm">
-          {STEPS.map((step) => {
+          {STEPS.map((step, index) => {
             const active = step === currentStep;
+            const state = active
+              ? "active"
+              : index < currentStepIndex
+                ? "complete"
+                : "pending";
             return (
               <li
                 aria-current={active ? "step" : undefined}
-                className={`rounded-full px-2 py-2 ${
-                  active
-                    ? "bg-brand font-semibold text-white"
-                    : "bg-surface text-muted"
-                }`}
+                className="progress-step"
+                data-state={state}
                 key={step}
               >
                 {step}
@@ -58,7 +63,7 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
       {!online ? (
         <p
           aria-live="polite"
-          className="mx-auto mt-4 w-full max-w-5xl rounded-xl bg-brand-soft px-4 py-3 text-sm font-semibold text-brand"
+          className="soft-card mx-auto mt-4 w-full max-w-5xl rounded-[var(--radius-control)] px-4 py-3 text-sm font-semibold text-brand"
           role="status"
         >
           오프라인 상태입니다. 로컬 기능은 계속 사용할 수 있고 서버 동기화는
@@ -67,12 +72,12 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
       ) : null}
 
       <main
-        className="mx-auto mt-8 w-full max-w-5xl"
+        className="mx-auto mt-7 w-full max-w-5xl pb-16 sm:mt-9"
         id="main-content"
         tabIndex={-1}
       >
         {eyebrow ? (
-          <p className="mb-2 text-sm font-semibold text-brand">{eyebrow}</p>
+          <p className="page-eyebrow">{eyebrow}</p>
         ) : null}
         {children}
       </main>

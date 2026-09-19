@@ -28,7 +28,7 @@ export function TimezoneNotice({
   return (
     <section
       aria-labelledby="timezone-notice-title"
-      className="rounded-[var(--radius-card)] border border-warning/40 bg-surface p-5"
+      className="glass-card rounded-[var(--radius-card)] border-warning/40 p-5"
     >
       <h2 className="font-bold" id="timezone-notice-title">
         기기와 일정의 시간대가 다릅니다
@@ -46,7 +46,7 @@ export function TimezoneNotice({
         </p>
       ) : (
         <button
-          className="mt-4 min-h-11 rounded-[var(--radius-control)] border border-warning px-4 py-3 font-semibold text-warning"
+          className="action-ghost mt-4 min-h-11 border-warning px-4 py-3 font-semibold text-warning"
           onClick={() => setConfirmed(true)}
           type="button"
         >

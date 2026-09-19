@@ -116,7 +116,7 @@ export function PreparationPlanner() {
   if (!ready) {
     return (
       <AppShell currentStep="준비">
-        <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
+        <section className="glass-card rounded-[var(--radius-card)] p-6">
           <h1 className="text-2xl font-bold">먼저 데모 상황을 선택해 주세요</h1>
           <Link className="mt-6 inline-flex min-h-11 items-center text-brand" href="/">
             데모 선택으로 이동
@@ -129,7 +129,7 @@ export function PreparationPlanner() {
   if (overviewQuery.isPending || suggestionsQuery.isPending) {
     return (
       <AppShell currentStep="준비" eyebrow="전날 준비">
-        <p aria-live="polite" className="rounded-xl bg-surface p-6 text-muted">
+        <p aria-live="polite" className="soft-card rounded-[var(--radius-card)] p-6 text-muted">
           옮길 수 있는 준비 작업을 찾는 중입니다.
         </p>
       </AppShell>
@@ -176,7 +176,7 @@ export function PreparationPlanner() {
     <AppShell currentStep="준비" eyebrow="전날 준비">
       <div className="mx-auto max-w-3xl space-y-6">
         <header>
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="display-title text-3xl font-bold tracking-tight">
             오늘 밤 미리 끝낼 수 있는 일
           </h1>
           <p className="mt-3 leading-7 text-muted">
@@ -184,16 +184,16 @@ export function PreparationPlanner() {
           </p>
         </header>
 
-        <section className="grid grid-cols-2 gap-3 rounded-[var(--radius-card)] bg-brand-soft p-5 sm:grid-cols-3">
-          <div>
+        <section className="accent-panel grid grid-cols-2 gap-3 p-3 sm:grid-cols-3">
+          <div className="metric-card">
             <p className="text-xs font-semibold text-brand">기본 기상 마감</p>
             <p className="mt-1 text-2xl font-bold">{formatKoreanTime(baseDeadline)}</p>
           </div>
-          <div>
+          <div className="metric-card">
             <p className="text-xs font-semibold text-brand">확보한 시간</p>
             <p className="mt-1 text-2xl font-bold">{completedMinutes}분</p>
           </div>
-          <div className="col-span-2 sm:col-span-1">
+          <div className="metric-card col-span-2 sm:col-span-1">
             <p className="text-xs font-semibold text-brand">조정된 마감</p>
             <p className="mt-1 text-2xl font-bold">
               {formatKoreanTime(adjustedDeadline)}
@@ -219,11 +219,10 @@ export function PreparationPlanner() {
                 mutation.variables?.suggestion.id === suggestion.id;
               return (
                 <label
-                  className={`flex min-h-14 cursor-pointer items-center gap-4 rounded-[var(--radius-card)] border p-4 transition-colors ${
-                    completed
-                      ? "border-success bg-brand-soft"
-                      : "border-border bg-surface"
+                  className={`choice-card flex min-h-16 cursor-pointer items-center gap-4 rounded-[var(--radius-card)] p-4 ${
+                    completed ? "border-success bg-brand-soft" : ""
                   }`}
+                  data-selected={completed}
                   key={suggestion.id}
                 >
                   <input
@@ -252,7 +251,7 @@ export function PreparationPlanner() {
           </div>
 
           {suggestionsQuery.data.suggestions.length === 0 ? (
-            <p className="mt-4 rounded-xl bg-surface p-5 text-muted">
+            <p className="soft-card mt-4 rounded-[var(--radius-card)] p-5 text-muted">
               전날로 옮길 수 있는 준비 작업이 없습니다.
             </p>
           ) : null}
@@ -274,13 +273,13 @@ export function PreparationPlanner() {
 
         <div className="flex flex-wrap items-center gap-4">
           <Link
-            className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+            className="action-primary inline-flex min-h-11 items-center justify-center px-5 py-3"
             href="/plan"
           >
             기상 계획 만들기
           </Link>
           <Link
-            className="inline-flex min-h-11 items-center font-semibold text-brand"
+            className="action-ghost inline-flex min-h-11 items-center px-5 py-3 font-semibold text-brand"
             href="/tomorrow"
           >
             내일 대시보드로 돌아가기

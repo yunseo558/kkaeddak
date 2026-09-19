@@ -186,20 +186,20 @@ function WakePlanEditor({
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-brand">로컬 추천 결과</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">내일 기상 계획</h1>
+          <h1 className="display-title mt-2 text-3xl font-bold tracking-tight">내일 기상 계획</h1>
           <p className="mt-2 text-muted">
             최소한의 알람으로 {deadlineTime}까지 기상을 확인합니다.
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-sm font-semibold">
-          <span className="rounded-full bg-brand-soft px-3 py-2 text-brand">
+          <span className="status-pill text-brand">
             {confidenceLabels[recommendation.confidenceBand]}
           </span>
-          <span className="rounded-full bg-surface px-3 py-2">
+          <span className="status-pill">
             {displayPlan.protocolLevel}단계
           </span>
           {displayPlan.requiresApproval ? (
-            <span className="rounded-full bg-warning/15 px-3 py-2 text-warning">
+            <span className="status-pill bg-warning/15 text-warning">
               승인 필요
             </span>
           ) : null}
@@ -207,9 +207,9 @@ function WakePlanEditor({
       </header>
 
       <section className="grid gap-4 lg:grid-cols-[1fr_0.8fr]">
-        <article className="rounded-[var(--radius-card)] border border-border bg-surface p-6 shadow-[0_8px_24px_rgba(20,32,43,0.08)]">
+        <article className="glass-card rounded-[var(--radius-card)] p-6">
           <h2 className="text-xl font-bold">알람 타임라인</h2>
-          <ol className="mt-5 space-y-4">
+          <ol className="alarm-timeline mt-5 space-y-3">
             {displayPlan.steps.map((step, index) => {
               const isFinal = index === displayPlan.steps.length - 1;
               const alarmAt = isFinal
@@ -219,8 +219,8 @@ function WakePlanEditor({
                       step.offsetMin * 60_000,
                   ).toISOString();
               return (
-                <li className="flex gap-4" key={step.order}>
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
+                <li className="alarm-step flex gap-4" key={step.order}>
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-bold text-white shadow-[0_6px_14px_rgba(184,32,90,0.2)]">
                     {step.order}
                   </span>
                   <div>
@@ -237,7 +237,7 @@ function WakePlanEditor({
           </ol>
         </article>
 
-        <aside className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
+        <aside className="soft-card rounded-[var(--radius-card)] p-6">
           <h2 className="text-lg font-bold">이렇게 제안한 이유</h2>
           {visibleReasons.length > 0 ? (
             <ul className="mt-4 space-y-3 text-sm leading-6 text-muted">
@@ -258,7 +258,7 @@ function WakePlanEditor({
 
       {editing ? (
         <form
-          className="rounded-[var(--radius-card)] border border-border bg-surface p-6"
+          className="glass-card rounded-[var(--radius-card)] p-6"
           onSubmit={submitEdit}
         >
           <h2 className="text-lg font-bold">알람 시각 수정</h2>
@@ -266,7 +266,7 @@ function WakePlanEditor({
             <label className="font-semibold">
               첫 알람
               <input
-                className="mt-2 min-h-11 w-full rounded-[var(--radius-control)] border border-border px-3 py-2"
+                className="field-control mt-2 min-h-11 w-full px-3 py-2"
                 type="time"
                 {...register("firstAlarmTime")}
               />
@@ -279,7 +279,7 @@ function WakePlanEditor({
             <label className="font-semibold">
               최종 알람
               <input
-                className="mt-2 min-h-11 w-full rounded-[var(--radius-control)] border border-border px-3 py-2"
+                className="field-control mt-2 min-h-11 w-full px-3 py-2"
                 type="time"
                 {...register("finalAlarmTime")}
               />
@@ -292,14 +292,14 @@ function WakePlanEditor({
           </div>
           <div className="mt-5 flex gap-3">
             <button
-              className="min-h-11 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white disabled:opacity-60"
+              className="action-primary min-h-11 px-5 py-3 disabled:opacity-60"
               disabled={mutation.isPending}
               type="submit"
             >
               수정 저장
             </button>
             <button
-              className="min-h-11 rounded-[var(--radius-control)] border border-border px-5 py-3 font-semibold"
+              className="action-ghost min-h-11 px-5 py-3"
               onClick={() => setEditing(false)}
               type="button"
             >
@@ -310,9 +310,9 @@ function WakePlanEditor({
       ) : null}
 
       {!editing && !decisionComplete ? (
-        <div className="flex flex-wrap gap-3 rounded-[var(--radius-card)] bg-surface p-5">
+        <div className="glass-card flex flex-wrap gap-3 rounded-[var(--radius-card)] p-5">
           <button
-            className="min-h-11 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white disabled:opacity-60"
+            className="action-primary min-h-11 px-5 py-3 disabled:opacity-60"
             disabled={mutation.isPending}
             onClick={() => mutation.mutate({ decision: "APPROVE" })}
             type="button"
@@ -320,7 +320,7 @@ function WakePlanEditor({
             이 계획 승인
           </button>
           <button
-            className="min-h-11 rounded-[var(--radius-control)] border border-brand px-5 py-3 font-semibold text-brand disabled:opacity-60"
+            className="action-secondary min-h-11 px-5 py-3 disabled:opacity-60"
             disabled={mutation.isPending}
             onClick={() => setEditing(true)}
             type="button"
@@ -328,7 +328,7 @@ function WakePlanEditor({
             시각 수정
           </button>
           <button
-            className="min-h-11 rounded-[var(--radius-control)] px-5 py-3 font-semibold text-muted disabled:opacity-60"
+            className="action-ghost min-h-11 px-5 py-3 text-muted disabled:opacity-60"
             disabled={mutation.isPending}
             onClick={() => mutation.mutate({ decision: "DECLINE" })}
             type="button"
@@ -339,13 +339,13 @@ function WakePlanEditor({
       ) : null}
 
       {serverPlan ? (
-        <div className="rounded-xl bg-brand-soft p-4">
+        <div className="accent-panel p-5">
           <p aria-live="polite" className="font-semibold text-brand">
             계획 상태: {statusLabels[serverPlan.status] ?? serverPlan.status}
           </p>
           {serverPlan.status === "APPROVED" || serverPlan.status === "EDITED" ? (
             <Link
-              className="mt-3 inline-flex min-h-11 items-center rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+              className="action-primary mt-3 inline-flex min-h-11 items-center px-5 py-3"
               href="/wake"
             >
               기상 실행 시작
@@ -400,7 +400,7 @@ function WakePlanEditor({
         />
       ) : null}
 
-      <Link className="inline-flex min-h-11 items-center font-semibold text-brand" href="/prepare">
+      <Link className="action-ghost inline-flex min-h-11 items-center px-5 py-3 font-semibold text-brand" href="/prepare">
         전날 준비로 돌아가기
       </Link>
     </div>
@@ -421,7 +421,7 @@ export function WakePlanReview() {
   if (!ready) {
     return (
       <AppShell currentStep="계획">
-        <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
+        <section className="glass-card rounded-[var(--radius-card)] p-6">
           <h1 className="text-2xl font-bold">먼저 데모 상황을 선택해 주세요</h1>
           <Link className="mt-6 inline-flex min-h-11 items-center text-brand" href="/">
             데모 선택으로 이동
@@ -438,7 +438,7 @@ export function WakePlanReview() {
   ) {
     return (
       <AppShell currentStep="계획" eyebrow="기상 계획">
-        <p aria-live="polite" className="rounded-xl bg-surface p-6 text-muted">
+        <p aria-live="polite" className="soft-card rounded-[var(--radius-card)] p-6 text-muted">
           로컬 입력으로 최소 유효 알람을 계산하는 중입니다.
         </p>
       </AppShell>

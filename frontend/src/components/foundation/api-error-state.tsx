@@ -22,7 +22,7 @@ export function ApiErrorState({
   return (
     <section
       aria-labelledby="api-error-title"
-      className="rounded-[var(--radius-card)] border border-border bg-surface p-6"
+      className="glass-card rounded-[var(--radius-card)] p-6"
     >
       <h1 className="text-2xl font-bold" id="api-error-title">
         {title}
@@ -30,7 +30,7 @@ export function ApiErrorState({
       <p className="mt-3 leading-7 text-muted">{recovery.description}</p>
       {recovery.kind === "session" ? (
         <Link
-          className="mt-6 inline-flex min-h-11 items-center rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+          className="action-primary mt-6 inline-flex min-h-11 items-center px-5 py-3"
           href="/"
           onClick={() => {
             clearSession();
@@ -41,14 +41,14 @@ export function ApiErrorState({
         </Link>
       ) : recovery.kind === "consent" ? (
         <Link
-          className="mt-6 inline-flex min-h-11 items-center rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+          className="action-primary mt-6 inline-flex min-h-11 items-center px-5 py-3"
           href="/settings/privacy"
         >
           개인정보 설정 확인
         </Link>
       ) : (
         <button
-          className="mt-6 min-h-11 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+          className="action-primary mt-6 min-h-11 px-5 py-3"
           onClick={onRetry}
           type="button"
         >
