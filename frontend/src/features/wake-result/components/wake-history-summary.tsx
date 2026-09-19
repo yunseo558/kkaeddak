@@ -15,7 +15,7 @@ export function WakeHistorySummary() {
     <AppShell currentStep="결과" eyebrow="학습 기록">
       <div className="mx-auto max-w-3xl space-y-6">
         <header>
-          <h1 className="text-3xl font-bold tracking-tight">최근 30일 기상 기록</h1>
+          <h1 className="display-title text-3xl font-bold tracking-tight">최근 30일 기상 기록</h1>
           <p className="mt-3 leading-7 text-muted">
             {source === "server"
               ? "동의한 집계 결과만 서버 기록으로 표시합니다."
@@ -27,16 +27,16 @@ export function WakeHistorySummary() {
         </header>
 
         {query.isPending ? (
-          <p aria-live="polite" className="rounded-xl bg-surface p-6 text-muted">
+          <p aria-live="polite" className="soft-card rounded-[var(--radius-card)] p-6 text-muted">
             학습 기록을 불러오는 중입니다.
           </p>
         ) : null}
 
         {query.isError ? (
-          <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
+          <section className="glass-card rounded-[var(--radius-card)] p-6">
             <h2 className="text-xl font-bold">기록을 불러오지 못했습니다</h2>
             <button
-              className="mt-5 min-h-11 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+              className="action-primary mt-5 min-h-11 px-5 py-3"
               onClick={() => query.refetch()}
               type="button"
             >
@@ -55,7 +55,7 @@ export function WakeHistorySummary() {
                 ["미확인", summary.unconfirmedSessions],
               ].map(([label, value]) => (
                 <article
-                  className="rounded-[var(--radius-card)] border border-border bg-surface p-5"
+                  className="metric-card"
                   key={label}
                 >
                   <p className="text-sm font-semibold text-muted">{label}</p>
@@ -63,7 +63,7 @@ export function WakeHistorySummary() {
                 </article>
               ))}
             </section>
-            <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
+            <section className="glass-card rounded-[var(--radius-card)] p-6">
               <h2 className="text-lg font-bold">평균 사용 알람</h2>
               <p className="mt-2 text-3xl font-bold">
                 {summary.averageAlarmSteps === null ||
@@ -78,7 +78,7 @@ export function WakeHistorySummary() {
           </>
         ) : null}
 
-        <Link className="inline-flex min-h-11 items-center font-semibold text-brand" href="/result">
+        <Link className="action-ghost inline-flex min-h-11 items-center px-5 py-3 font-semibold text-brand" href="/result">
           최근 결과로 돌아가기
         </Link>
       </div>

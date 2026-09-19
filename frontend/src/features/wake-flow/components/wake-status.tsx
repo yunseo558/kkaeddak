@@ -61,11 +61,11 @@ export function WakeStatus() {
   if (!activePlan) {
     return (
       <AppShell currentStep="계획" eyebrow="기상 실행">
-        <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
+        <section className="glass-card rounded-[var(--radius-card)] p-6">
           <h1 className="text-2xl font-bold">실행할 기상 계획이 없습니다</h1>
           <p className="mt-3 text-muted">먼저 기상 계획을 승인하거나 수정해 주세요.</p>
           <Link
-            className="mt-6 inline-flex min-h-11 items-center rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+            className="action-primary mt-6 inline-flex min-h-11 items-center px-5 py-3"
             href="/plan"
           >
             기상 계획으로 이동
@@ -81,10 +81,10 @@ export function WakeStatus() {
   ) {
     return (
       <AppShell currentStep="결과" eyebrow="기상 실행">
-        <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
+        <section className="glass-card rounded-[var(--radius-card)] p-6">
           <h1 className="text-2xl font-bold">기상 실행이 완료됐습니다</h1>
           <Link
-            className="mt-6 inline-flex min-h-11 items-center rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+            className="action-primary mt-6 inline-flex min-h-11 items-center px-5 py-3"
             href="/result"
           >
             결과 확인
@@ -135,15 +135,15 @@ export function WakeStatus() {
       <div className="mx-auto max-w-2xl space-y-6">
         <header aria-live="polite">
           <p className="text-sm font-semibold text-brand">{copy.eyebrow}</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">{copy.title}</h1>
+          <h1 className="display-title mt-2 text-3xl font-bold tracking-tight">{copy.title}</h1>
           <p className="mt-3 leading-7 text-muted">{copy.description}</p>
         </header>
 
-        <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6 text-center shadow-[0_8px_24px_rgba(20,32,43,0.08)]">
+        <section className="glass-card wake-display rounded-[var(--radius-card)] p-8 text-center sm:p-10">
           <p className="text-sm font-semibold text-muted">
             {machine.currentStepIndex + 1} / {totalSteps} 단계
           </p>
-          <p className="mt-3 text-4xl font-bold tracking-tight">
+          <p className="mt-4 text-5xl font-bold tracking-[-0.05em] sm:text-6xl">
             {formatKoreanTime(currentAlarmAt)}
           </p>
           <p className="mt-3 font-semibold">
@@ -154,7 +154,7 @@ export function WakeStatus() {
         <div className="flex flex-wrap gap-3">
           {machine.name === "RINGING" ? (
             <button
-              className="min-h-11 flex-1 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white disabled:opacity-60"
+              className="action-primary min-h-12 flex-1 px-5 py-3 disabled:opacity-60"
               disabled={busy}
               onClick={() => send({ type: "DISMISS_ALARM" })}
               type="button"
@@ -166,7 +166,7 @@ export function WakeStatus() {
           {machine.name === "DISMISSED" ? (
             <>
               <button
-                className="min-h-11 flex-1 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white disabled:opacity-60"
+                className="action-primary min-h-12 flex-1 px-5 py-3 disabled:opacity-60"
                 disabled={busy}
                 onClick={() => send({ type: "START_ACTIVITY" })}
                 type="button"
@@ -174,7 +174,7 @@ export function WakeStatus() {
                 기상 활동 시작
               </button>
               <button
-                className="min-h-11 rounded-[var(--radius-control)] border border-border px-5 py-3 font-semibold disabled:opacity-60"
+                className="action-ghost min-h-12 px-5 py-3 disabled:opacity-60"
                 disabled={busy}
                 onClick={() => send({ type: "SUSPECT_RESLEEP" })}
                 type="button"
@@ -187,7 +187,7 @@ export function WakeStatus() {
           {machine.name === "ACTIVE_CANDIDATE" ? (
             <>
               <button
-                className="min-h-11 flex-1 rounded-[var(--radius-control)] bg-success px-5 py-3 font-semibold text-white disabled:opacity-60"
+                className="action-secondary min-h-12 flex-1 px-5 py-3 disabled:opacity-60"
                 disabled={busy}
                 onClick={() => send({ type: "CONFIRM_WAKE" })}
                 type="button"
@@ -195,7 +195,7 @@ export function WakeStatus() {
                 기상 완료 확인
               </button>
               <button
-                className="min-h-11 rounded-[var(--radius-control)] border border-border px-5 py-3 font-semibold disabled:opacity-60"
+                className="action-ghost min-h-12 px-5 py-3 disabled:opacity-60"
                 disabled={busy}
                 onClick={() => send({ type: "SUSPECT_RESLEEP" })}
                 type="button"
@@ -207,7 +207,7 @@ export function WakeStatus() {
 
           {machine.name === "ESCALATING" && nextAlarmAvailable ? (
             <button
-              className="min-h-11 flex-1 rounded-[var(--radius-control)] bg-warning px-5 py-3 font-semibold text-white disabled:opacity-60"
+              className="action-primary min-h-12 flex-1 px-5 py-3 disabled:opacity-60"
               disabled={busy}
               onClick={() => send({ type: "TRIGGER_NEXT_ALARM" })}
               type="button"
@@ -218,7 +218,7 @@ export function WakeStatus() {
 
           {machine.name === "ESCALATING" && !nextAlarmAvailable ? (
             <button
-              className="min-h-11 flex-1 rounded-[var(--radius-control)] bg-warning px-5 py-3 font-semibold text-white disabled:opacity-60"
+              className="action-primary min-h-12 flex-1 px-5 py-3 disabled:opacity-60"
               disabled={busy}
               onClick={finishUnconfirmed}
               type="button"
@@ -229,7 +229,7 @@ export function WakeStatus() {
 
           {machine.name === "CONFIRMED" ? (
             <Link
-              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+              className="action-primary inline-flex min-h-12 flex-1 items-center justify-center px-5 py-3"
               href="/result"
             >
               기상 결과 보기
@@ -238,7 +238,7 @@ export function WakeStatus() {
 
           {storedResult?.planId === activePlan.id && machine.name !== "CONFIRMED" ? (
             <Link
-              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+              className="action-primary inline-flex min-h-12 flex-1 items-center justify-center px-5 py-3"
               href="/result"
             >
               기상 결과 보기
@@ -246,7 +246,7 @@ export function WakeStatus() {
           ) : null}
         </div>
 
-        <p className="text-sm leading-6 text-muted">
+        <p className="soft-card rounded-[var(--radius-control)] px-4 py-3 text-sm leading-6 text-muted">
           이 화면은 실제 알람·워치·활동 센서를 제어하지 않는 웹 시뮬레이션입니다.
         </p>
       </div>

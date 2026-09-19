@@ -77,10 +77,10 @@ export function WakeResultReview() {
   if (!activePlan || !draftResult) {
     return (
       <AppShell currentStep="결과" eyebrow="기상 결과">
-        <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
+        <section className="glass-card rounded-[var(--radius-card)] p-6">
           <h1 className="text-2xl font-bold">확인할 기상 결과가 없습니다</h1>
           <Link
-            className="mt-6 inline-flex min-h-11 items-center rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+            className="action-primary mt-6 inline-flex min-h-11 items-center px-5 py-3"
             href="/wake"
           >
             기상 실행으로 이동
@@ -113,7 +113,7 @@ export function WakeResultReview() {
       <div className="mx-auto max-w-3xl space-y-6">
         <header>
           <p className="text-sm font-semibold text-success">실행 완료</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight">
+          <h1 className="display-title mt-2 text-3xl font-bold tracking-tight">
             {outcomeLabels[draftResult.outcome]}
           </h1>
           <p className="mt-3 leading-7 text-muted">
@@ -122,22 +122,22 @@ export function WakeResultReview() {
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2">
-          <article className="rounded-[var(--radius-card)] border border-border bg-surface p-6 text-center">
+          <article className="metric-card text-center">
             <p className="text-sm font-semibold text-muted">사용한 알람</p>
             <p className="mt-2 text-4xl font-bold">{draftResult.alarmStepsUsed}개</p>
           </article>
-          <article className="rounded-[var(--radius-card)] border border-border bg-surface p-6 text-center">
+          <article className="metric-card text-center">
             <p className="text-sm font-semibold text-muted">실행하지 않은 예비 알람</p>
             <p className="mt-2 text-4xl font-bold">{unusedSteps}개</p>
           </article>
         </section>
 
         {!learning ? (
-          <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
+          <section className="glass-card rounded-[var(--radius-card)] p-6">
             <h2 className="text-lg font-bold">결과가 실제와 다른가요?</h2>
             <div className="mt-4 flex flex-wrap gap-3">
               <button
-                className="min-h-11 rounded-[var(--radius-control)] border border-border px-4 py-3 font-semibold disabled:opacity-60"
+                className="action-ghost min-h-11 px-4 py-3 disabled:opacity-60"
                 disabled={mutation.isPending}
                 onClick={() => correctOutcome("CONFIRMED_LATE")}
                 type="button"
@@ -145,7 +145,7 @@ export function WakeResultReview() {
                 늦게 일어남으로 수정
               </button>
               <button
-                className="min-h-11 rounded-[var(--radius-control)] border border-border px-4 py-3 font-semibold disabled:opacity-60"
+                className="action-ghost min-h-11 px-4 py-3 disabled:opacity-60"
                 disabled={mutation.isPending}
                 onClick={() => correctOutcome("UNCONFIRMED")}
                 type="button"
@@ -154,7 +154,7 @@ export function WakeResultReview() {
               </button>
             </div>
             <button
-              className="mt-5 min-h-11 w-full rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white disabled:opacity-60"
+              className="action-primary mt-5 min-h-12 w-full px-5 py-3 disabled:opacity-60"
               disabled={mutation.isPending}
               onClick={() => mutation.mutate(draftResult)}
               type="button"
@@ -163,7 +163,7 @@ export function WakeResultReview() {
             </button>
           </section>
         ) : (
-          <section className="rounded-[var(--radius-card)] bg-brand-soft p-6">
+          <section className="accent-panel p-6">
             <h2 className="text-lg font-bold text-brand">다음 추천 변화</h2>
             <p className="mt-2 leading-7 text-muted">
               {learning.nextRecommendation}
@@ -184,11 +184,11 @@ export function WakeResultReview() {
 
         <div className="flex flex-wrap gap-4">
           {learning ? (
-            <Link className="inline-flex min-h-11 items-center font-semibold text-brand" href="/history">
+            <Link className="action-secondary inline-flex min-h-11 items-center px-5 py-3 font-semibold" href="/history">
               학습 기록 보기
             </Link>
           ) : null}
-          <Link className="inline-flex min-h-11 items-center font-semibold text-brand" href="/tomorrow">
+          <Link className="action-ghost inline-flex min-h-11 items-center px-5 py-3 font-semibold text-brand" href="/tomorrow">
             내일 계획으로 돌아가기
           </Link>
         </div>

@@ -27,7 +27,7 @@ const STEP_FIELDS: Array<Array<keyof OnboardingValues>> = [
 ];
 
 const inputClassName =
-  "mt-2 min-h-11 w-full rounded-[var(--radius-control)] border border-border bg-surface px-3 py-2";
+  "field-control mt-2 min-h-12 w-full px-4 py-3";
 
 export function OnboardingFlow() {
   const router = useRouter();
@@ -95,16 +95,15 @@ export function OnboardingFlow() {
 
         <ol
           aria-label="초기 설정 진행률"
-          className="mt-6 grid grid-cols-4 gap-2"
+          className="progress-rail mt-6 grid grid-cols-4 gap-1"
         >
           {STEP_LABELS.map((label, index) => (
             <li
               aria-current={index === step ? "step" : undefined}
-              className={`rounded-full px-2 py-2 text-center text-xs ${
-                index === step
-                  ? "bg-brand font-semibold text-white"
-                  : "bg-surface text-muted"
-              }`}
+              className="progress-step text-center text-xs"
+              data-state={
+                index === step ? "active" : index < step ? "complete" : "pending"
+              }
               key={label}
             >
               {label}
@@ -113,7 +112,7 @@ export function OnboardingFlow() {
         </ol>
 
         <form
-          className="mt-6 rounded-[var(--radius-card)] border border-border bg-surface p-5 shadow-[0_8px_24px_rgba(20,32,43,0.08)] sm:p-7"
+          className="glass-card mt-6 rounded-[var(--radius-card)] p-5 sm:p-8"
           onSubmit={complete}
         >
           {step === 0 ? (
@@ -140,7 +139,7 @@ export function OnboardingFlow() {
                   name="recentFirstAlarmSucceeded"
                   render={({ field }) => (
                     <div className="mt-3 grid grid-cols-2 gap-3">
-                      <label className="rounded-xl border border-border p-3">
+                      <label className="choice-card rounded-[var(--radius-control)] p-4">
                         <input
                           checked={field.value}
                           className="mr-2"
@@ -152,7 +151,7 @@ export function OnboardingFlow() {
                         />
                         예
                       </label>
-                      <label className="rounded-xl border border-border p-3">
+                      <label className="choice-card rounded-[var(--radius-control)] p-4">
                         <input
                           checked={!field.value}
                           className="mr-2"
@@ -216,7 +215,7 @@ export function OnboardingFlow() {
                   <option value={3}>3개</option>
                 </select>
               </label>
-              <label className="flex min-h-11 items-center gap-3 rounded-xl border border-border p-3">
+              <label className="choice-card flex min-h-12 items-center gap-3 rounded-[var(--radius-control)] p-4">
                 <input type="checkbox" {...register("keepSafetyAlarm")} />
                 중요한 일정에는 최종 안전 알람 유지
               </label>
@@ -228,7 +227,7 @@ export function OnboardingFlow() {
               <fieldset>
                 <legend className="font-semibold">계획 적용 방식</legend>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <label className="rounded-xl border border-border p-4">
+                  <label className="choice-card rounded-[var(--radius-control)] p-4">
                     <input
                       className="mr-2"
                       type="radio"
@@ -237,7 +236,7 @@ export function OnboardingFlow() {
                     />
                     먼저 제안받기
                   </label>
-                  <label className="rounded-xl border border-border p-4">
+                  <label className="choice-card rounded-[var(--radius-control)] p-4">
                     <input
                       className="mr-2"
                       type="radio"
@@ -249,7 +248,7 @@ export function OnboardingFlow() {
                 </div>
               </fieldset>
 
-              <div className="rounded-xl bg-brand-soft p-4 text-sm leading-6">
+              <div className="accent-panel p-5 text-sm leading-6">
                 <strong className="block">로컬 처리 원칙</strong>
                 수면·활동·컨디션과 개인 모델은 이 브라우저 안에서만 처리합니다.
                 현재 저장 방식은
@@ -261,7 +260,7 @@ export function OnboardingFlow() {
                 입니다.
               </div>
 
-              <label className="flex items-start gap-3 rounded-xl border border-border p-4">
+              <label className="choice-card flex items-start gap-3 rounded-[var(--radius-control)] p-4">
                 <input
                   className="mt-1"
                   type="checkbox"
@@ -280,7 +279,7 @@ export function OnboardingFlow() {
           <div className="mt-7 flex gap-3">
             {step > 0 ? (
               <button
-                className="min-h-11 rounded-[var(--radius-control)] border border-border px-5 py-3 font-semibold"
+                className="action-ghost min-h-11 px-5 py-3"
                 onClick={() => moveToStep(step - 1)}
                 type="button"
               >
@@ -289,7 +288,7 @@ export function OnboardingFlow() {
             ) : null}
             {step < 3 ? (
               <button
-                className="min-h-11 flex-1 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+                className="action-primary min-h-11 flex-1 px-5 py-3"
                 onClick={(event) => {
                   event.preventDefault();
                   void moveForward();
@@ -300,7 +299,7 @@ export function OnboardingFlow() {
               </button>
             ) : (
               <button
-                className="min-h-11 flex-1 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white"
+                className="action-primary min-h-11 flex-1 px-5 py-3"
                 type="submit"
               >
                 설정 완료

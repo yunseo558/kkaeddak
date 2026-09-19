@@ -58,14 +58,14 @@ export function PrivacySettings() {
     <AppShell currentStep="결과" eyebrow="개인정보 설정">
       <div className="mx-auto max-w-2xl space-y-6">
         <header>
-          <h1 className="text-3xl font-bold tracking-tight">내 데이터 관리</h1>
+          <h1 className="display-title text-3xl font-bold tracking-tight">내 데이터 관리</h1>
           <p className="mt-3 leading-7 text-muted">
             건강 입력, 개인 모델, 기상 이벤트 원본은 서버가 아니라 이 브라우저에만
             보관합니다.
           </p>
         </header>
 
-        <section className="rounded-[var(--radius-card)] border border-border bg-surface p-5 sm:p-6">
+        <section className="soft-card rounded-[var(--radius-card)] p-5 sm:p-6">
           <h2 className="text-lg font-bold">현재 저장 방식</h2>
           <p className="mt-2 text-sm leading-6 text-muted">
             {storageMode === "persistent"
@@ -74,9 +74,9 @@ export function PrivacySettings() {
           </p>
         </section>
 
-        <section className="rounded-[var(--radius-card)] border border-border bg-surface p-5 sm:p-6">
+        <section className="glass-card rounded-[var(--radius-card)] p-5 sm:p-6">
           <h2 className="text-lg font-bold">선택적 결과 동기화</h2>
-          <label className="mt-4 flex min-h-11 items-start gap-3 rounded-xl border border-border p-4">
+          <label className="choice-card mt-4 flex min-h-11 items-start gap-3 rounded-[var(--radius-control)] p-4">
             <input
               checked={draft.outcomeSync}
               className="mt-1"
@@ -93,7 +93,7 @@ export function PrivacySettings() {
             </span>
           </label>
           <button
-            className="mt-4 min-h-11 rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white disabled:opacity-60"
+            className="action-primary mt-4 min-h-11 px-5 py-3 disabled:opacity-60"
             disabled={consentMutation.isPending}
             onClick={() => consentMutation.mutate()}
             type="button"
@@ -114,7 +114,7 @@ export function PrivacySettings() {
           ) : null}
         </section>
 
-        <section className="rounded-[var(--radius-card)] border border-danger/40 bg-surface p-5 sm:p-6">
+        <section className="glass-card rounded-[var(--radius-card)] border-danger/40 p-5 sm:p-6">
           <h2 className="text-lg font-bold text-danger">로컬 데이터 삭제</h2>
           <p className="mt-2 text-sm leading-6 text-muted">
             건강 입력, 개인 모델, 기상 이벤트와 현재 진행 상태를 모두 지우고 처음
@@ -122,7 +122,7 @@ export function PrivacySettings() {
           </p>
 
           {confirming ? (
-            <div className="mt-5 rounded-xl bg-background p-4">
+            <div className="mt-5 rounded-[var(--radius-control)] bg-[#fff5f6] p-4">
               <p className="font-semibold">정말 모두 삭제할까요?</p>
               <p className="mt-1 text-sm text-muted">이 작업은 되돌릴 수 없습니다.</p>
               <div className="mt-4 flex flex-wrap gap-3">
@@ -135,7 +135,7 @@ export function PrivacySettings() {
                   {deleting ? "삭제 중…" : "모두 삭제"}
                 </button>
                 <button
-                  className="min-h-11 rounded-[var(--radius-control)] border border-border px-5 py-3 font-semibold disabled:opacity-60"
+                  className="action-ghost min-h-11 px-5 py-3 disabled:opacity-60"
                   disabled={deleting}
                   onClick={() => setConfirming(false)}
                   type="button"

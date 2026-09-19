@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { AppShell } from "@/components/layout/app-shell";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 import { useOnlineStatus } from "@/lib/network/use-online-status";
@@ -74,24 +75,21 @@ export function DemoStart() {
 
   return (
     <AppShell currentStep="소개" eyebrow="40초 데모">
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-        <section>
-          <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
-            내일 일정과 오늘 상태에 맞춰 필요한 만큼만 깨웁니다
+      <div className="grid gap-7 lg:grid-cols-[minmax(0,1.06fr)_minmax(340px,0.94fr)] lg:items-start">
+        <section className="hero-copy pt-2 sm:pt-5">
+          <BrandLogo className="brand-logo-hero -ml-3 mb-5" priority />
+          <h1 className="max-w-3xl text-3xl font-bold leading-[1.15] tracking-tight sm:text-5xl">
+            내일 일정과 오늘 상태에 맞춰
+            <strong className="block">필요한 만큼만 깨웁니다</strong>
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-muted">
             샘플 시나리오로 준비시간을 수면시간으로 바꾸고, 실제 기상 완료까지
             이어지는 흐름을 확인해 보세요.
           </p>
-          <ul className="mt-8 space-y-3 text-sm leading-6 text-muted">
-            <li>• 실제 HealthKit이나 시스템 알람에 연결되지 않은 웹 데모입니다.</li>
-            <li>• 건강 시나리오 데이터는 브라우저 안에서만 처리합니다.</li>
-            <li>• 서버 연결이 없어도 로컬 전용 흐름을 완료할 수 있습니다.</li>
-          </ul>
         </section>
 
         <form
-          className="rounded-[var(--radius-card)] border border-border bg-surface p-5 shadow-[0_8px_24px_rgba(20,32,43,0.08)] sm:p-6"
+          className="glass-card rounded-[var(--radius-card)] p-5 sm:p-7"
           onSubmit={onSubmit}
         >
           <fieldset>
@@ -101,11 +99,8 @@ export function DemoStart() {
                 const checked = selectedScenario === scenario.id;
                 return (
                   <label
-                    className={`cursor-pointer rounded-[var(--radius-control)] border p-4 transition-colors ${
-                      checked
-                        ? "border-brand bg-brand-soft"
-                        : "border-border bg-surface hover:bg-background"
-                    }`}
+                    className="choice-card cursor-pointer rounded-[var(--radius-control)] p-4"
+                    data-selected={checked}
                     key={scenario.id}
                   >
                     <input
@@ -134,13 +129,19 @@ export function DemoStart() {
           ) : null}
 
           <button
-            className="mt-5 min-h-11 w-full rounded-[var(--radius-control)] bg-brand px-5 py-3 font-semibold text-white disabled:cursor-wait disabled:opacity-60"
+            className="action-primary mt-5 min-h-12 w-full px-5 py-3 disabled:cursor-wait disabled:opacity-60"
             disabled={mutation.isPending}
             type="submit"
           >
             {mutation.isPending ? "데모를 준비하는 중…" : "내일 기상 계획 만들기"}
           </button>
         </form>
+
+        <ul className="feature-list text-sm leading-6 text-muted sm:grid-cols-3 lg:col-span-2">
+          <li>실제 HealthKit이나 시스템 알람에 연결되지 않은 웹 데모입니다.</li>
+          <li>건강 시나리오 데이터는 브라우저 안에서만 처리합니다.</li>
+          <li>서버 연결이 없어도 로컬 전용 흐름을 완료할 수 있습니다.</li>
+        </ul>
       </div>
     </AppShell>
   );
