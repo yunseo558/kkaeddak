@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
@@ -88,18 +89,13 @@ export function ServiceHome() {
       <AppShell currentStep="소개">
         <div className="welcome-screen">
           <div className="morning-mark" aria-hidden="true">
-            <span className="morning-clock-bell morning-clock-bell-left" />
-            <span className="morning-clock-bell morning-clock-bell-right" />
-            <span className="morning-clock-top" />
-            <span className="morning-clock-body">
-              <span className="morning-clock-face">
-                <i className="morning-clock-hand morning-clock-hour" />
-                <i className="morning-clock-hand morning-clock-minute" />
-                <b />
-              </span>
-            </span>
-            <span className="morning-clock-leg morning-clock-leg-left" />
-            <span className="morning-clock-leg morning-clock-leg-right" />
+            <Image
+              alt=""
+              height={560}
+              priority
+              src="/brand/kkaeddak-alarm-clock.png"
+              width={600}
+            />
           </div>
           <p className="service-kicker">나에게 맞는 아침</p>
           <h1>

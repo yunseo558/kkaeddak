@@ -1067,121 +1067,14 @@ body {
   text-align: center;
 }
 .morning-mark {
-  position: relative;
-  width: 92px;
-  height: 92px;
-  margin: 2px 0 22px;
+  width: 96px;
+  margin: 0 0 20px -2px;
+  filter: drop-shadow(0 8px 10px rgba(73, 91, 34, 0.12));
 }
-.morning-clock-body {
-  position: absolute;
-  z-index: 2;
-  bottom: 9px;
-  left: 17px;
-  width: 59px;
-  height: 59px;
-  border: 1px solid rgba(82, 111, 25, 0.26);
-  border-radius: 50%;
-  background: linear-gradient(145deg, #cce96f 8%, #a9cf48 62%, #8caf35 100%);
-  box-shadow:
-    inset -6px -7px 10px rgba(77, 105, 23, 0.2),
-    inset 6px 6px 12px rgba(255, 255, 255, 0.68),
-    0 8px 14px rgba(53, 70, 25, 0.13);
-}
-.morning-clock-face {
-  position: absolute;
-  inset: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.88);
-  border-radius: 50%;
-  background: rgba(255, 253, 235, 0.72);
-  box-shadow:
-    inset 0 2px 5px rgba(255, 255, 255, 0.9),
-    inset 0 -2px 5px rgba(84, 110, 39, 0.1);
-}
-.morning-clock-face::before {
-  position: absolute;
-  inset: 4px;
-  border: 1px solid rgba(53, 73, 27, 0.08);
-  border-radius: 50%;
-  content: "";
-}
-.morning-clock-hand {
-  position: absolute;
-  z-index: 2;
-  top: 50%;
-  left: 50%;
-  height: 3px;
-  border-radius: 999px;
-  background: #394e28;
-  transform-origin: 0 50%;
-}
-.morning-clock-hour {
-  width: 13px;
-  transform: rotate(210deg);
-}
-.morning-clock-minute {
-  width: 17px;
-  transform: rotate(318deg);
-}
-.morning-clock-face b {
-  position: absolute;
-  z-index: 3;
-  top: 50%;
-  left: 50%;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #ff4f8b;
-  box-shadow: 0 1px 2px rgba(184, 32, 90, 0.35);
-  transform: translate(-50%, -50%);
-}
-.morning-clock-bell {
-  position: absolute;
-  z-index: 1;
-  top: 14px;
-  width: 27px;
-  height: 19px;
-  border: 1px solid rgba(184, 32, 90, 0.18);
-  border-radius: 22px 22px 8px 8px;
-  background: linear-gradient(145deg, #ff78a7, #f13f7c);
-  box-shadow:
-    inset 3px 3px 5px rgba(255, 255, 255, 0.48),
-    0 3px 6px rgba(184, 32, 90, 0.14);
-}
-.morning-clock-bell-left {
-  left: 11px;
-  transform: rotate(-25deg);
-}
-.morning-clock-bell-right {
-  right: 10px;
-  transform: rotate(25deg);
-}
-.morning-clock-top {
-  position: absolute;
-  z-index: 3;
-  top: 9px;
-  left: 42px;
-  width: 9px;
-  height: 13px;
-  border-radius: 5px 5px 2px 2px;
-  background: #ff4f8b;
-  box-shadow: inset 2px 2px 3px rgba(255, 255, 255, 0.4);
-}
-.morning-clock-leg {
-  position: absolute;
-  z-index: 1;
-  bottom: 3px;
-  width: 10px;
-  height: 18px;
-  border-radius: 7px;
-  background: linear-gradient(145deg, #ff78a7, #ef3b78);
-}
-.morning-clock-leg-left {
-  left: 23px;
-  transform: rotate(28deg);
-}
-.morning-clock-leg-right {
-  right: 22px;
-  transform: rotate(-28deg);
+.morning-mark img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 .service-error {
   border-left: 3px solid #b8205a;
