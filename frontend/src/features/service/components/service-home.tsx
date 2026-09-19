@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { AppShell } from "@/components/layout/app-shell";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 import { useServiceStore } from "../model/service-store";
 import {
@@ -29,11 +30,30 @@ export function ServiceHome() {
     () => true,
     () => false,
   );
+  const [showSplash, setShowSplash] = useState(true);
   const [edit, setEdit] = useState(false);
   const [time, setTime] = useState("");
   const store = useServiceStore();
+  const authenticated = useCurrentFlowStore((s) => s.demoAuthenticated);
   const completed = useCurrentFlowStore((s) => s.onboardingCompleted);
   const survey = useCurrentFlowStore((s) => s.onboardingDraft);
+  useEffect(() => {
+    if (window.sessionStorage.getItem("kkaeddak-splash-seen")) {
+      const timer = window.setTimeout(() => setShowSplash(false), 0);
+      return () => window.clearTimeout(timer);
+    }
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const timer = window.setTimeout(
+      () => {
+        window.sessionStorage.setItem("kkaeddak-splash-seen", "true");
+        setShowSplash(false);
+      },
+      reducedMotion ? 400 : 1400,
+    );
+    return () => window.clearTimeout(timer);
+  }, []);
   useEffect(
     () => () => {
       stopAlarmSound();
@@ -78,51 +98,109 @@ export function ServiceHome() {
     return () => clearInterval(timer);
   }, [store.calendarConnected]);
 
-  if (!ready)
+  const dismissSplash = () => {
+    window.sessionStorage.setItem("kkaeddak-splash-seen", "true");
+    setShowSplash(false);
+  };
+
+  if (!ready || showSplash)
     return (
-      <AppShell currentStep="소개">
-        <p className="service-muted">불러오는 중…</p>
+      <AppShell currentStep="소개" immersive>
+        <button
+          aria-label="스플래시 건너뛰기"
+          className="splash-screen"
+          data-testid="splash-screen"
+          onClick={dismissSplash}
+          type="button"
+        >
+          <Image
+            alt="깨딱 스플래시 알람 시계"
+            className="splash-clock"
+            height={900}
+            priority
+            src="/brand/kkaeddak-splash-clock.png"
+            width={843}
+          />
+          <BrandLogo className="splash-logo" priority />
+          <span>내일 아침을 덜 고민하도록</span>
+        </button>
+      </AppShell>
+    );
+  if (!authenticated)
+    return (
+      <AppShell currentStep="소개" immersive>
+        <div className="auth-screen">
+          <div className="auth-brand">
+            <BrandLogo className="auth-logo" priority />
+            <p>내 일정에 맞춰 알람을 준비하는 기상 에이전트</p>
+          </div>
+          <div className="auth-copy">
+            <p className="service-kicker">시작하기</p>
+            <h1>로그인 / 회원가입</h1>
+            <p className="service-muted">
+              지금은 별도 가입 없이 데모 서비스를 이용할 수 있어요.
+            </p>
+          </div>
+          <button
+            className="service-primary auth-button"
+            onClick={() =>
+              useCurrentFlowStore.getState().setDemoAuthenticated(true)
+            }
+            type="button"
+          >
+            데모 버전으로 로그인
+          </button>
+          <p className="auth-upcoming">
+            카카오 · Google · Apple 계정 연동은 준비 중이에요.
+          </p>
+        </div>
       </AppShell>
     );
   if (!completed)
     return (
       <AppShell currentStep="소개">
-        <div className="welcome-screen">
-          <div className="morning-mark" aria-hidden="true">
-            <Image
-              alt=""
-              height={560}
-              priority
-              src="/brand/kkaeddak-alarm-clock.png"
-              width={600}
-            />
-          </div>
-          <p className="service-kicker">나에게 맞는 아침</p>
-          <h1>
-            몇 시에 일어나야 할지,
-            <br />
-            매일 고민하지 않도록.
-          </h1>
-          <p className="service-muted">
-            준비하는 시간과 일정을 알려주세요.
-            <br />
-            내일 필요한 알람을 함께 정할게요.
-          </p>
-          <div className="welcome-steps">
-            <span>
-              01 <b>기상 습관 설정</b>
-            </span>
-            <span>
-              02 <b>캘린더 연결</b>
-            </span>
-            <span>
-              03 <b>첫 기상 계획 확인</b>
-            </span>
-          </div>
-          <Link className="service-primary" href="/onboarding">
-            시작하기
-          </Link>
-          <p className="service-footnote">약 1분이면 설정할 수 있어요</p>
+        <div className="setup-home">
+          <header className="service-heading">
+            <div>
+              <p className="service-muted">처음 오셨군요</p>
+              <h1>내일 아침을 준비해볼까요?</h1>
+            </div>
+            <span className="service-tag">설정 전</span>
+          </header>
+          <section className="setup-card">
+            <div className="setup-icon" aria-hidden="true">
+              <Image
+                alt=""
+                height={560}
+                priority
+                src="/brand/kkaeddak-alarm-clock.png"
+                width={600}
+              />
+            </div>
+            <p className="service-kicker">첫 기상 계획</p>
+            <h2>먼저 기본 설정이 필요해요</h2>
+            <p className="service-muted">
+              평소 기상 습관과 일정 유형을 알려주면 내일 필요한 알람을
+              계산할게요.
+            </p>
+            <Link className="service-primary" href="/onboarding">
+              설정하러 가기
+            </Link>
+          </section>
+          <section className="setup-preview" aria-label="설정 후 제공 기능">
+            <div>
+              <span>01</span>
+              <p>캘린더 일정 유형 판단</p>
+            </div>
+            <div>
+              <span>02</span>
+              <p>맞춤 기상 시각 계산</p>
+            </div>
+            <div>
+              <span>03</span>
+              <p>기상 결과 학습</p>
+            </div>
+          </section>
         </div>
       </AppShell>
     );

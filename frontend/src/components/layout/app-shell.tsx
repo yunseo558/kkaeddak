@@ -15,9 +15,15 @@ type AppShellProps = {
   children: ReactNode;
   currentStep: AppStep;
   eyebrow?: string;
+  immersive?: boolean;
 };
 
-export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
+export function AppShell({
+  children,
+  currentStep,
+  eyebrow,
+  immersive = false,
+}: AppShellProps) {
   const online = useOnlineStatus();
   const connected = useServiceStore((s) => s.calendarConnected);
   const virtualNow = useServiceStore((s) => s.virtualNow);
@@ -56,26 +62,31 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
             </div>
           </div>
 
-          <div className="app-frame" data-flow-step={currentStep}>
-            <header className="site-header mx-5 flex items-center justify-between py-2">
-              <Link
-                aria-label="깨딱 홈"
-                className="inline-flex min-h-11 items-center"
-                href="/"
-              >
-                <BrandLogo className="brand-logo-header" priority />
-              </Link>
-              <Link
-                aria-label="개인정보 설정"
-                className="header-icon-button"
-                href="/settings"
-              >
-                <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <path d="M12 15.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z" />
-                  <path d="M19.4 13.5a7.8 7.8 0 0 0 .05-3l1.6-1.25-2-3.46-1.9.77a8.1 8.1 0 0 0-2.6-1.5L14.25 3h-4.5l-.3 2.06a8.1 8.1 0 0 0-2.6 1.5l-1.9-.77-2 3.46 1.6 1.25a7.8 7.8 0 0 0 .05 3L3 14.75l2 3.46 1.9-.77a8.1 8.1 0 0 0 2.55 1.5l.3 2.06h4.5l.3-2.06a8.1 8.1 0 0 0 2.55-1.5l1.9.77 2-3.46-1.6-1.25Z" />
-                </svg>
-              </Link>
-            </header>
+          <div
+            className={`app-frame${immersive ? " app-frame--immersive" : ""}`}
+            data-flow-step={currentStep}
+          >
+            {!immersive && (
+              <header className="site-header mx-5 flex items-center justify-between py-2">
+                <Link
+                  aria-label="깨딱 홈"
+                  className="inline-flex min-h-11 items-center"
+                  href="/"
+                >
+                  <BrandLogo className="brand-logo-header" priority />
+                </Link>
+                <Link
+                  aria-label="개인정보 설정"
+                  className="header-icon-button"
+                  href="/settings"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="M12 15.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z" />
+                    <path d="M19.4 13.5a7.8 7.8 0 0 0 .05-3l1.6-1.25-2-3.46-1.9.77a8.1 8.1 0 0 0-2.6-1.5L14.25 3h-4.5l-.3 2.06a8.1 8.1 0 0 0-2.6 1.5l-1.9-.77-2 3.46 1.6 1.25a7.8 7.8 0 0 0 .05 3L3 14.75l2 3.46 1.9-.77a8.1 8.1 0 0 0 2.55 1.5l.3 2.06h4.5l.3-2.06a8.1 8.1 0 0 0 2.55-1.5l1.9.77 2-3.46-1.6-1.25Z" />
+                  </svg>
+                </Link>
+              </header>
+            )}
 
             {!online ? (
               <p
@@ -89,7 +100,11 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
             ) : null}
 
             <main
-              className="mt-4 w-full px-5 pb-16"
+              className={
+                immersive
+                  ? "entry-main w-full"
+                  : "mt-4 w-full px-5 pb-16"
+              }
               id="main-content"
               tabIndex={-1}
             >
@@ -99,7 +114,7 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
           </div>
 
           <div className="iphone-home-indicator" aria-hidden="true" />
-          {connected && (
+          {connected && !immersive && (
             <nav className="service-tabbar" aria-label="주 메뉴">
               <Link href="/">아침</Link>
               <Link href="/calendar">캘린더</Link>
@@ -109,7 +124,7 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
           )}
         </div>
       </div>
-      {connected && <DemoControls />}
+      {connected && !immersive && <DemoControls />}
     </div>
   );
 }

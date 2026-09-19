@@ -22,6 +22,7 @@ describe("resetLocalData", () => {
 
     expect(clearAll).toHaveBeenCalledOnce();
     expect(useCurrentFlowStore.getState().onboardingCompleted).toBe(false);
+    expect(useCurrentFlowStore.getState().demoAuthenticated).toBe(false);
     expect(useCurrentFlowStore.getState().onboardingStep).toBe(0);
     expect(useDemoSessionStore.getState().scenarioId).toBeNull();
     expect(window.localStorage.getItem("kkaeddak-current-flow")).toBeNull();

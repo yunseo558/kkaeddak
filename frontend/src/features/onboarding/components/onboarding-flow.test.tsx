@@ -42,6 +42,7 @@ describe("OnboardingFlow", () => {
 
     await user.click(screen.getByRole("button", { name: "설정 완료" }));
 
+    expect(useCurrentFlowStore.getState().demoAuthenticated).toBe(true);
     expect(useCurrentFlowStore.getState().onboardingCompleted).toBe(true);
     expect(push).toHaveBeenCalledWith("/calendar");
   });

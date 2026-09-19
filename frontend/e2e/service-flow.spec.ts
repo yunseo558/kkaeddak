@@ -2,8 +2,12 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function setup(page: Page) {
   await page.clock.install({ time: new Date("2026-09-20T09:00:00+09:00") });
+  await page.addInitScript(() =>
+    window.sessionStorage.setItem("kkaeddak-splash-seen", "true"),
+  );
   await page.goto("/");
-  await page.getByRole("link", { name: "시작하기" }).click();
+  await page.getByRole("button", { name: "데모 버전으로 로그인" }).click();
+  await page.getByRole("link", { name: "설정하러 가기" }).click();
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByLabel("매일 알람을 정할 시각").fill("21:00");

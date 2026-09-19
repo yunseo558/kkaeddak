@@ -42,6 +42,7 @@ const initialDraft: OnboardingDraft = {
 
 type CurrentFlowState = {
   activeWakePlan: ActiveWakePlan | null;
+  demoAuthenticated: boolean;
   onboardingCompleted: boolean;
   onboardingDraft: OnboardingDraft;
   onboardingStep: number;
@@ -49,6 +50,7 @@ type CurrentFlowState = {
   wakeResult: WakeResult | null;
   reset: () => void;
   setActiveWakePlan: (plan: ActiveWakePlan | null) => void;
+  setDemoAuthenticated: (authenticated: boolean) => void;
   setOnboardingCompleted: (completed: boolean) => void;
   setOnboardingDraft: (draft: OnboardingDraft) => void;
   setOnboardingStep: (step: number) => void;
@@ -58,6 +60,7 @@ type CurrentFlowState = {
 
 const initialState = {
   activeWakePlan: null,
+  demoAuthenticated: false,
   onboardingCompleted: false,
   onboardingDraft: initialDraft,
   onboardingStep: 0,
@@ -71,6 +74,8 @@ export const useCurrentFlowStore = create<CurrentFlowState>()(
       ...initialState,
       reset: () => set(initialState),
       setActiveWakePlan: (activeWakePlan) => set({ activeWakePlan }),
+      setDemoAuthenticated: (demoAuthenticated) =>
+        set({ demoAuthenticated }),
       setOnboardingCompleted: (onboardingCompleted) =>
         set({ onboardingCompleted }),
       setOnboardingDraft: (onboardingDraft) => set({ onboardingDraft }),
@@ -83,6 +88,7 @@ export const useCurrentFlowStore = create<CurrentFlowState>()(
       storage: createJSONStorage(() => window.localStorage),
       partialize: ({
         activeWakePlan,
+        demoAuthenticated,
         editingPlanId,
         onboardingCompleted,
         onboardingDraft,
@@ -90,6 +96,7 @@ export const useCurrentFlowStore = create<CurrentFlowState>()(
         wakeResult,
       }) => ({
         activeWakePlan,
+        demoAuthenticated,
         editingPlanId,
         onboardingCompleted,
         onboardingDraft,

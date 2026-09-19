@@ -78,6 +78,7 @@ export function OnboardingFlow() {
       preferredAlarmCount: nextValues.preferredAlarmCount,
       keepSafetyAlarm: nextValues.keepSafetyAlarm,
     });
+    useCurrentFlowStore.getState().setDemoAuthenticated(true);
     setCompleted(true);
     setStoredStep(0);
     router.push("/calendar");
