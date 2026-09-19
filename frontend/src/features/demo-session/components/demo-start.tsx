@@ -75,9 +75,9 @@ export function DemoStart() {
 
   return (
     <AppShell currentStep="소개" eyebrow="40초 데모">
-      <div className="grid gap-7 lg:grid-cols-[minmax(0,1.06fr)_minmax(340px,0.94fr)] lg:items-start">
-        <section className="hero-copy pt-2 sm:pt-5">
-          <BrandLogo className="brand-logo-hero -ml-3 mb-5" priority />
+      <div className="space-y-7">
+        <section className="hero-copy pt-2">
+          <BrandLogo className="brand-logo-hero -ml-2 mb-5" priority />
           <h1 className="max-w-3xl text-3xl font-bold leading-[1.15] tracking-tight sm:text-5xl">
             내일 일정과 오늘 상태에 맞춰
             <strong className="block">필요한 만큼만 깨웁니다</strong>
@@ -137,7 +137,7 @@ export function DemoStart() {
           </button>
         </form>
 
-        <ul className="feature-list text-sm leading-6 text-muted sm:grid-cols-3 lg:col-span-2">
+        <ul className="feature-list text-sm leading-6 text-muted">
           <li>실제 HealthKit이나 시스템 알람에 연결되지 않은 웹 데모입니다.</li>
           <li>건강 시나리오 데이터는 브라우저 안에서만 처리합니다.</li>
           <li>서버 연결이 없어도 로컬 전용 흐름을 완료할 수 있습니다.</li>

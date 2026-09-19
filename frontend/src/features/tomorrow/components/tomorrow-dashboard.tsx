@@ -121,7 +121,7 @@ export function TomorrowDashboard() {
 
         <TimezoneNotice scheduleTimezone="Asia/Seoul" />
 
-        <section className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+        <section className="grid gap-4">
           <article className="glass-card rounded-[var(--radius-card)] p-6 sm:p-8">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-semibold text-brand">첫 일정</p>

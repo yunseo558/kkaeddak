@@ -206,7 +206,7 @@ function WakePlanEditor({
         </div>
       </header>
 
-      <section className="grid gap-4 lg:grid-cols-[1fr_0.8fr]">
+      <section className="grid gap-4">
         <article className="glass-card rounded-[var(--radius-card)] p-6">
           <h2 className="text-xl font-bold">알람 타임라인</h2>
           <ol className="alarm-timeline mt-5 space-y-3">
