@@ -117,9 +117,9 @@ export function PreparationPlanner() {
     return (
       <AppShell currentStep="준비">
         <section className="glass-card rounded-[var(--radius-card)] p-6">
-          <h1 className="text-2xl font-bold">먼저 데모 상황을 선택해 주세요</h1>
+          <h1 className="text-2xl font-bold">먼저 내일 상황을 선택해 주세요</h1>
           <Link className="mt-6 inline-flex min-h-11 items-center text-brand" href="/">
-            데모 선택으로 이동
+            상황 선택으로 이동
           </Link>
         </section>
       </AppShell>

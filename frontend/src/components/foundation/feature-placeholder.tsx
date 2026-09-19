@@ -24,7 +24,7 @@ export function FeaturePlaceholder({
           className="mt-8 inline-flex min-h-11 items-center rounded-[var(--radius-control)] bg-brand px-5 font-semibold text-white"
           href="/"
         >
-          데모 선택으로 돌아가기
+          처음으로 돌아가기
         </Link>
       </section>
     </AppShell>

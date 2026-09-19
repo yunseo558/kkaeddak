@@ -14,3 +14,20 @@ class ExplanationCreate(APIModel):
 class ExplanationResponse(APIModel):
     explanation: str = Field(min_length=1, max_length=500)
     source: ExplanationSource
+
+
+class ScheduleCategoryCandidate(APIModel):
+    code: Code
+    label: str = Field(min_length=1, max_length=30)
+    is_fallback: bool = False
+
+
+class ScheduleClassificationCreate(APIModel):
+    title: str = Field(min_length=1, max_length=100)
+    categories: list[ScheduleCategoryCandidate] = Field(min_length=1, max_length=20)
+
+
+class ScheduleClassificationResponse(APIModel):
+    category_code: Code
+    confidence: float = Field(ge=0, le=1)
+    source: ExplanationSource

@@ -47,7 +47,7 @@ export function WakeHistorySummary() {
 
         {summary ? (
           <>
-            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <section className="grid gap-4 sm:grid-cols-2">
               {[
                 ["전체 기록", summary.totalSessions],
                 ["제시간 확인", summary.onTimeSessions],

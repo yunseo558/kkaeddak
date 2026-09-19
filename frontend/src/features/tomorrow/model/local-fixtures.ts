@@ -117,6 +117,11 @@ export function createLocalTomorrowOverview(
       alarmPreferences: {
         preferredFirstChannel: "WATCH_HAPTIC",
         maxProtocolLevel: 4,
+        preferredAlarmCount: 2,
+        alarmIntervalMin: 10,
+        keepSafetyAlarm: true,
+        automationTime: "21:00",
+        scheduleTypes: [],
       },
       revision: 1,
       updatedAt: reference.toISOString(),

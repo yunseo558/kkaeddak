@@ -60,6 +60,27 @@ class ExplanationAiResponse(StrictModel):
         return _validate_display_text(value)
 
 
+class ScheduleCategoryCandidate(StrictModel):
+    code: str = Field(pattern=r"^[A-Z][A-Z0-9_]{1,63}$")
+    label: str = Field(min_length=1, max_length=30)
+    is_fallback: bool = False
+
+
+class ScheduleClassificationAiRequest(StrictModel):
+    title: str = Field(min_length=1, max_length=100)
+    categories: list[ScheduleCategoryCandidate] = Field(min_length=1, max_length=20)
+
+    @field_validator("title")
+    @classmethod
+    def validate_safe_title(cls, value: str) -> str:
+        return _validate_display_text(value)
+
+
+class ScheduleClassificationAiResponse(StrictModel):
+    category_code: str = Field(pattern=r"^[A-Z][A-Z0-9_]{1,63}$")
+    confidence: float = Field(ge=0, le=1)
+
+
 class AiProvider(Protocol):
     """Vendor-neutral provider that receives only privacy-limited structured inputs."""
 
@@ -68,6 +89,8 @@ class AiProvider(Protocol):
     async def suggest_preparation(self, payload: PreparationAiRequest) -> Any: ...
 
     async def explain(self, payload: ExplanationAiRequest) -> Any: ...
+
+    async def classify_schedule(self, payload: ScheduleClassificationAiRequest) -> Any: ...
 
 
 def _validate_display_text(value: str) -> str:
@@ -90,6 +113,14 @@ REASON_TEMPLATES = {
     "IMPORTANT_EVENT": "중요 일정의 최종 안전 알람을 유지했어요.",
     "EARLY_SCHEDULE": "이른 일정에 맞춰 알람 계획을 조정했어요.",
     "LIMITED_HISTORY": "학습 이력이 충분하지 않아 사용자 확인을 우선했어요.",
+}
+
+CATEGORY_HINTS = {
+    "CLASS": ("수업", "강의", "세미나", "특강", "전공", "교양"),
+    "WORK": ("출근", "근무", "회의", "미팅", "프로젝트", "업무"),
+    "IMPORTANT": ("시험", "면접", "인터뷰", "발표", "공모전", "오디션"),
+    "APPOINTMENT": ("약속", "브런치", "점심", "저녁", "병원", "진료", "예약"),
+    "EXERCISE": ("운동", "헬스", "러닝", "요가", "필라테스", "PT"),
 }
 
 
@@ -116,6 +147,33 @@ def explanation_template(payload: ExplanationAiRequest) -> str:
     ]
     message = " ".join([*reasons, f"계획 변경: {payload.plan_change_summary}"])
     return message[:500]
+
+
+def schedule_classification_template(
+    payload: ScheduleClassificationAiRequest,
+) -> ScheduleClassificationAiResponse:
+    title = payload.title.casefold()
+    for candidate in payload.categories:
+        label = candidate.label.casefold()
+        if label in title or any(token in title for token in label.split() if len(token) >= 2):
+            return ScheduleClassificationAiResponse(
+                category_code=candidate.code,
+                confidence=0.96,
+            )
+    for candidate in payload.categories:
+        if any(hint.casefold() in title for hint in CATEGORY_HINTS.get(candidate.code, ())):
+            return ScheduleClassificationAiResponse(
+                category_code=candidate.code,
+                confidence=0.9,
+            )
+    fallback = next(
+        (candidate for candidate in payload.categories if candidate.is_fallback),
+        payload.categories[0],
+    )
+    return ScheduleClassificationAiResponse(
+        category_code=fallback.code,
+        confidence=0.35,
+    )
 
 
 class AiService:
@@ -225,3 +283,40 @@ class AiService:
             status="FALLBACK",
         )
         return explanation_template(payload), ExplanationSource.TEMPLATE
+
+    async def classify_schedule(
+        self,
+        payload: ScheduleClassificationAiRequest,
+    ) -> tuple[ScheduleClassificationAiResponse, ExplanationSource]:
+        started_at = monotonic()
+        classifier = getattr(self.provider, "classify_schedule", None)
+        if classifier is not None:
+            try:
+                raw = await classifier(payload)
+                result = ScheduleClassificationAiResponse.model_validate(raw)
+                allowed_codes = {candidate.code for candidate in payload.categories}
+                if result.category_code not in allowed_codes:
+                    raise ValueError
+            except Exception:
+                pass
+            else:
+                await self._record(
+                    feature="SCHEDULE_CLASSIFICATION",
+                    payload=payload,
+                    started_at=started_at,
+                    status="MODEL",
+                )
+                return result, ExplanationSource.MODEL
+
+        if self.provider is not None:
+            logger.warning(
+                "AI provider unavailable; schedule classification fallback used",
+                extra={"feature": "SCHEDULE_CLASSIFICATION"},
+            )
+        await self._record(
+            feature="SCHEDULE_CLASSIFICATION",
+            payload=payload,
+            started_at=started_at,
+            status="FALLBACK",
+        )
+        return schedule_classification_template(payload), ExplanationSource.TEMPLATE

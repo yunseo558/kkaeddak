@@ -18,16 +18,16 @@ import {
 } from "../model/wake-state-machine";
 
 const channelLabels: Record<string, string> = {
-  WATCH_HAPTIC: "워치 진동 시뮬레이션",
-  PHONE_SOUND: "휴대폰 소리 시뮬레이션",
-  FINAL_SAFETY: "최종 안전 알람 시뮬레이션",
+  WATCH_HAPTIC: "워치 진동",
+  PHONE_SOUND: "휴대폰 소리",
+  FINAL_SAFETY: "최종 안전 알람",
 };
 
 const stateCopy = {
   RINGING: {
     eyebrow: "알람 실행 중",
     title: "알람을 확인해 주세요",
-    description: "웹 데모 버튼으로 알람 종료를 기록합니다.",
+    description: "알람을 끄면 다음 기상 단계로 넘어갑니다.",
   },
   DISMISSED: {
     eyebrow: "알람 종료됨",
@@ -247,7 +247,7 @@ export function WakeStatus() {
         </div>
 
         <p className="soft-card rounded-[var(--radius-control)] px-4 py-3 text-sm leading-6 text-muted">
-          이 화면은 실제 알람·워치·활동 센서를 제어하지 않는 웹 시뮬레이션입니다.
+          웹 버전에서는 기기 알람·워치·활동 센서가 직접 연동되지 않습니다.
         </p>
       </div>
     </AppShell>

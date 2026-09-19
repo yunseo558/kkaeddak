@@ -3,8 +3,19 @@
 from fastapi import APIRouter, Request
 
 from kkaeddak.api.dependencies import CurrentSession, DatabaseSession
-from kkaeddak.schemas.ai import ExplanationCreate, ExplanationResponse
-from kkaeddak.services.ai import AiProvider, AiService, ExplanationAiRequest
+from kkaeddak.schemas.ai import (
+    ExplanationCreate,
+    ExplanationResponse,
+    ScheduleClassificationCreate,
+    ScheduleClassificationResponse,
+)
+from kkaeddak.services.ai import (
+    AiProvider,
+    AiService,
+    ExplanationAiRequest,
+    ScheduleCategoryCandidate,
+    ScheduleClassificationAiRequest,
+)
 
 router = APIRouter()
 
@@ -29,3 +40,36 @@ async def create_explanation(
         )
     )
     return ExplanationResponse(explanation=explanation, source=source)
+
+
+@router.post(
+    "/ai/schedule-classifications",
+    response_model=ScheduleClassificationResponse,
+    tags=["ai"],
+    summary="Classify a schedule title into one of the user's categories",
+)
+async def classify_schedule(
+    payload: ScheduleClassificationCreate,
+    current: CurrentSession,
+    database: DatabaseSession,
+    request: Request,
+) -> ScheduleClassificationResponse:
+    provider: AiProvider | None = request.app.state.ai_provider
+    result, source = await AiService(database, provider).classify_schedule(
+        ScheduleClassificationAiRequest(
+            title=payload.title,
+            categories=[
+                ScheduleCategoryCandidate(
+                    code=candidate.code,
+                    label=candidate.label,
+                    is_fallback=candidate.is_fallback,
+                )
+                for candidate in payload.categories
+            ],
+        )
+    )
+    return ScheduleClassificationResponse(
+        category_code=result.category_code,
+        confidence=result.confidence,
+        source=source,
+    )

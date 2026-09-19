@@ -122,6 +122,17 @@ async def _seeded_event_id(client: AsyncClient, session_id: str) -> str:
     return response.json()["items"][0]["id"]
 
 
+def _classification_payload(title: str) -> dict[str, object]:
+    return {
+        "title": title,
+        "categories": [
+            {"code": "CLASS", "label": "수업", "isFallback": False},
+            {"code": "IMPORTANT", "label": "시험·면접", "isFallback": False},
+            {"code": "OTHER", "label": "기타", "isFallback": True},
+        ],
+    }
+
+
 def _preparation_payload(event_id: str) -> dict[str, object]:
     return {
         "eventId": event_id,
@@ -150,6 +161,24 @@ def test_forbidden_field_detection_is_recursive_and_normalized() -> None:
     )
 
     assert fields == {"heartRate", "sensorEvents", "sleepStages"}
+
+
+@pytest.mark.anyio
+async def test_schedule_classification_uses_safe_deterministic_fallback(tmp_path: Path) -> None:
+    async with _api_harness(tmp_path) as (client, _):
+        session_id = await _create_demo(client)
+        response = await client.post(
+            "/api/v1/ai/schedule-classifications",
+            headers=_headers(session_id),
+            json=_classification_payload("카카오 1차 면접"),
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "categoryCode": "IMPORTANT",
+        "confidence": 0.9,
+        "source": "TEMPLATE",
+    }
 
 
 @pytest.mark.anyio

@@ -13,6 +13,22 @@ const baseInput = {
 };
 
 describe("calculateWakeRecommendation", () => {
+  it("adds a third safety step for a large sleep deficit with high activity and fatigue", () => {
+    const result = calculateWakeRecommendation({
+      ...baseInput,
+      healthInput: {
+        id: "sample",
+        source: "sample",
+        updatedAt: "2026-09-19T00:00:00Z",
+        sleepDurationMinutes: 300,
+        activityLevel: "high",
+        conditionLevel: "low",
+        recentFirstAlarmSucceeded: true,
+      },
+    });
+    expect(result.plan.steps).toHaveLength(3);
+    expect(result.plan.requiresApproval).toBe(true);
+  });
   it("keeps a regular successful morning to one haptic step", () => {
     const result = calculateWakeRecommendation({
       ...baseInput,

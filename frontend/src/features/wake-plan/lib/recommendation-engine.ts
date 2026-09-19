@@ -13,6 +13,7 @@ export type WakeRecommendation = {
 };
 
 type RecommendationInput = {
+  alarmIntervalMinutes?: number;
   completedPreparationMinutes: number;
   deadlineAt: string;
   healthInput: HealthInputRecord | null;
@@ -20,6 +21,7 @@ type RecommendationInput = {
   importance: Importance;
   maxProtocolLevel: number;
   personalSleepBaselineMinutes?: number;
+  preferredProtocolLevel?: number;
   preferredFirstChannel: string;
 };
 
@@ -32,9 +34,7 @@ function subtractMinutes(value: string, minutes: number) {
 }
 
 function koreanLocalDate(value: string) {
-  return new Date(
-    new Date(value).getTime() + KOREA_OFFSET_MILLISECONDS,
-  )
+  return new Date(new Date(value).getTime() + KOREA_OFFSET_MILLISECONDS)
     .toISOString()
     .slice(0, 10);
 }
@@ -67,6 +67,7 @@ export function calculateWakeRecommendation(
     ) {
       reasonCodes.push("SHORTER_SLEEP_THAN_BASELINE");
       riskScore += 1;
+      if (health.sleepDurationMinutes < baseline - 90) riskScore += 1;
     }
     if (health.activityLevel === "high") {
       reasonCodes.push("HIGH_ACTIVITY_DEVIATION");
@@ -101,12 +102,26 @@ export function calculateWakeRecommendation(
       ? "MEDIUM"
       : "HIGH";
   const recommendedLevel = riskScore === 0 ? 1 : riskScore <= 3 ? 2 : 3;
-  const protocolLevel = Math.max(
+  const preferredLevel = Math.max(
     1,
+    Math.min(input.preferredProtocolLevel ?? 1, input.maxProtocolLevel),
+  );
+  const protocolLevel = Math.max(
+    preferredLevel,
     Math.min(recommendedLevel, input.maxProtocolLevel),
   );
-  const offsets =
-    protocolLevel === 1 ? [0] : protocolLevel === 2 ? [0, 10] : [0, 8, 15];
+  const interval = Math.max(3, Math.min(30, input.alarmIntervalMinutes ?? 0));
+  const offsets = input.alarmIntervalMinutes
+    ? protocolLevel === 1
+      ? [0]
+      : protocolLevel === 2
+        ? [0, interval]
+        : [0, Math.ceil(interval / 2), interval]
+    : protocolLevel === 1
+      ? [0]
+      : protocolLevel === 2
+        ? [0, 10]
+        : [0, 8, 15];
   const channels =
     protocolLevel === 2
       ? [input.preferredFirstChannel, "FINAL_SAFETY"]

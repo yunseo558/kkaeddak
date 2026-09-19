@@ -37,7 +37,7 @@ export function MockProvider({ children }: { children: ReactNode }) {
   if (!ready) {
     return (
       <p aria-live="polite" className="p-6 text-sm text-muted">
-        데모 환경을 준비하고 있습니다.
+        깨딱을 준비하고 있습니다.
       </p>
     );
   }

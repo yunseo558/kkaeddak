@@ -7,7 +7,6 @@ import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
-import { BrandLogo } from "@/components/brand/brand-logo";
 import { AppShell } from "@/components/layout/app-shell";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 import { useOnlineStatus } from "@/lib/network/use-online-status";
@@ -50,7 +49,7 @@ export function DemoStart() {
     if (!online) {
       startLocal(scenarioId);
       setFallbackMessage(
-        "오프라인 상태라 로컬 전용 데모로 계속 진행합니다.",
+        "오프라인 상태입니다. 저장된 정보로 기상 계획을 계속 만듭니다.",
       );
       router.push(onboardingCompleted ? "/tomorrow" : "/onboarding");
       return;
@@ -66,7 +65,7 @@ export function DemoStart() {
     } catch {
       startLocal(scenarioId);
       setFallbackMessage(
-        "백엔드에 연결하지 못해 로컬 전용 데모로 계속 진행합니다.",
+        "서버에 연결하지 못했습니다. 저장된 정보로 기상 계획을 계속 만듭니다.",
       );
     }
 
@@ -74,17 +73,16 @@ export function DemoStart() {
   });
 
   return (
-    <AppShell currentStep="소개" eyebrow="40초 데모">
-      <div className="grid gap-7 lg:grid-cols-[minmax(0,1.06fr)_minmax(340px,0.94fr)] lg:items-start">
-        <section className="hero-copy pt-2 sm:pt-5">
-          <BrandLogo className="brand-logo-hero -ml-3 mb-5" priority />
+    <AppShell currentStep="소개" eyebrow="오늘의 기상 준비">
+      <div className="space-y-7">
+        <section className="hero-copy pt-2">
           <h1 className="max-w-3xl text-3xl font-bold leading-[1.15] tracking-tight sm:text-5xl">
             내일 일정과 오늘 상태에 맞춰
             <strong className="block">필요한 만큼만 깨웁니다</strong>
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-muted">
-            샘플 시나리오로 준비시간을 수면시간으로 바꾸고, 실제 기상 완료까지
-            이어지는 흐름을 확인해 보세요.
+            내일 일정과 준비 루틴을 분석해 수면을 더 지키고, 필요한
+            순간에만 알람을 울립니다.
           </p>
         </section>
 
@@ -133,14 +131,14 @@ export function DemoStart() {
             disabled={mutation.isPending}
             type="submit"
           >
-            {mutation.isPending ? "데모를 준비하는 중…" : "내일 기상 계획 만들기"}
+            {mutation.isPending ? "기상 계획을 만드는 중…" : "내일 기상 계획 만들기"}
           </button>
         </form>
 
-        <ul className="feature-list text-sm leading-6 text-muted sm:grid-cols-3 lg:col-span-2">
-          <li>실제 HealthKit이나 시스템 알람에 연결되지 않은 웹 데모입니다.</li>
-          <li>건강 시나리오 데이터는 브라우저 안에서만 처리합니다.</li>
-          <li>서버 연결이 없어도 로컬 전용 흐름을 완료할 수 있습니다.</li>
+        <ul className="feature-list text-sm leading-6 text-muted">
+          <li>일정과 수면 패턴을 바탕으로 기상 시간을 계산합니다.</li>
+          <li>필요할 때만 예비 알람을 추가해 불필요한 기상을 줄입니다.</li>
+          <li>네트워크가 끊겨도 저장된 계획은 계속 확인할 수 있습니다.</li>
         </ul>
       </div>
     </AppShell>
