@@ -186,6 +186,46 @@ async def test_repositories_cover_server_owned_entities(
         assert await execution_repository.get(execution.id) is None
 
 
+@pytest.mark.anyio
+async def test_expired_demo_cleanup_preserves_active_sessions(
+    database: async_sessionmaker[AsyncSession],
+) -> None:
+    now = datetime.now(UTC)
+    async with session_scope(database) as session:
+        expired = await DemoSessionRepository(session).add(
+            DemoSession(
+                expires_at=now - timedelta(minutes=1),
+                locale="ko-KR",
+                timezone="Asia/Seoul",
+                scenario_id="exam-morning",
+            )
+        )
+        active = await DemoSessionRepository(session).add(
+            DemoSession(
+                expires_at=now + timedelta(hours=1),
+                locale="ko-KR",
+                timezone="Asia/Seoul",
+                scenario_id="regular-class",
+            )
+        )
+        await UserProfileRepository(session).add(
+            UserProfile(
+                user_id=expired.id,
+                timezone="Asia/Seoul",
+                locale="ko-KR",
+                automation_mode=AutomationMode.RECOMMEND_ONLY,
+                revision=1,
+            )
+        )
+        deleted = await DemoSessionRepository(session).delete_expired(now)
+
+    async with database() as session:
+        assert deleted == 1
+        assert await session.get(DemoSession, expired.id) is None
+        assert await session.get(UserProfile, expired.id) is None
+        assert await session.get(DemoSession, active.id) is not None
+
+
 def _wake_plan(owner_id: UUID, revision: int, key: str) -> WakePlan:
     return WakePlan(
         owner_id=owner_id,

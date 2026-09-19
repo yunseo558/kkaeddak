@@ -54,4 +54,19 @@ npm run lint
 npm run typecheck
 npm test
 npm run build
+npm run test:e2e
 ```
+
+`test:e2e`는 실제 FastAPI·SQLite와 Next.js를 함께 실행해 세 시나리오, 새로고침 복구, 오프라인 폴백을 검증합니다. Chromium `1440×900`과 WebKit `390×844`에서 시작 화면의 스크린샷 회귀도 확인합니다. 최초 실행 전에 `npx playwright install chromium webkit`으로 브라우저를 준비합니다.
+
+## Vercel 배포
+
+루트의 `vercel.json`은 모노레포에서 `frontend` 앱과 생성 OpenAPI 클라이언트를 함께 빌드합니다. Vercel 프로젝트의 Root Directory는 저장소 루트로 유지하고 다음 환경변수를 설정합니다.
+
+```dotenv
+KKAEDDAK_BACKEND_ORIGIN=https://<railway-api-domain>
+NEXT_PUBLIC_KKAEDDAK_API_BASE_URL=
+NEXT_PUBLIC_API_MOCKING=disabled
+```
+
+브라우저는 같은 원본의 `/api/v1/*`를 호출하고 Next.js rewrite가 Railway API로 전달합니다. 직접 API 호출과 운영 점검을 위해 Railway의 `KKAEDDAK_CORS_ALLOWED_ORIGINS`에 실제 Vercel 도메인을 같이 설정합니다.

@@ -3,8 +3,6 @@
 import json
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-
 from kkaeddak.main import app
 from kkaeddak.schemas.session import DemoSessionCreate
 
@@ -62,18 +60,6 @@ def test_openapi_uses_standard_errors_and_required_idempotency_key() -> None:
         operation["responses"]["409"]["content"]["application/json"]["schema"]["$ref"]
         == "#/components/schemas/ErrorResponse"
     )
-
-
-def test_contract_route_is_explicitly_not_implemented() -> None:
-    with TestClient(app) as client:
-        response = client.get("/api/v1/health")
-
-    assert response.status_code == 501
-    assert response.json()["error"] == {
-        "code": "NOT_IMPLEMENTED",
-        "message": "This API contract is not implemented yet.",
-        "requestId": response.headers["X-Request-Id"],
-    }
 
 
 def test_openapi_snapshot_is_current() -> None:

@@ -14,6 +14,7 @@ def test_settings_have_safe_defaults() -> None:
     assert settings.debug is False
     assert settings.api_v1_prefix == "/api/v1"
     assert settings.log_level == "INFO"
+    assert settings.cors_allowed_origins == []
 
 
 @pytest.mark.parametrize("prefix", ["api/v1", "/api/v1/"])
@@ -43,6 +44,52 @@ def test_environment_variables_use_project_prefix(monkeypatch: pytest.MonkeyPatc
     assert settings.log_level == "WARNING"
 
 
+@pytest.mark.parametrize(
+    ("database_url", "expected"),
+    [
+        (
+            "postgres://user:pass@db.example/kkaeddak",
+            "postgresql+asyncpg://user:pass@db.example/kkaeddak",
+        ),
+        (
+            "postgresql://user:pass@db.example/kkaeddak",
+            "postgresql+asyncpg://user:pass@db.example/kkaeddak",
+        ),
+    ],
+)
+def test_database_url_normalizes_managed_postgres_urls(
+    database_url: str,
+    expected: str,
+) -> None:
+    settings = Settings(database_url=database_url, _env_file=None)
+
+    assert settings.database_url == expected
+
+
 def test_database_url_rejects_unsupported_driver() -> None:
     with pytest.raises(ValidationError, match=r"postgresql\+asyncpg or sqlite\+aiosqlite"):
-        Settings(database_url="postgresql://localhost/kkaeddak", _env_file=None)
+        Settings(database_url="mysql://localhost/kkaeddak", _env_file=None)
+
+
+def test_cors_origins_are_explicit_normalized_origins() -> None:
+    settings = Settings(
+        cors_allowed_origins=["https://kkaeddak.vercel.app/", "https://kkaeddak.vercel.app"],
+        _env_file=None,
+    )
+
+    assert settings.cors_allowed_origins == ["https://kkaeddak.vercel.app"]
+
+    with pytest.raises(ValidationError, match="explicit http"):
+        Settings(cors_allowed_origins=["*"], _env_file=None)
+
+
+def test_production_requires_https_cors_origin() -> None:
+    with pytest.raises(ValidationError, match="at least one explicit CORS origin"):
+        Settings(environment="production", _env_file=None)
+
+    with pytest.raises(ValidationError, match="must use https"):
+        Settings(
+            environment="production",
+            cors_allowed_origins=["http://localhost:3000"],
+            _env_file=None,
+        )

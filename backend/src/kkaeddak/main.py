@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from kkaeddak import __version__
 from kkaeddak.api.router import api_router
@@ -44,6 +45,21 @@ def create_app(
     app.state.ai_provider = ai_provider
     app.add_middleware(PrivacyFieldMiddleware)
     app.add_middleware(RequestIdMiddleware)
+    if resolved_settings.cors_allowed_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=resolved_settings.cors_allowed_origins,
+            allow_credentials=False,
+            allow_methods=["GET", "POST", "PUT", "PATCH", "OPTIONS"],
+            allow_headers=[
+                "Authorization",
+                "Content-Type",
+                "Idempotency-Key",
+                "X-Demo-Session",
+                "X-Request-Id",
+            ],
+            expose_headers=["X-Request-Id"],
+        )
     register_exception_handlers(app)
     app.include_router(api_router, prefix=resolved_settings.api_v1_prefix)
     return app

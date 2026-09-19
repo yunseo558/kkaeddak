@@ -57,7 +57,7 @@ describe("WakeStatus", () => {
     await user.click(screen.getByRole("button", { name: "다음 알람 실행" }));
     expect(await screen.findByText("2 / 2 단계")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "알람 종료" }));
-    await user.click(screen.getByRole("button", { name: "기상 활동 시작" }));
+    await user.click(await screen.findByRole("button", { name: "기상 활동 시작" }));
     expect(await screen.findByText("활동 확인 중")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "기상 완료 확인" }));
 
