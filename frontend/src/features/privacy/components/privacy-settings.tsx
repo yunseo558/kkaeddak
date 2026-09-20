@@ -91,9 +91,10 @@ export function PrivacySettings() {
             <span>
               <strong className="block">Gemini 개인화 분석 허용</strong>
               <span className="text-sm leading-6 text-muted">
-                수면 시간, 활동·컨디션 수준, 최근 기상 결과의 요약값만 보내며
-                일정 제목과 건강 원본은 전송하지 않습니다. 끄면 로컬 기본 분석을
-                사용합니다.
+                일정 분류 시 일정 이름·사용자 유형 이름을, 기상 계획 시
+                수면 시간·활동·컨디션·최근 기상 결과의 요약값을 보냅니다.
+                일정 메모·위치와 Apple 건강 원본은 전송하지 않습니다.
+                끄면 로컬 기본 분석을 사용합니다.
               </span>
             </span>
           </label>

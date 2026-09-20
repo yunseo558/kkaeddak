@@ -2,16 +2,18 @@ import type { HealthInputRecord } from "@/lib/storage/local-data";
 import type { CalendarEntry } from "../model/service-store";
 import { addDays, atTime } from "../model/service-policy";
 
-// External data is the only mocked boundary. This is not a HealthKit connection.
-// A native iOS adapter can implement the same read method after HealthKit consent.
-export interface SleepDataSource {
+// Both the iOS HealthKit adapter and the web demo adapter normalize their input
+// to this contract. The planner never needs to know which adapter supplied it.
+export interface HealthDataSource {
+  readonly sourceKind: "HEALTHKIT" | "HEALTHKIT_SAMPLE";
   read(input: {
     now: string;
     minutes: number;
     recentFirstAlarmSucceeded: boolean;
   }): Promise<HealthInputRecord>;
 }
-export const mockSleepSource: SleepDataSource = {
+export const healthKitDemoSource: HealthDataSource = {
+  sourceKind: "HEALTHKIT_SAMPLE",
   async read({ now, minutes, recentFirstAlarmSucceeded }) {
     return {
       id: "service-health",

@@ -245,7 +245,7 @@ class OpenAIResponsesProvider:
                 "Estimate fatigue only from the supplied aggregate signals. Decide when the "
                 "alarm sequence starts and how many alarms it needs. alarm_offsets_min are "
                 "minutes after the first alarm: start with 0, use unique ascending integers, "
-                "limit the sequence to five alarms and 90 minutes. Write a concise Korean "
+                "limit the sequence to four alarms and 90 minutes. Write a concise Korean "
                 "explanation grounded only in the supplied inputs. Recommend human review "
                 "when history is limited, fatigue is high, or the event is important."
             ),
@@ -262,7 +262,7 @@ class OpenAIResponsesProvider:
                     "alarm_offsets_min": {
                         "type": "array",
                         "minItems": 1,
-                        "maxItems": 5,
+                        "maxItems": 4,
                         "items": {"type": "integer", "minimum": 0, "maximum": 90},
                     },
                     "reason_codes": {

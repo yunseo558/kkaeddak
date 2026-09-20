@@ -20,6 +20,10 @@ import {
 import {
   connectCalendar,
   connectHealth,
+  generateServicePlan,
+  reclassifyCalendarWithAi,
+  saveServicePreferences,
+  saveServiceProfile,
   serviceAction,
 } from "@/features/service/lib/service-actions";
 
@@ -77,13 +81,20 @@ export function OnboardingFlow() {
     }
   };
 
-  const complete = handleSubmit((values) => {
+  const complete = handleSubmit(async (values) => {
     const nextValues = { ...values, automationMode: "suggest" as const };
     setDraft(nextValues);
     service.set({
       preferredAlarmCount: nextValues.preferredAlarmCount,
       keepSafetyAlarm: nextValues.keepSafetyAlarm,
     });
+    const completedSuccessfully = await serviceAction(async () => {
+      await saveServicePreferences();
+      await saveServiceProfile();
+      await reclassifyCalendarWithAi();
+      await generateServicePlan();
+    });
+    if (!completedSuccessfully) return;
     useCurrentFlowStore.getState().setDemoAuthenticated(true);
     setCompleted(true);
     setStoredStep(0);
@@ -297,8 +308,8 @@ export function OnboardingFlow() {
                 {service.calendarConnected ? <b>연동 완료</b> : <button aria-label="캘린더 연결하기" type="button" disabled={service.busy} onClick={() => void serviceAction(connectCalendar)}>연결하기</button>}
               </section>
               <section className="onboarding-connection-card">
-                <div><span aria-hidden="true">🌙</span><p><strong>수면 데이터</strong><small>Apple 건강 형식의 최근 수면 샘플</small></p></div>
-                {service.healthConnected ? <b>연동 완료</b> : <button aria-label="수면 데이터 연결하기" type="button" disabled={service.busy} onClick={() => void serviceAction(connectHealth)}>연결하기</button>}
+                <div><span aria-hidden="true">🌙</span><p><strong>Apple 건강</strong><small>HealthKit 연동과 동일한 분석 입력 샘플</small></p></div>
+                {service.healthConnected ? <b>샘플 연동 완료</b> : <button aria-label="Apple 건강 샘플 연결하기" type="button" disabled={service.busy} onClick={() => void serviceAction(connectHealth)}>샘플 연결</button>}
               </section>
               {service.message && <p role="alert" className="service-error">{service.message}</p>}
               <p className="text-xs leading-5 text-muted">나중에는 마이 › 연동 설정에서 상태를 확인할 수 있어요.</p>
@@ -307,6 +318,16 @@ export function OnboardingFlow() {
 
           {step === 4 ? (
             <div className="space-y-6">
+              {service.busy ? (
+                <p className="service-feedback" role="status">
+                  AI가 첫 일정과 기상 계획을 분석하고 있어요…
+                </p>
+              ) : null}
+              {service.message ? (
+                <p className="service-error" role="alert">
+                  {service.message}
+                </p>
+              ) : null}
               <div className="accent-panel p-5 text-sm leading-6">
                 <strong className="block">처음에는 항상 확인받아요</strong>
                 14일 동안은 계획을 승인한 뒤 알람을 설정해요. 학습이 끝나면 일반
@@ -338,9 +359,10 @@ export function OnboardingFlow() {
                 <span>
                   <strong className="block">AI 개인화 분석 동의 (필수)</strong>
                   <span className="text-sm leading-6 text-muted">
-                    피로도와 알람 계획을 계산하기 위해 수면 시간, 활동·컨디션 수준,
-                    최근 기상 성공·실패 횟수처럼 요약된 값만 Google Gemini로
-                    전송합니다. 일정 제목과 건강 원본은 보내지 않습니다.
+                    일정 유형 판단에는 일정 이름과 내가 정한 유형 이름을,
+                    피로도·알람 계획에는 수면 시간과 활동·컨디션, 최근
+                    기상 결과의 요약값만 Google Gemini로 전송합니다. 일정
+                    메모·위치와 Apple 건강 원본 샘플은 보내지 않습니다.
                   </span>
                   {errors.aiPersonalizationConsent ? (
                     <span className="mt-1 block text-sm text-danger">
@@ -391,6 +413,7 @@ export function OnboardingFlow() {
             ) : (
               <button
                 className="action-primary min-h-11 flex-1 px-5 py-3"
+                disabled={service.busy}
                 type="submit"
               >
                 설정 완료

@@ -1,6 +1,40 @@
 let context: AudioContext | null = null;
 let interval: ReturnType<typeof setInterval> | null = null;
 
+export type WebAlarmPermission = NotificationPermission | "unsupported";
+
+export function webAlarmPermission(): WebAlarmPermission {
+  return typeof window !== "undefined" && "Notification" in window
+    ? Notification.permission
+    : "unsupported";
+}
+
+export async function enableWebAlarmNotifications(): Promise<WebAlarmPermission> {
+  if (webAlarmPermission() === "unsupported") return "unsupported";
+  if (Notification.permission === "granted") return "granted";
+  return Notification.requestPermission();
+}
+
+async function showWebAlarmNotification() {
+  if (webAlarmPermission() !== "granted") return;
+  const options: NotificationOptions = {
+    body: "알람을 끄고 기상 여부를 알려주세요.",
+    icon: "/brand/kkaeddak-alarm-clock.png",
+    tag: "kkaeddak-wake-alarm",
+    requireInteraction: true,
+  };
+  if ("serviceWorker" in navigator) {
+    const registration = await navigator.serviceWorker
+      .getRegistration()
+      .catch(() => undefined);
+    if (registration) {
+      await registration.showNotification("깨딱 · 일어날 시간이에요", options);
+      return;
+    }
+  }
+  new Notification("깨딱 · 일어날 시간이에요", options);
+}
+
 export function stopAlarmSound() {
   if (interval) clearInterval(interval);
   interval = null;
@@ -29,4 +63,5 @@ export async function startAlarmSound() {
   };
   chime();
   interval = setInterval(chime, 1600);
+  void showWebAlarmNotification();
 }

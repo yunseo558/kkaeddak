@@ -3,7 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useServiceStore } from "../model/service-store";
 import { advanceAutomation, serviceAction } from "../lib/service-actions";
-import { startAlarmSound, stopAlarmSound } from "../lib/alarm-audio";
+import {
+  enableWebAlarmNotifications,
+  startAlarmSound,
+  stopAlarmSound,
+} from "../lib/alarm-audio";
 import { clockTime, localDate } from "../model/service-policy";
 
 export function DemoControls() {
@@ -25,6 +29,7 @@ export function DemoControls() {
         disabled={store.busy || !canRing}
         onClick={() =>
           void serviceAction(async () => {
+            await enableWebAlarmNotifications();
             await startAlarmSound();
             store.set({
               alarmStage: "ringing",
