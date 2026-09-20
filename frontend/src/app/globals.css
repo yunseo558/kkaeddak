@@ -2140,27 +2140,30 @@ body {
 .mypage-profile {
   display: grid;
   justify-items: center;
-  padding: 6px 0 0;
+  padding: 2px 0 0;
   text-align: center;
 }
 .mypage-avatar {
+  position: relative;
   display: grid;
-  width: 76px;
-  height: 76px;
-  margin-bottom: 12px;
+  overflow: hidden;
+  width: 112px;
+  height: 112px;
+  margin-bottom: 14px;
   place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.86);
-  border-radius: 28px;
-  background:
-    radial-gradient(circle at 35% 28%, #fff 0 8%, transparent 9%),
-    linear-gradient(145deg, #d7eca2, #b7d95a 48%, #ff8db4 130%);
+  border: 1px solid rgba(104, 116, 69, 0.12);
+  border-radius: 38px;
+  background: #fffdf9;
   box-shadow:
-    0 14px 30px rgba(66, 82, 34, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    0 16px 31px rgba(82, 72, 55, 0.12),
+    0 3px 8px rgba(82, 72, 55, 0.06);
 }
-.mypage-avatar svg {
-  width: 43px;
-  fill: rgba(38, 53, 22, 0.78);
+.mypage-avatar-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.08);
 }
 .mypage-profile h1 {
   margin: 0;
@@ -2251,8 +2254,8 @@ body {
 .mypage-menu summary,
 .mypage-links a {
   display: grid;
-  min-height: 70px;
-  grid-template-columns: 46px minmax(0, 1fr) auto;
+  min-height: 76px;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
@@ -2281,19 +2284,19 @@ body {
 }
 .mypage-menu-icon {
   display: grid;
-  width: 46px;
-  height: 46px;
+  width: 56px;
+  height: 56px;
   place-items: center;
   border: 0;
   background: transparent;
+  box-shadow: none;
 }
-.mypage-menu-icon svg {
+.mypage-menu-icon img {
   display: block;
-  width: 46px;
-  height: 46px;
-  overflow: visible;
-  fill: none;
-  stroke: none;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  user-select: none;
 }
 .mypage-chevron {
   color: #9ca096;
@@ -2914,7 +2917,6 @@ body {
 .home-plan-target > span,
 .service-tabbar-home-icon,
 .calendar-add-button,
-.mypage-avatar,
 .service-empty-icon,
 .connection-card-heading > span,
 .onboarding-connection-card > div > span {
@@ -2925,7 +2927,6 @@ body {
 
 .home-clay-status,
 .service-tabbar-home-icon,
-.mypage-avatar,
 .service-empty-icon,
 .connection-card-heading > span,
 .onboarding-connection-card > div > span {
