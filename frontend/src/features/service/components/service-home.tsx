@@ -8,6 +8,7 @@ import { BrandLogo } from "@/components/brand/brand-logo";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 import { useServiceStore } from "../model/service-store";
 import {
+  addDays,
   atTime,
   automationEligibility,
   clockTime,
@@ -93,6 +94,12 @@ export function ServiceHome() {
     const timer = setInterval(tick, 30_000);
     return () => clearInterval(timer);
   }, [store.calendarConnected]);
+  useEffect(() => {
+    if (!store.calendarConnected) return;
+    const targetDate = addDays(localDate(serviceNow()), 1);
+    if (store.plan?.localDate === targetDate) return;
+    void serviceAction(generateServicePlan);
+  }, [store.calendarConnected, store.plan?.localDate, store.virtualNow]);
 
   const dismissSplash = () => {
     setShowSplash(false);
