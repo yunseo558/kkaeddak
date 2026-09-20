@@ -49,6 +49,7 @@ Blueprint가 넣는 설정은 다음과 같습니다. 별도의 Web Service나 D
 | Runtime / Root Directory | Docker / `backend` |
 | Dockerfile / Build Context | `./Dockerfile` / `.` (Root Directory 기준) |
 | 시작 | `alembic upgrade head` 성공 후 Uvicorn 실행 |
+| Docker Command | `sh /app/start-render.sh` |
 | Health Check | `/api/v1/health` |
 | DB | PostgreSQL 16, API와 같은 리전, 내부 연결 |
 | 환경 | `KKAEDDAK_ENVIRONMENT=production`, `KKAEDDAK_DEBUG=false` |

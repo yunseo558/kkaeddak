@@ -107,7 +107,8 @@ cp .env.example .env
 웹사이트에서 입력할 값과 생성 순서는 [배포 안내](../DEPLOYMENT.md)를 따릅니다.
 
 API는 `backend/Dockerfile`로 빌드합니다. 무료 Web Service에서도 동작하도록
-시작 명령에서 `alembic upgrade head`가 성공한 뒤 Uvicorn을 실행합니다.
+`sh /app/start-render.sh`에서 `alembic upgrade head`가 성공한 뒤 Uvicorn을 실행합니다.
+복합 셸 명령을 Docker Command에 직접 넣지 않고 이미지에 포함된 스크립트로 실행합니다.
 `/api/v1/health`는 DB 연결과 마이그레이션 상태를 검사합니다.
 
 운영 필수 환경변수는 `KKAEDDAK_DATABASE_URL`, `KKAEDDAK_ENVIRONMENT=production`,
