@@ -65,10 +65,12 @@ export function createHealthKitMockSnapshot(input: {
 }): HealthKitSnapshot {
   const end = Date.parse(input.now) - 30 * 60_000;
   const awakeMinutes = Math.max(8, Math.round(input.sleepMinutes * 0.04));
+  const coreMinutes = Math.round(input.sleepMinutes * 0.52);
+  const deepMinutes = Math.round(input.sleepMinutes * 0.2);
   const stages: Array<[HealthKitSleepValue, number]> = [
-    ["HKCategoryValueSleepAnalysisAsleepCore", Math.round(input.sleepMinutes * 0.52)],
-    ["HKCategoryValueSleepAnalysisAsleepDeep", Math.round(input.sleepMinutes * 0.2)],
-    ["HKCategoryValueSleepAnalysisAsleepREM", Math.round(input.sleepMinutes * 0.28)],
+    ["HKCategoryValueSleepAnalysisAsleepCore", coreMinutes],
+    ["HKCategoryValueSleepAnalysisAsleepDeep", deepMinutes],
+    ["HKCategoryValueSleepAnalysisAsleepREM", input.sleepMinutes - coreMinutes - deepMinutes],
     ["HKCategoryValueSleepAnalysisAwake", awakeMinutes],
   ];
   let cursor = end - (input.sleepMinutes + awakeMinutes) * 60_000;
@@ -276,7 +278,7 @@ export function createMockCalendar(today: string): CalendarEntry[] {
     const startsAt = atTime(date, selected.time);
     events.push({
       clientId:
-        date === "2026-09-21"
+        events.length === 0
           ? "seed-regular-class"
           : `mock-calendar-${date}`,
       startsAt,

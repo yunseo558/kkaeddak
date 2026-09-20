@@ -32,6 +32,7 @@ describe("PrivacySettings", () => {
     await user.click(
       screen.getByRole("checkbox", { name: /집계 결과 서버 동기화 허용/ }),
     );
+    expect(useCurrentFlowStore.getState().onboardingDraft.outcomeSync).toBe(false);
     await user.click(screen.getByRole("button", { name: "동기화 설정 저장" }));
 
     expect(useCurrentFlowStore.getState().onboardingDraft.outcomeSync).toBe(true);

@@ -18,6 +18,8 @@ import {
   ensureFreshDemoSession,
   recoverDemoSession,
 } from "../lib/service-actions";
+import { useServiceStore } from "../model/service-store";
+import { sleepDurationLabel } from "../lib/sleep-baseline";
 import { clockTime } from "../model/service-policy";
 
 function outcomeCopy(outcome: HistoryReportDetail["outcome"]) {
@@ -56,10 +58,15 @@ function lastOccurredAt(step: HistoryReportDetail["alarmTimeline"][number]) {
 }
 
 export function ServiceHistoryDetail({ date }: { date: string }) {
+  const record = useServiceStore((state) => state.records.find((item) => item.date === date));
   const reportQuery = useQuery({
-    queryKey: ["wake-history-report", date],
+    queryKey: ["wake-history-report", date, record?.source],
     queryFn: async () => {
     const local = await getLocalWakeReport(date);
+    if (useServiceStore.getState().records.find((item) => item.date === date)?.source === "preview") {
+      // Preview outcomes are local samples and have no server report to fetch.
+      return { report: local ?? null, serverUnavailable: false };
+    }
     let server: HistoryReportDetail | null = null;
     let serverUnavailable = false;
     try {
@@ -122,6 +129,23 @@ export function ServiceHistoryDetail({ date }: { date: string }) {
           <div className="history-skeleton" aria-label="상세 기록 불러오는 중">
             {[0, 1, 2, 3].map((item) => <span key={item} />)}
           </div>
+        ) : !report && record?.source === "preview" ? (
+          <section className="service-section history-preview-card">
+            <span className="service-tag">학습 체험용 샘플</span>
+            <h2>14일 학습을 체험하기 위해 만든 기록이에요</h2>
+            <p className="service-muted">
+              실제로 알람을 실행한 결과가 아니라 자동 적용 조건을 체험하기 위한
+              샘플이에요. 서버 기상 결과로 전송하지 않아요.
+            </p>
+            <dl className="history-fact-grid">
+              <div><dt>샘플 결과</dt><dd>{record.outcome === "CONFIRMED_ON_TIME" ? "제시간 기상" : record.outcome === "CONFIRMED_LATE" ? "지각 기상" : "기상 미확인"}</dd></div>
+              <div><dt>샘플 알람 사용</dt><dd>{record.alarmStepsUsed ?? 1}개</dd></div>
+            </dl>
+            <p className="service-footnote">
+              이 기록은 데모의 자동 적용 판단에 반영돼요. 직접 알람을 체험한 기록에는
+              실제 실행 과정과 다음 추천의 변화가 표시돼요.
+            </p>
+          </section>
         ) : !report || !context ? (
           <section className="service-section history-legacy-card">
             <span className="service-tag">이전 기록</span>
@@ -171,6 +195,7 @@ export function ServiceHistoryDetail({ date }: { date: string }) {
               <h2>그날의 회복 신호와 최근 기록을 함께 봤어요</h2>
               <dl className="history-fact-grid history-fact-grid--two">
                 <div><dt>수면</dt><dd>{context.healthSummary?.restMinutes ? `${Math.floor(context.healthSummary.restMinutes / 60)}시간 ${context.healthSummary.restMinutes % 60}분` : "연결 전"}</dd></div>
+                <div><dt>평소 수면 기준</dt><dd>{context.healthSummary?.usualRestMinutes ? sleepDurationLabel(context.healthSummary.usualRestMinutes) : "기록 부족"}</dd></div>
                 <div><dt>활동량</dt><dd>{signalCopy(context.healthSummary?.activityLevel)}</dd></div>
                 <div><dt>컨디션</dt><dd>{signalCopy(context.healthSummary?.conditionLevel)}</dd></div>
                 <div><dt>최근 기록</dt><dd>성공 {context.historySignals.recentOnTimeCount} · 지각 {context.historySignals.recentLateCount} · 실패 {context.historySignals.recentMissedCount}</dd></div>

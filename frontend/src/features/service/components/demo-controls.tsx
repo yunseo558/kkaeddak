@@ -11,6 +11,8 @@ import {
 import { enableWebAlarmNotifications } from "../lib/alarm-audio";
 import { clockTime, localDate } from "../model/service-policy";
 
+import { SLEEP_PATTERNS, type SleepPattern } from "../lib/sleep-baseline";
+
 export function DemoControls() {
   const store = useServiceStore();
   const router = useRouter();
@@ -68,6 +70,19 @@ export function DemoControls() {
         14일 학습 후 자동 적용 확인
       </button>
       <label>
+        평소 수면 패턴
+        <select
+          aria-label="평소 수면 패턴"
+          value={store.sleepPattern}
+          disabled={store.busy}
+          onChange={(event) => store.set({ sleepPattern: event.target.value as SleepPattern })}
+        >
+          {Object.entries(SLEEP_PATTERNS).map(([value, pattern]) => (
+            <option key={value} value={value}>{pattern.label}</option>
+          ))}
+        </select>
+      </label>
+      <label>
         건강 샘플
         <select
           aria-label="건강 샘플"
@@ -81,7 +96,7 @@ export function DemoControls() {
         </select>
       </label>
       <p>
-        건강 샘플은 수면·활동·컨디션을 다음 자동화 실행에 반영합니다. 알람 재생에는 기기의 음량이
+        평소 패턴은 최근 14일 수면 샘플로, 건강 샘플은 오늘의 컨디션으로 다음 자동화 실행에 반영합니다. 알람 재생에는 기기의 음량이
         필요합니다.
       </p>
       {store.virtualNow && (

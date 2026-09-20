@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ActiveWakePlan } from "@/features/current-flow/model/current-flow-store";
 import type { components } from "@kkaeddak/api-client";
+import type { SleepPattern } from "../lib/sleep-baseline";
 import type { DailyOutcome } from "./service-policy";
 
 export type CalendarEntry = components["schemas"]["ScheduleEventInput"];
@@ -76,7 +77,9 @@ type ServiceState = {
   records: DailyOutcome[];
   plan: ServicePlan | null;
   sleepMinutes: number;
+  sleepPattern: SleepPattern;
   lastAutomationSlot: string | null;
+  lastPlannedDate: string | null;
   alarmRuntime: AlarmRuntimeState;
   preview: boolean;
   alarmStage: "idle" | "ringing" | "confirm";
@@ -101,7 +104,9 @@ const initial = {
   records: [],
   plan: null,
   sleepMinutes: 420,
+  sleepPattern: "regular",
   lastAutomationSlot: null,
+  lastPlannedDate: null,
   alarmRuntime: {
     planId: null,
     currentStepOrder: null,
@@ -140,7 +145,9 @@ export const useServiceStore = create<ServiceState>()(
         records,
         plan,
         sleepMinutes,
+        sleepPattern,
         lastAutomationSlot,
+        lastPlannedDate,
         alarmRuntime,
         preview,
       }) => ({
@@ -159,7 +166,9 @@ export const useServiceStore = create<ServiceState>()(
         records,
         plan,
         sleepMinutes,
+        sleepPattern,
         lastAutomationSlot,
+        lastPlannedDate,
         alarmRuntime,
         preview,
       }),

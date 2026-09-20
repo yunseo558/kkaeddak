@@ -30,7 +30,7 @@ import {
 const STEP_LABELS = ["기상 습관", "일정 유형", "알람 설정", "데이터 연동", "개인정보"];
 
 const STEP_FIELDS: Array<Array<keyof OnboardingValues>> = [
-  ["usualWakeTime", "recentFirstAlarmSucceeded"],
+  ["recentFirstAlarmSucceeded"],
   [],
   ["preferredAlarmCount", "keepSafetyAlarm"],
   [],
@@ -54,7 +54,6 @@ export function OnboardingFlow() {
     useState<LocalStorageMode>("persistent");
   const {
     control,
-    formState: { errors },
     getValues,
     handleSubmit,
     register,
@@ -146,19 +145,6 @@ export function OnboardingFlow() {
         >
           {step === 0 ? (
             <div className="space-y-6">
-              <label className="block font-semibold">
-                평소 기상 시각
-                <input
-                  className={inputClassName}
-                  type="time"
-                  {...register("usualWakeTime")}
-                />
-                {errors.usualWakeTime ? (
-                  <span className="mt-1 block text-sm text-danger">
-                    {errors.usualWakeTime.message}
-                  </span>
-                ) : null}
-              </label>
               <fieldset>
                 <legend className="font-semibold">
                   최근 첫 알람으로 일어났나요?

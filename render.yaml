@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+services:
+  - type: web
+    name: kkaeddak-api
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Free web services cannot run a separate pre-deploy command.
+    dockerCommand: sh /app/start-render.sh
+    healthCheckPath: /api/v1/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: KKAEDDAK_ENVIRONMENT
+        value: production
+      - key: KKAEDDAK_DEBUG
+        value: "false"
+      - key: KKAEDDAK_DATABASE_URL
+        fromDatabase:
+          name: kkaeddak-db
+          property: connectionString
+      - key: KKAEDDAK_CORS_ALLOWED_ORIGINS
+        sync: false
+
+databases:
+  - name: kkaeddak-db
+    plan: free
+    region: singapore
+    postgresMajorVersion: "16"
+    ipAllowList: []
