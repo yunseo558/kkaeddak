@@ -15,7 +15,7 @@ npm install
 npm run dev
 ```
 
-기본 주소는 `http://localhost:3000`입니다. `.env.local`에서 `NEXT_PUBLIC_API_MOCKING=enabled`를 사용하면 MSW가 데모 세션 API를 모킹합니다. 실제 백엔드를 사용할 때는 값을 `disabled`로 바꾸고 `KKAEDDAK_BACKEND_ORIGIN`을 설정합니다.
+기본 주소는 `http://localhost:3000`입니다. 기본값은 실제 백엔드 연결이며 `KKAEDDAK_BACKEND_ORIGIN`을 사용합니다. 격리된 프론트엔드 테스트에서만 `.env.local`의 `NEXT_PUBLIC_API_MOCKING=enabled`로 MSW 데모 API를 켭니다.
 
 ## API 계약
 

@@ -35,6 +35,11 @@ export function ServiceSleep() {
           </section>
         ) : (
           <>
+            <p className="service-footnote healthkit-source-note">
+              웹 데모는 HealthKit 어댑터와 동일한 깨딱 내부 데이터
+              계약에 샘플을 넣어 분석해요. iOS 정식 버전에서는 Apple 건강
+              권한 후 HealthKit 수면·활동 데이터로 전환됩니다.
+            </p>
             <section className="sleep-hero-card">
               <p>지난밤 수면</p>
               <strong>{hours}시간 {minutes ? `${minutes}분` : ""}</strong>

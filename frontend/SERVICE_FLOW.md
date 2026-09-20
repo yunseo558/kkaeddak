@@ -4,10 +4,10 @@
 
 1. “데모 버전으로 로그인” stores only a local demo-authenticated flag. The main screen then sends the user to the first-use survey, which records wake habits, per-schedule-type wake deadlines, alarm preferences, the daily planning time, and optional outcome-sync consent. The initial automation policy always asks for approval.
 2. `/calendar` imports varied sample events through October 30, 2026. It uses the existing anonymous-session API, saves the survey through the routine/profile APIs, and upserts imported or edited events through `schedule-events:batch`.
-3. Calendar titles are classified against the user's own schedule types through `POST /api/v1/ai/schedule-classifications`. The current safe template classifier is deterministic; the provider boundary can be replaced with a model without exposing calendar notes or health data. Users can override the category on each event.
-4. The home screen reads tomorrow's first event and its category from the backend. It derives the wake-complete deadline from that category's lead time, reads the mock sleep provider locally, and runs the recommendation engine. Health input is never sent to the backend.
+3. After explicit AI consent, calendar titles are classified against the user's own schedule types by Gemini through `POST /api/v1/ai/schedule-classifications`; deterministic classification remains the safe fallback. Only the title and category labels are transferred, never notes or locations. Users can override every result.
+4. The home screen reads tomorrow's first event and category from the backend. It derives the wake-complete deadline, reads the normalized health adapter locally, and sends only aggregate sleep/activity/condition signals to Gemini. A deterministic safety guard prevents the AI result from weakening learned or high-fatigue alarm minimums.
 5. Create, approve, edit and cancel actions use the existing wake-plan APIs with revisions. Calendar edits retire the old plan and calculate a replacement.
-6. The separate presentation controls play an actual Web Audio chime and move the virtual clock to the first alarm. Turning it off prompts for wake confirmation. The response updates local learning and the next recommendation; aggregate sync uses the existing consent-based outcome API.
+6. The separate presentation controls play an actual Web Audio chime, issue a browser system notification when permission is granted, and move the virtual clock to the first alarm. Turning it off prompts for wake confirmation. The response updates local learning and the next recommendation; aggregate sync uses the existing consent-based outcome API.
 7. “Next automation time” moves the virtual clock to the configured time and runs the same fetch/recommend/persist pipeline. The short-sleep sample includes high activity and low condition, yielding three alarm steps and approval.
 8. “After 14 days” adds explicitly marked preview records (without overwriting observed records), advances time, and runs the same eligibility policy. The full record provenance is visible in history and the presentation panel.
 
@@ -26,8 +26,8 @@ No elapsed-time graduation threshold existed in the repository. This implementat
 
 - Accounts still use the existing 24-hour anonymous-session backend. This is not email/Apple sign-in or durable multi-device identity.
 - Calendar sample import and app-side editing work against the actual backend. External calendar OAuth and provider writeback are not implemented.
-- Apple HealthKit is a native iOS/watchOS framework requiring entitlements and authorization. The web build uses `mockSleepSource`, behind a replaceable `SleepDataSource` interface. It does not claim HealthKit is connected.
-- Automatic checks currently run while the home screen is open, every 30 seconds. Browser sound requires user permission/interaction. Background or lock-screen alarms require native scheduling; this web build must not be relied on as a system alarm.
+- Apple HealthKit is a native iOS/watchOS framework requiring entitlements and authorization. `HealthDataSource` is the normalization seam: the web judging build injects sample values through `healthKitDemoSource`, while a native iOS adapter can normalize authorized HealthKit sleep/activity results into the same internal record without changing planning logic.
+- Automatic checks currently run while the home screen is open, every 30 seconds. The web build provides Web Audio plus browser system notifications after permission; reliable closed-browser or lock-screen alarms still require native scheduling.
 - The presentation clock is independent of wall-clock authentication/session expiry. Preview history is local and labeled; it is not uploaded as real aggregate outcomes.
 
 ## Verification

@@ -14,6 +14,19 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
 }));
 
+vi.mock("@/features/service/lib/service-actions", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("@/features/service/lib/service-actions")
+  >();
+  return {
+    ...actual,
+    generateServicePlan: vi.fn(async () => undefined),
+    reclassifyCalendarWithAi: vi.fn(async () => undefined),
+    saveServicePreferences: vi.fn(async () => undefined),
+    saveServiceProfile: vi.fn(async () => undefined),
+  };
+});
+
 beforeEach(() => {
   window.localStorage.clear();
   useCurrentFlowStore.getState().reset();

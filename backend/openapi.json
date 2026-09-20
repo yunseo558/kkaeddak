@@ -475,7 +475,7 @@
             "title": "Activitylevel"
           },
           "baseWakeLeadMin": {
-            "maximum": 240.0,
+            "maximum": 300.0,
             "minimum": 15.0,
             "title": "Basewakeleadmin",
             "type": "integer"
@@ -616,7 +616,7 @@
             "items": {
               "type": "integer"
             },
-            "maxItems": 5,
+            "maxItems": 4,
             "minItems": 1,
             "title": "Alarmoffsetsmin",
             "type": "array"

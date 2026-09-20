@@ -115,29 +115,33 @@ async def test_personalization_uses_private_structured_interaction() -> None:
     assert "gemini-test-secret" not in json.dumps(call["body"])
     assert call["body"]["response_format"]["mime_type"] == "application/json"
     schema = call["body"]["response_format"]["schema"]
-    assert schema["properties"]["alarm_offsets_min"]["maxItems"] == 5
+    assert schema["properties"]["alarm_offsets_min"]["maxItems"] == 4
     sent = json.loads(call["body"]["input"])
     assert sent["rest_minutes"] == 330
     assert "title" not in sent
 
 
 @pytest.mark.anyio
-async def test_schedule_titles_are_not_sent_without_separate_consent() -> None:
-    transport = RecordingTransport()
+async def test_schedule_classification_uses_only_allowed_user_categories() -> None:
+    expected = {"category_code": "IMPORTANT", "confidence": 0.94}
+    transport = RecordingTransport(_response(expected))
     provider = _provider(transport)
 
-    with pytest.raises(NotImplementedError, match="schedule-title transfer is disabled"):
-        await provider.classify_schedule(
-            ScheduleClassificationAiRequest(
-                title="개인 면접 일정",
-                categories=[
-                    ScheduleCategoryCandidate(code="IMPORTANT", label="시험·면접"),
-                    ScheduleCategoryCandidate(code="OTHER", label="기타", is_fallback=True),
-                ],
-            )
+    result = await provider.classify_schedule(
+        ScheduleClassificationAiRequest(
+            title="개인 면접 일정",
+            categories=[
+                ScheduleCategoryCandidate(code="IMPORTANT", label="시험·면접"),
+                ScheduleCategoryCandidate(code="OTHER", label="기타", is_fallback=True),
+            ],
         )
+    )
 
-    assert transport.calls == []
+    assert result == expected
+    sent = json.loads(transport.calls[0]["body"]["input"])
+    assert sent["title"] == "개인 면접 일정"
+    schema = transport.calls[0]["body"]["response_format"]["schema"]
+    assert schema["properties"]["category_code"]["enum"] == ["IMPORTANT", "OTHER"]
 
 
 def test_output_text_reads_direct_and_step_responses() -> None:
@@ -210,4 +214,4 @@ def test_create_app_prefers_gemini_when_configured() -> None:
     )
 
     assert isinstance(app.state.ai_provider, GeminiInteractionsProvider)
-    assert app.state.ai_provider.model_name == "gemini-2.5-flash-lite"
+    assert app.state.ai_provider.model_name == "gemini-3.5-flash-lite"

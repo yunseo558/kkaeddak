@@ -28,6 +28,36 @@ export const clockTime = (iso: string) =>
     hour12: false,
   });
 
+export function mergeAlarmOffsetsWithSafety(
+  modelOffsets: number[],
+  localSafetyOffsets: number[],
+  enforceSafety: boolean,
+) {
+  const normalizedModel = [...new Set(modelOffsets)]
+    .filter((offset) => Number.isInteger(offset) && offset >= 0 && offset <= 90)
+    .sort((a, b) => a - b)
+    .slice(0, 4);
+  const safeModel = normalizedModel[0] === 0 ? normalizedModel : [0];
+  if (!enforceSafety) return safeModel;
+
+  const normalizedSafety = [...new Set(localSafetyOffsets)]
+    .filter((offset) => Number.isInteger(offset) && offset >= 0 && offset <= 90)
+    .sort((a, b) => a - b)
+    .slice(0, 4);
+  const requiredCount = Math.max(1, normalizedSafety.length);
+  const requiredSpan = Math.max(0, normalizedSafety.at(-1) ?? 0);
+  const modelSpan = safeModel.at(-1) ?? 0;
+  if (safeModel.length >= requiredCount && modelSpan >= requiredSpan)
+    return safeModel;
+
+  const count = Math.min(4, Math.max(requiredCount, safeModel.length));
+  const span = Math.min(90, Math.max(requiredSpan, modelSpan));
+  if (count === 1) return [0];
+  return Array.from({ length: count }, (_, index) =>
+    index === count - 1 ? span : Math.round((span * index) / (count - 1)),
+  );
+}
+
 export function automationEligibility(input: {
   enrolledAt: string;
   now: string;

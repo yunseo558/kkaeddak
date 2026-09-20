@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   automationEligibility,
   addDays,
+  mergeAlarmOffsetsWithSafety,
   type DailyOutcome,
 } from "./service-policy";
 
@@ -73,5 +74,25 @@ describe("automation readiness", () => {
         })),
       }).automatic,
     ).toBe(false);
+  });
+});
+
+describe("alarm safety guard", () => {
+  it("keeps the AI plan when it meets the local safety floor", () => {
+    expect(mergeAlarmOffsetsWithSafety([0, 12, 25], [0, 10, 20], true)).toEqual([
+      0, 12, 25,
+    ]);
+  });
+
+  it("adds the learned safety count and span when the AI plan is weaker", () => {
+    expect(mergeAlarmOffsetsWithSafety([0, 10], [0, 10, 20], true)).toEqual([
+      0, 10, 20,
+    ]);
+  });
+
+  it("leaves a valid AI choice unchanged on a low-risk day", () => {
+    expect(mergeAlarmOffsetsWithSafety([0, 8], [0, 10, 20], false)).toEqual([
+      0, 8,
+    ]);
   });
 });

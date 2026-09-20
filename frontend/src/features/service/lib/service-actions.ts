@@ -23,9 +23,13 @@ import {
   atTime,
   automationEligibility,
   localDate,
+  mergeAlarmOffsetsWithSafety,
 } from "../model/service-policy";
 import { stopAlarmSound } from "./alarm-audio";
-import { createMockCalendar, mockSleepSource } from "./mock-integrations";
+import {
+  createMockCalendar,
+  healthKitDemoSource,
+} from "./mock-integrations";
 
 export const serviceNow = () =>
   useServiceStore.getState().virtualNow ?? new Date().toISOString();
@@ -40,10 +44,11 @@ function sessionId() {
 // Mutations are serialized across the phone UI and its presentation controls.
 export async function serviceAction(action: () => Promise<void>) {
   const store = useServiceStore.getState();
-  if (store.busy) return;
+  if (store.busy) return false;
   store.set({ busy: true, message: null });
   try {
     await action();
+    return true;
   } catch (error) {
     const status =
       typeof error === "object" && error && "status" in error
@@ -59,9 +64,34 @@ export async function serviceAction(action: () => Promise<void>) {
               ? error.message
               : "저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요.",
     });
+    return false;
   } finally {
     store.set({ busy: false });
   }
+}
+
+export async function saveServiceProfile() {
+  const headers = demoSessionHeaders(sessionId());
+  const profile = await apiClient.GET("/api/v1/profile", { headers });
+  if (!profile.data || profile.error)
+    throw new Error("프로필 설정을 불러오지 못했어요.");
+  const survey = useCurrentFlowStore.getState().onboardingDraft;
+  const saved = await apiClient.PUT("/api/v1/profile", {
+    headers,
+    body: {
+      timezone: "Asia/Seoul",
+      locale: "ko-KR",
+      revision: profile.data.revision,
+      automationMode:
+        survey.automationMode === "automatic"
+          ? "AUTO_ROUTINE_DAYS"
+          : "RECOMMEND_ONLY",
+      allowImportantEventDetection: true,
+      allowAggregateOutcomeSync: survey.outcomeSync,
+    },
+  });
+  if (!saved.data || saved.error)
+    throw new Error("프로필 설정을 저장하지 못했어요.");
 }
 
 export async function saveCalendarEvents(events: CalendarEntry[]) {
@@ -146,14 +176,14 @@ async function personalizeWakePlan(input: {
 
 async function classifyCalendarEvents(events: CalendarEntry[]) {
   const classifications: Record<string, ScheduleClassification> = {};
-  const byTitle = new Map<string, ScheduleClassification>();
+  const titles = [...new Set(events.map((event) => event.displayTitle ?? "일정"))];
+  const resolved = await Promise.all(
+    titles.map(async (title) => [title, await classifyScheduleTitle(title)] as const),
+  );
+  const byTitle = new Map(resolved);
   for (const event of events) {
-    const title = event.displayTitle ?? "일정";
-    let classification = byTitle.get(title);
-    if (!classification) {
-      classification = await classifyScheduleTitle(title);
-      byTitle.set(title, classification);
-    }
+    const classification = byTitle.get(event.displayTitle ?? "일정");
+    if (!classification) throw new Error("일정 유형을 판단하지 못했어요.");
     classifications[event.clientId] = classification;
   }
   return {
@@ -163,6 +193,61 @@ async function classifyCalendarEvents(events: CalendarEntry[]) {
     })),
     classifications,
   };
+}
+
+function classifyCalendarEventsLocally(events: CalendarEntry[]) {
+  const store = useServiceStore.getState();
+  const hints: Record<string, string[]> = {
+    CLASS: ["수업", "강의", "세미나", "전공", "교양"],
+    WORK: ["출근", "근무", "회의", "미팅", "프로젝트", "업무"],
+    IMPORTANT: ["시험", "면접", "발표", "공모전", "오디션"],
+    APPOINTMENT: ["약속", "브런치", "점심", "저녁", "병원", "예약", "치과"],
+    EXERCISE: ["운동", "헬스", "러닝", "요가", "필라테스", "PT"],
+  };
+  const fallback =
+    store.scheduleTypes.find((type) => type.isFallback) ?? store.scheduleTypes[0];
+  const classifications: Record<string, ScheduleClassification> = {};
+  const classifiedEvents = events.map((event) => {
+    const title = event.displayTitle ?? "";
+    const matched = store.scheduleTypes.find((type) =>
+      (hints[type.code] ?? []).some((hint) =>
+        title.toLocaleLowerCase("ko-KR").includes(hint.toLocaleLowerCase("ko-KR")),
+      ),
+    );
+    const category = matched ?? fallback;
+    classifications[event.clientId] = {
+      categoryCode: category.code,
+      confidence: matched ? 0.9 : 0.35,
+      source: "TEMPLATE",
+    };
+    return { ...event, category: category.code };
+  });
+  return { events: classifiedEvents, classifications };
+}
+
+export async function reclassifyCalendarWithAi() {
+  const store = useServiceStore.getState();
+  if (!store.calendarConnected || !store.events.length) return;
+  const nextEvent = [...store.events]
+    .filter((event) => event.startsAt > serviceNow())
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
+  if (!nextEvent) return;
+  const title = nextEvent.displayTitle ?? "일정";
+  const classification = await classifyScheduleTitle(title);
+  const matchingEvents = store.events.map((event) =>
+    (event.displayTitle ?? "일정") === title
+      ? { ...event, category: classification.categoryCode }
+      : event,
+  );
+  const classifications = { ...store.classifications };
+  for (const event of matchingEvents) {
+    if ((event.displayTitle ?? "일정") === title)
+      classifications[event.clientId] = classification;
+  }
+  await saveCalendarEvents(
+    matchingEvents.filter((event) => (event.displayTitle ?? "일정") === title),
+  );
+  store.set({ events: matchingEvents, classifications });
 }
 
 export async function saveServicePreferences() {
@@ -250,9 +335,10 @@ export async function connectCalendar() {
   if (!savedProfile.data || savedProfile.error)
     throw new Error("알람 설정을 저장하지 못했어요.");
   const today = localDate(serviceNow());
-  const { events, classifications } = await classifyCalendarEvents(
-    createMockCalendar(today),
-  );
+  const importedEvents = createMockCalendar(today);
+  const { events, classifications } = survey.aiPersonalizationConsent
+    ? await classifyCalendarEvents(importedEvents)
+    : classifyCalendarEventsLocally(importedEvents);
   await saveCalendarEvents(events);
   store.set({
     events,
@@ -267,7 +353,7 @@ export async function connectHealth() {
   const store = useServiceStore.getState();
   await localDataStore.put(
     "health-inputs",
-    await mockSleepSource.read({
+    await healthKitDemoSource.read({
       now: serviceNow(),
       minutes: store.sleepMinutes,
       recentFirstAlarmSucceeded:
@@ -370,7 +456,7 @@ export async function generateServicePlan() {
     (m) => m.id === "personal",
   );
   const healthInput = store.healthConnected
-    ? await mockSleepSource.read({
+    ? await healthKitDemoSource.read({
         now,
         minutes: store.sleepMinutes,
         recentFirstAlarmSucceeded: recent.length
@@ -460,7 +546,17 @@ export async function generateServicePlan() {
       // Provider/network failures must not prevent the scheduled alarm.
     }
   }
-  const personalizedOffsets = personalized?.alarmOffsetsMin;
+  const personalizedOffsets = personalized
+    ? mergeAlarmOffsetsWithSafety(
+        personalized.alarmOffsetsMin,
+        localRecommendation.plan.steps.map((step) => step.offsetMin),
+        failures > 0 ||
+          store.sleepMinutes < 360 ||
+          event.importance !== "NORMAL" ||
+          (learned?.parameters.recommendedAdvanceMinutes ?? 0) > 0 ||
+          (learned?.parameters.protocolAdjustment ?? 0) > 0,
+      )
+    : undefined;
   const lastPersonalizedOffset = personalizedOffsets?.at(-1) ?? 0;
   const candidatePlan = personalized
     ? {
@@ -472,14 +568,14 @@ export async function generateServicePlan() {
         ).toISOString(),
         finalAlarmAt: deadlineAt,
         importance: event.importance,
-        protocolLevel: Math.min(4, personalized.alarmOffsetsMin.length),
-        steps: personalized.alarmOffsetsMin.map((offsetMin, index) => ({
+        protocolLevel: Math.min(4, personalizedOffsets!.length),
+        steps: personalizedOffsets!.map((offsetMin, index) => ({
           order: index + 1,
           offsetMin,
           channel:
             store.keepSafetyAlarm &&
-            index === personalized.alarmOffsetsMin.length - 1 &&
-            personalized.alarmOffsetsMin.length > 1
+            index === personalizedOffsets!.length - 1 &&
+            personalizedOffsets!.length > 1
               ? "FINAL_SAFETY"
               : "PHONE_SOUND",
         })),

@@ -148,9 +148,23 @@ class GeminiInteractionsProvider:
         self,
         payload: ScheduleClassificationAiRequest,
     ) -> Mapping[str, Any]:
-        del payload
-        raise NotImplementedError(
-            "Gemini schedule-title transfer is disabled; deterministic classification is used"
+        category_codes = [candidate.code for candidate in payload.categories]
+        return await self._structured_response(
+            instructions=(
+                "Classify the calendar title into exactly one of the user-defined categories. "
+                "Use only the supplied category code. Infer meaning from the title and category "
+                "labels, and choose the fallback category when the meaning is genuinely unclear. "
+                "Do not invent schedule details. Confidence must reflect classification certainty."
+            ),
+            input_data=payload.model_dump(mode="json"),
+            schema=_object_schema(
+                {
+                    "category_code": {"type": "string", "enum": category_codes},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                },
+                ["category_code", "confidence"],
+            ),
+            max_output_tokens=120,
         )
 
     async def explain(self, payload: ExplanationAiRequest) -> Mapping[str, Any]:
@@ -219,7 +233,7 @@ class GeminiInteractionsProvider:
                 "only from the supplied aggregate signals; never make a medical diagnosis. "
                 "Decide the first alarm start and number of alarms. alarm_offsets_min are "
                 "minutes after the first alarm: unique ascending integers beginning with 0, "
-                "at most five alarms and at most 90 minutes. Explain the decision in concise "
+                "at most four alarms and at most 90 minutes. Explain the decision in concise "
                 "Korean using only the input. Require review for limited history, high fatigue, "
                 "or important events."
             ),
@@ -234,7 +248,7 @@ class GeminiInteractionsProvider:
                     "alarm_offsets_min": {
                         "type": "array",
                         "minItems": 1,
-                        "maxItems": 5,
+                        "maxItems": 4,
                         "items": {"type": "integer", "minimum": 0, "maximum": 90},
                     },
                     "reason_codes": {

@@ -40,7 +40,7 @@ class PersonalizedWakePlanCreate(APIModel):
     external_ai_consent: Literal[True]
     importance: Importance
     event_hour: int = Field(ge=0, le=23)
-    base_wake_lead_min: int = Field(ge=15, le=240)
+    base_wake_lead_min: int = Field(ge=15, le=300)
     rest_minutes: int | None = Field(default=None, ge=0, le=960)
     usual_rest_minutes: int | None = Field(default=None, ge=180, le=720)
     activity_level: Literal["low", "moderate", "high"] | None = None
@@ -58,7 +58,7 @@ class PersonalizedWakePlanCreate(APIModel):
 class PersonalizedWakePlanResponse(APIModel):
     fatigue_score: int = Field(ge=0, le=100)
     fatigue_level: Literal["LOW", "MEDIUM", "HIGH"]
-    alarm_offsets_min: list[int] = Field(min_length=1, max_length=5)
+    alarm_offsets_min: list[int] = Field(min_length=1, max_length=4)
     reason_codes: list[Code] = Field(min_length=1, max_length=8)
     explanation: str = Field(min_length=1, max_length=500)
     confidence: float = Field(ge=0, le=1)
