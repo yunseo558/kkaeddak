@@ -36,7 +36,7 @@ const initialDraft: OnboardingDraft = {
   recentFirstAlarmSucceeded: true,
   preferredAlarmCount: 2,
   keepSafetyAlarm: true,
-  automationMode: "automatic",
+  automationMode: "suggest",
   outcomeSync: false,
 };
 
@@ -85,6 +85,20 @@ export const useCurrentFlowStore = create<CurrentFlowState>()(
     }),
     {
       name: "kkaeddak-current-flow",
+      version: 1,
+      migrate: (persistedState, version) => {
+        const state = persistedState as CurrentFlowState;
+        if (version < 1) {
+          return {
+            ...state,
+            onboardingDraft: {
+              ...state.onboardingDraft,
+              automationMode: "suggest" as const,
+            },
+          };
+        }
+        return state;
+      },
       storage: createJSONStorage(() => window.localStorage),
       partialize: ({
         activeWakePlan,

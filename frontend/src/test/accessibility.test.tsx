@@ -14,6 +14,7 @@ import { useDemoSessionStore } from "@/features/demo-session/model/demo-session-
 import { WakeStatus } from "@/features/wake-flow/components/wake-status";
 
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
   useRouter: () => ({ push: vi.fn() }),
 }));
 

@@ -10,7 +10,15 @@ test("핵심 시작 화면이 뷰포트에서 유지된다", async ({ page }) =>
   await expect(page).toHaveScreenshot("splash.png", {
     animations: "disabled",
   });
-  await page.clock.runFor(2_000);
+  await page.clock.runFor(1_800);
+  await expect(
+    page.getByRole("heading", { name: "로그인 / 회원가입" }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "스플래시 건너뛰기" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "스플래시 건너뛰기" }).click();
   await expect(
     page.getByRole("heading", { name: "로그인 / 회원가입" }),
   ).toBeVisible();

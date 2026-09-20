@@ -3,23 +3,26 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
+import { useServiceStore } from "@/features/service/model/service-store";
 
 import { OnboardingFlow } from "./onboarding-flow";
 
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/onboarding",
   useRouter: () => ({ push }),
 }));
 
 beforeEach(() => {
   window.localStorage.clear();
   useCurrentFlowStore.getState().reset();
+  useServiceStore.getState().reset();
   push.mockReset();
 });
 
 describe("OnboardingFlow", () => {
-  it("completes only the four documented onboarding steps", async () => {
+  it("completes the onboarding flow including data connections", async () => {
     const user = userEvent.setup();
     render(<OnboardingFlow />);
 
@@ -37,6 +40,12 @@ describe("OnboardingFlow", () => {
 
     await user.click(screen.getByRole("button", { name: "다음" }));
     expect(
+      screen.getByRole("heading", { name: "데이터 연동" }),
+    ).toBeInTheDocument();
+
+    useServiceStore.getState().set({ calendarConnected: true });
+    await user.click(screen.getByRole("button", { name: "다음" }));
+    expect(
       screen.getByRole("heading", { name: "개인정보" }),
     ).toBeInTheDocument();
 
@@ -44,6 +53,9 @@ describe("OnboardingFlow", () => {
 
     expect(useCurrentFlowStore.getState().demoAuthenticated).toBe(true);
     expect(useCurrentFlowStore.getState().onboardingCompleted).toBe(true);
-    expect(push).toHaveBeenCalledWith("/calendar");
+    expect(
+      useCurrentFlowStore.getState().onboardingDraft.automationMode,
+    ).toBe("suggest");
+    expect(push).toHaveBeenCalledWith("/");
   });
 });

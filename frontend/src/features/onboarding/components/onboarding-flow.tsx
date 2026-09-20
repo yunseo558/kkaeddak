@@ -17,13 +17,19 @@ import {
   onboardingSchema,
   type OnboardingValues,
 } from "../model/onboarding-schema";
+import {
+  connectCalendar,
+  connectHealth,
+  serviceAction,
+} from "@/features/service/lib/service-actions";
 
-const STEP_LABELS = ["기상 습관", "일정 유형", "알람 설정", "개인정보"];
+const STEP_LABELS = ["기상 습관", "일정 유형", "알람 설정", "데이터 연동", "개인정보"];
 
 const STEP_FIELDS: Array<Array<keyof OnboardingValues>> = [
   ["usualWakeTime", "recentFirstAlarmSucceeded"],
   [],
   ["preferredAlarmCount", "keepSafetyAlarm"],
+  [],
   ["outcomeSync"],
 ];
 
@@ -39,7 +45,7 @@ export function OnboardingFlow() {
   );
   const setDraft = useCurrentFlowStore((state) => state.setOnboardingDraft);
   const setStoredStep = useCurrentFlowStore((state) => state.setOnboardingStep);
-  const [step, setStep] = useState(Math.min(Math.max(storedStep, 0), 3));
+  const [step, setStep] = useState(Math.min(Math.max(storedStep, 0), 4));
   const [storageMode, setStorageMode] =
     useState<LocalStorageMode>("persistent");
   const {
@@ -72,7 +78,7 @@ export function OnboardingFlow() {
   };
 
   const complete = handleSubmit((values) => {
-    const nextValues = { ...values, automationMode: "automatic" as const };
+    const nextValues = { ...values, automationMode: "suggest" as const };
     setDraft(nextValues);
     service.set({
       preferredAlarmCount: nextValues.preferredAlarmCount,
@@ -81,7 +87,7 @@ export function OnboardingFlow() {
     useCurrentFlowStore.getState().setDemoAuthenticated(true);
     setCompleted(true);
     setStoredStep(0);
-    router.push("/calendar");
+    router.push("/");
   });
 
   return (
@@ -101,7 +107,7 @@ export function OnboardingFlow() {
 
         <ol
           aria-label="초기 설정 진행률"
-          className="progress-rail mt-6 grid grid-cols-4 gap-1"
+          className="progress-rail mt-6 grid grid-cols-5 gap-1"
         >
           {STEP_LABELS.map((label, index) => (
             <li
@@ -191,6 +197,12 @@ export function OnboardingFlow() {
                   <span className="mt-1 block text-xs font-normal text-muted">
                     일정 시작 전 기상 완료 기준(분)
                   </span>
+                  {scheduleType.isFallback ? (
+                    <span className="mt-1 block text-xs font-normal leading-5 text-muted">
+                      AI가 캘린더 일정명을 다른 유형으로 구별하지 못했을 때
+                      적용하는 기본 유형이에요.
+                    </span>
+                  ) : null}
                   <input
                     className={inputClassName}
                     min={15}
@@ -275,6 +287,25 @@ export function OnboardingFlow() {
           ) : null}
 
           {step === 3 ? (
+            <div className="space-y-5 onboarding-connections">
+              <p className="text-sm leading-6 text-muted">
+                캘린더와 수면 기록을 연결해야 내일의 기상 시각을
+                계산할 수 있어요. 웹 데모에서는 샘플 데이터를 불러와요.
+              </p>
+              <section className="onboarding-connection-card">
+                <div><span aria-hidden="true">📅</span><p><strong>캘린더</strong><small>2026년 10월 30일까지의 샘플 일정</small></p></div>
+                {service.calendarConnected ? <b>연동 완료</b> : <button aria-label="캘린더 연결하기" type="button" disabled={service.busy} onClick={() => void serviceAction(connectCalendar)}>연결하기</button>}
+              </section>
+              <section className="onboarding-connection-card">
+                <div><span aria-hidden="true">🌙</span><p><strong>수면 데이터</strong><small>Apple 건강 형식의 최근 수면 샘플</small></p></div>
+                {service.healthConnected ? <b>연동 완료</b> : <button aria-label="수면 데이터 연결하기" type="button" disabled={service.busy} onClick={() => void serviceAction(connectHealth)}>연결하기</button>}
+              </section>
+              {service.message && <p role="alert" className="service-error">{service.message}</p>}
+              <p className="text-xs leading-5 text-muted">나중에는 마이 › 연동 설정에서 상태를 확인할 수 있어요.</p>
+            </div>
+          ) : null}
+
+          {step === 4 ? (
             <div className="space-y-6">
               <div className="accent-panel p-5 text-sm leading-6">
                 <strong className="block">처음에는 항상 확인받아요</strong>
@@ -325,9 +356,10 @@ export function OnboardingFlow() {
                 이전
               </button>
             ) : null}
-            {step < 3 ? (
+            {step < 4 ? (
               <button
                 className="action-primary min-h-11 flex-1 px-5 py-3"
+                disabled={step === 3 && !service.calendarConnected}
                 onClick={(event) => {
                   event.preventDefault();
                   void moveForward();

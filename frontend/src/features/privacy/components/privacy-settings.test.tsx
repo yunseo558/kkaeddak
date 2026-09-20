@@ -9,6 +9,7 @@ import { useDemoSessionStore } from "@/features/demo-session/model/demo-session-
 import { PrivacySettings } from "./privacy-settings";
 
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/settings/privacy",
   useRouter: () => ({ replace: vi.fn() }),
 }));
 

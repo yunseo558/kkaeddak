@@ -21,6 +21,16 @@ type HistorySummaryResponse = components["schemas"]["HistorySummaryResponse"];
 type ProfileResponse = components["schemas"]["ProfileResponse"];
 type ProfileUpdate = components["schemas"]["ProfileUpdate"];
 type RoutineProfileResponse = components["schemas"]["RoutineProfileResponse"];
+type RoutineProfileUpdate = components["schemas"]["RoutineProfileUpdate"];
+type ScheduleClassificationCreate =
+  components["schemas"]["ScheduleClassificationCreate"];
+type ScheduleClassificationResponse =
+  components["schemas"]["ScheduleClassificationResponse"];
+type ScheduleEventsBatchCreate =
+  components["schemas"]["ScheduleEventsBatchCreate"];
+type ScheduleEventsBatchResponse =
+  components["schemas"]["ScheduleEventsBatchResponse"];
+type ScheduleEventResponse = components["schemas"]["ScheduleEventResponse"];
 type ScheduleEventsResponse = components["schemas"]["ScheduleEventsResponse"];
 type WakePlanCreate = components["schemas"]["WakePlanCreate"];
 type WakePlanDecisionUpdate =
@@ -40,6 +50,12 @@ const wakePlans = new Map<string, WakePlanDetail>();
 const wakePlanIdempotency = new Map<string, string>();
 const wakeOutcomes = new Map<string, WakeOutcomeCreate>();
 const profiles = new Map<string, ProfileResponse>();
+const routines = new Map<string, RoutineProfileResponse>();
+const scheduleEvents = new Map<string, ScheduleEventResponse[]>();
+
+function getSessionId(request: Request) {
+  return request.headers.get("X-Demo-Session") ?? "local";
+}
 
 function getScenarioFromRequest(request: Request): ScenarioId {
   const sessionId = request.headers.get("X-Demo-Session");
@@ -47,7 +63,7 @@ function getScenarioFromRequest(request: Request): ScenarioId {
 }
 
 function getProfileFromRequest(request: Request): ProfileResponse {
-  const sessionId = request.headers.get("X-Demo-Session") ?? "local";
+  const sessionId = getSessionId(request);
   const stored = profiles.get(sessionId);
   if (stored) {
     return stored;
@@ -63,6 +79,42 @@ function getProfileFromRequest(request: Request): ProfileResponse {
   };
   profiles.set(sessionId, profile);
   return profile;
+}
+
+function getRoutineFromRequest(request: Request): RoutineProfileResponse {
+  const sessionId = getSessionId(request);
+  const stored = routines.get(sessionId);
+  if (stored) return stored;
+  const routine = createLocalTomorrowOverview(
+    getScenarioFromRequest(request),
+  ).routine;
+  routines.set(sessionId, routine);
+  return routine;
+}
+
+function classifyMockSchedule(
+  body: ScheduleClassificationCreate,
+): ScheduleClassificationResponse {
+  const normalized = body.title.toLocaleLowerCase("ko-KR");
+  const keywordGroups: Array<[string, string[]]> = [
+    ["IMPORTANT", ["시험", "고사", "면접", "발표", "경진대회"]],
+    ["CLASS", ["수업", "강의", "세미나"]],
+    ["WORK", ["회의", "업무", "출근", "미팅"]],
+    ["APPOINTMENT", ["약속", "예약", "브런치"]],
+    ["EXERCISE", ["운동", "헬스", "pt", "필라테스"]],
+  ];
+  const matchedCode = keywordGroups.find(([, keywords]) =>
+    keywords.some((keyword) => normalized.includes(keyword)),
+  )?.[0];
+  const matched = body.categories.find((item) => item.code === matchedCode);
+  const fallback = body.categories.find((item) => item.isFallback);
+  const selected = matched ?? fallback ?? body.categories[0];
+
+  return {
+    categoryCode: selected?.code ?? "OTHER",
+    confidence: matched ? 0.92 : 0.45,
+    source: "TEMPLATE",
+  };
 }
 
 export const handlers = [
@@ -85,11 +137,20 @@ export const handlers = [
   ),
   http.get<never, never, RoutineProfileResponse>(
     "/api/v1/routines",
-    ({ request }) => {
-      const overview = createLocalTomorrowOverview(
-        getScenarioFromRequest(request),
-      );
-      return HttpResponse.json(overview.routine);
+    ({ request }) => HttpResponse.json(getRoutineFromRequest(request)),
+  ),
+  http.put<never, RoutineProfileUpdate, RoutineProfileResponse>(
+    "/api/v1/routines",
+    async ({ request }) => {
+      const body = await request.json();
+      const sessionId = getSessionId(request);
+      const updated: RoutineProfileResponse = {
+        ...body,
+        revision: body.revision + 1,
+        updatedAt: new Date().toISOString(),
+      };
+      routines.set(sessionId, updated);
+      return HttpResponse.json(updated);
     },
   ),
   http.get<never, never, ProfileResponse>(
@@ -113,14 +174,45 @@ export const handlers = [
   http.get<never, never, ScheduleEventsResponse>(
     "/api/v1/schedule-events",
     ({ request }) => {
-      const overview = createLocalTomorrowOverview(
+      const url = new URL(request.url);
+      const from = url.searchParams.get("from");
+      const to = url.searchParams.get("to");
+      const stored = scheduleEvents.get(getSessionId(request));
+      const seeded = createLocalTomorrowOverview(
         getScenarioFromRequest(request),
-      );
+      ).event;
+      const items = stored ?? (seeded ? [{ ...seeded, id: seeded.clientId }] : []);
       return HttpResponse.json({
-        items: overview.event ? [overview.event] : [],
+        items: items.filter(
+          (item) =>
+            (!from || item.startsAt >= from) && (!to || item.startsAt < to),
+        ),
         nextCursor: null,
       });
     },
+  ),
+  http.post<never, ScheduleEventsBatchCreate, ScheduleEventsBatchResponse>(
+    "/api/v1/schedule-events:batch",
+    async ({ request }) => {
+      const body = await request.json();
+      scheduleEvents.set(
+        getSessionId(request),
+        body.events.map((event) => ({ ...event, id: event.clientId })),
+      );
+      return HttpResponse.json(
+        { accepted: body.events.length, rejected: [] },
+        { status: 201 },
+      );
+    },
+  ),
+  http.post<
+    never,
+    ScheduleClassificationCreate,
+    ScheduleClassificationResponse
+  >(
+    "/api/v1/ai/schedule-classifications",
+    async ({ request }) =>
+      HttpResponse.json(classifyMockSchedule(await request.json())),
   ),
   http.post<never, PreparationSuggestionCreate, PreparationSuggestionsResponse>(
     "/api/v1/preparation-suggestions",
