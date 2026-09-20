@@ -4,9 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { AppShell } from "@/components/layout/app-shell";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 import { useServiceStore } from "../model/service-store";
 import {
+  addDays,
   atTime,
   automationEligibility,
   clockTime,
@@ -22,6 +24,7 @@ import {
 import { startAlarmSound, stopAlarmSound } from "../lib/alarm-audio";
 
 const subscribeHydration = () => () => {};
+let splashShownInRuntime = false;
 
 export function ServiceHome() {
   const ready = useSyncExternalStore(
@@ -29,11 +32,25 @@ export function ServiceHome() {
     () => true,
     () => false,
   );
+  const [showSplash, setShowSplash] = useState(() => !splashShownInRuntime);
   const [edit, setEdit] = useState(false);
   const [time, setTime] = useState("");
   const store = useServiceStore();
+  const authenticated = useCurrentFlowStore((s) => s.demoAuthenticated);
   const completed = useCurrentFlowStore((s) => s.onboardingCompleted);
   const survey = useCurrentFlowStore((s) => s.onboardingDraft);
+  useEffect(() => {
+    if (!showSplash) return;
+    splashShownInRuntime = true;
+    const reducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    const timer = window.setTimeout(
+      () => setShowSplash(false),
+      reducedMotion ? 500 : 1600,
+    );
+    return () => window.clearTimeout(timer);
+  }, [showSplash]);
   useEffect(
     () => () => {
       stopAlarmSound();
@@ -77,52 +94,112 @@ export function ServiceHome() {
     const timer = setInterval(tick, 30_000);
     return () => clearInterval(timer);
   }, [store.calendarConnected]);
+  useEffect(() => {
+    if (!store.calendarConnected) return;
+    const targetDate = addDays(localDate(serviceNow()), 1);
+    if (store.plan?.localDate === targetDate) return;
+    void serviceAction(generateServicePlan);
+  }, [store.calendarConnected, store.plan?.localDate, store.virtualNow]);
 
-  if (!ready)
+  const dismissSplash = () => {
+    setShowSplash(false);
+  };
+
+  if (!ready || showSplash)
     return (
-      <AppShell currentStep="소개">
-        <p className="service-muted">불러오는 중…</p>
+      <AppShell currentStep="소개" immersive>
+        <button
+          aria-label="스플래시 건너뛰기"
+          className="splash-screen"
+          data-testid="splash-screen"
+          onClick={dismissSplash}
+          type="button"
+        >
+          <Image
+            alt="일정과 수면 패턴을 분석해 알람을 준비하는 깨딱"
+            className="splash-artwork"
+            height={1672}
+            priority
+            src="/brand/kkaeddak-splash.png"
+            width={941}
+          />
+        </button>
+      </AppShell>
+    );
+  if (!authenticated)
+    return (
+      <AppShell currentStep="소개" immersive>
+        <div className="auth-screen">
+          <div className="auth-brand">
+            <BrandLogo className="auth-logo" priority />
+            <p>내일 아침을 알아서 준비하는 AI 기상 에이전트</p>
+          </div>
+          <div className="auth-access">
+            <h1>로그인 / 회원가입</h1>
+            <button
+              className="auth-button"
+              onClick={() =>
+                useCurrentFlowStore.getState().setDemoAuthenticated(true)
+              }
+              type="button"
+            >
+              데모 버전으로 로그인
+            </button>
+            <p className="auth-upcoming">
+              카카오 · Google · Apple 계정 연동은 준비 중이에요.
+            </p>
+            <p className="auth-terms">
+              계속하면 깨딱의 이용약관과 개인정보 처리방침에 동의하게 됩니다.
+            </p>
+          </div>
+        </div>
       </AppShell>
     );
   if (!completed)
     return (
       <AppShell currentStep="소개">
-        <div className="welcome-screen">
-          <div className="morning-mark" aria-hidden="true">
-            <Image
-              alt=""
-              height={560}
-              priority
-              src="/brand/kkaeddak-alarm-clock.png"
-              width={600}
-            />
-          </div>
-          <p className="service-kicker">나에게 맞는 아침</p>
-          <h1>
-            몇 시에 일어나야 할지,
-            <br />
-            매일 고민하지 않도록.
-          </h1>
-          <p className="service-muted">
-            준비하는 시간과 일정을 알려주세요.
-            <br />
-            내일 필요한 알람을 함께 정할게요.
-          </p>
-          <div className="welcome-steps">
-            <span>
-              01 <b>기상 습관 설정</b>
-            </span>
-            <span>
-              02 <b>캘린더 연결</b>
-            </span>
-            <span>
-              03 <b>첫 기상 계획 확인</b>
-            </span>
-          </div>
-          <Link className="service-primary" href="/onboarding">
-            시작하기
-          </Link>
-          <p className="service-footnote">약 1분이면 설정할 수 있어요</p>
+        <div className="setup-home">
+          <header className="service-heading">
+            <div>
+              <p className="service-muted">처음 오셨군요</p>
+              <h1>내일 아침을 준비해볼까요?</h1>
+            </div>
+            <span className="service-tag">설정 전</span>
+          </header>
+          <section className="setup-card">
+            <div className="setup-icon" aria-hidden="true">
+              <Image
+                alt=""
+                height={560}
+                priority
+                src="/brand/kkaeddak-alarm-clock.png"
+                width={600}
+              />
+            </div>
+            <p className="service-kicker">첫 기상 계획</p>
+            <h2>먼저 기본 설정이 필요해요</h2>
+            <p className="service-muted">
+              평소 기상 습관과 일정 유형을 알려주면 내일 필요한 알람을
+              계산할게요.
+            </p>
+            <Link className="service-primary" href="/onboarding">
+              설정하러 가기
+            </Link>
+          </section>
+          <section className="setup-preview" aria-label="설정 후 제공 기능">
+            <div>
+              <span>01</span>
+              <p>캘린더 일정 유형 판단</p>
+            </div>
+            <div>
+              <span>02</span>
+              <p>맞춤 기상 시각 계산</p>
+            </div>
+            <div>
+              <span>03</span>
+              <p>기상 결과 학습</p>
+            </div>
+          </section>
         </div>
       </AppShell>
     );
@@ -135,8 +212,8 @@ export function ServiceHome() {
           <p className="service-muted">
             첫 일정의 유형을 판단해 필요한 기상 시각을 계산할게요.
           </p>
-          <Link className="service-primary" href="/calendar">
-            캘린더 연결하기
+          <Link className="service-primary" href="/settings/connections">
+            연동 설정으로 가기
           </Link>
         </section>
       </AppShell>
@@ -165,7 +242,7 @@ export function ServiceHome() {
           : "확인을 기다리고 있어요";
   return (
     <AppShell currentStep="계획">
-      <div className="service-home">
+      <div className="service-home service-home-dashboard">
         <header className="service-heading">
           <div>
             <p className="service-muted">
@@ -236,7 +313,13 @@ export function ServiceHome() {
           <section className="service-plan">
             <div className="service-row">
               <span className="service-kicker">{status}</span>
-              <span className="service-dot" />
+              <span className="home-clay-status" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 4.8 4.4 7.2M17 4.8l2.6 2.4" />
+                  <circle cx="12" cy="13" r="6.5" />
+                  <path d="M12 9.5V13l2.4 1.5M8.5 19.2 7 21M15.5 19.2 17 21" />
+                </svg>
+              </span>
             </div>
             <p className="service-clock">
               {plan ? clockTime(plan.firstAlarmAt) : "— : —"}
@@ -246,6 +329,21 @@ export function ServiceHome() {
                 ? `${plan.localDate.slice(5).replace("-", "/")} · ${plan.steps.length}개의 알람`
                 : "내일 일정을 확인해 주세요"}
             </p>
+            {plan && (
+              <div className="home-plan-target">
+                <span aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <rect x="3.5" y="5.5" width="17" height="15" rx="3" />
+                    <path d="M7.5 3.5v4M16.5 3.5v4M3.5 10h17" />
+                  </svg>
+                </span>
+                <div>
+                  <small>내일 첫 일정 · {plan.scheduleTypeLabel}</small>
+                  <strong>{plan.eventTitle}</strong>
+                </div>
+                <time>{clockTime(plan.eventAt)}</time>
+              </div>
+            )}
             {plan && (
               <div className="alarm-times">
                 {plan.steps.map((step, index) => (
@@ -350,13 +448,22 @@ export function ServiceHome() {
           </section>
         )}
         {plan && (
-          <section className="service-section">
-            <h2>이렇게 정했어요</h2>
+          <section className="service-section home-reason-card">
+            <div className="service-row">
+              <h2>이렇게 정했어요</h2>
+              <span className="home-ai-badge">AI 분석</span>
+            </div>
             <p className="service-muted">{plan.reason}</p>
+            <div className="home-signal-grid" aria-label="기상 계획 판단 기준">
+              <div><span>일정</span><strong>{plan.scheduleTypeLabel}</strong></div>
+              <div><span>수면</span><strong>{Math.floor(plan.sleepMinutes / 60)}시간 {plan.sleepMinutes % 60}분</strong></div>
+              <div><span>준비</span><strong>{plan.wakeLeadMinutes}분</strong></div>
+            </div>
             {!approved && plan.status === "PROPOSED" && (
               <p className="service-footnote">
-                처음에는 함께 확인해요. 충분한 기록이 쌓이면 동의한 일반 일정은
-                자동으로 설정돼요.
+                {survey.automationMode === "automatic"
+                  ? "14일 동안은 함께 확인해요. 학습 후에도 수정·취소할 수 있어요."
+                  : "현재는 매일 승인한 뒤 적용해요. 자동 적용은 마이에서 선택할 수 있어요."}
               </p>
             )}
           </section>
@@ -383,7 +490,7 @@ export function ServiceHome() {
         <section className="service-section">
           <div className="service-row">
             <h2>나의 수면</h2>
-            <Link href="/calendar">연결 관리</Link>
+            <Link href="/sleep">자세히</Link>
           </div>
           <strong className="sleep-summary">
             {store.healthConnected

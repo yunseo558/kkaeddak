@@ -1,8 +1,8 @@
 # Daily service flow
 
-`/` is the service entry point. The old scenario picker remains at `/demo` for regression testing, with no link from the service UI.
+`/` is the service entry point. A first-visit splash leads to a demo login screen, then to the setup-required home state. The old scenario picker remains at `/demo` for regression testing, with no link from the service UI.
 
-1. First-use survey records wake habits, per-schedule-type wake deadlines, alarm preferences, the daily planning time, and optional outcome-sync consent. The initial automation policy always asks for approval.
+1. “데모 버전으로 로그인” stores only a local demo-authenticated flag. The main screen then sends the user to the first-use survey, which records wake habits, per-schedule-type wake deadlines, alarm preferences, the daily planning time, and optional outcome-sync consent. The initial automation policy always asks for approval.
 2. `/calendar` imports varied sample events through October 30, 2026. It uses the existing anonymous-session API, saves the survey through the routine/profile APIs, and upserts imported or edited events through `schedule-events:batch`.
 3. Calendar titles are classified against the user's own schedule types through `POST /api/v1/ai/schedule-classifications`. The current safe template classifier is deterministic; the provider boundary can be replaced with a model without exposing calendar notes or health data. Users can override the category on each event.
 4. The home screen reads tomorrow's first event and its category from the backend. It derives the wake-complete deadline from that category's lead time, reads the mock sleep provider locally, and runs the recommendation engine. Health input is never sent to the backend.

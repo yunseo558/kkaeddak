@@ -36,12 +36,13 @@ const initialDraft: OnboardingDraft = {
   recentFirstAlarmSucceeded: true,
   preferredAlarmCount: 2,
   keepSafetyAlarm: true,
-  automationMode: "automatic",
+  automationMode: "suggest",
   outcomeSync: false,
 };
 
 type CurrentFlowState = {
   activeWakePlan: ActiveWakePlan | null;
+  demoAuthenticated: boolean;
   onboardingCompleted: boolean;
   onboardingDraft: OnboardingDraft;
   onboardingStep: number;
@@ -49,6 +50,7 @@ type CurrentFlowState = {
   wakeResult: WakeResult | null;
   reset: () => void;
   setActiveWakePlan: (plan: ActiveWakePlan | null) => void;
+  setDemoAuthenticated: (authenticated: boolean) => void;
   setOnboardingCompleted: (completed: boolean) => void;
   setOnboardingDraft: (draft: OnboardingDraft) => void;
   setOnboardingStep: (step: number) => void;
@@ -58,6 +60,7 @@ type CurrentFlowState = {
 
 const initialState = {
   activeWakePlan: null,
+  demoAuthenticated: false,
   onboardingCompleted: false,
   onboardingDraft: initialDraft,
   onboardingStep: 0,
@@ -71,6 +74,8 @@ export const useCurrentFlowStore = create<CurrentFlowState>()(
       ...initialState,
       reset: () => set(initialState),
       setActiveWakePlan: (activeWakePlan) => set({ activeWakePlan }),
+      setDemoAuthenticated: (demoAuthenticated) =>
+        set({ demoAuthenticated }),
       setOnboardingCompleted: (onboardingCompleted) =>
         set({ onboardingCompleted }),
       setOnboardingDraft: (onboardingDraft) => set({ onboardingDraft }),
@@ -80,9 +85,24 @@ export const useCurrentFlowStore = create<CurrentFlowState>()(
     }),
     {
       name: "kkaeddak-current-flow",
+      version: 1,
+      migrate: (persistedState, version) => {
+        const state = persistedState as CurrentFlowState;
+        if (version < 1) {
+          return {
+            ...state,
+            onboardingDraft: {
+              ...state.onboardingDraft,
+              automationMode: "suggest" as const,
+            },
+          };
+        }
+        return state;
+      },
       storage: createJSONStorage(() => window.localStorage),
       partialize: ({
         activeWakePlan,
+        demoAuthenticated,
         editingPlanId,
         onboardingCompleted,
         onboardingDraft,
@@ -90,6 +110,7 @@ export const useCurrentFlowStore = create<CurrentFlowState>()(
         wakeResult,
       }) => ({
         activeWakePlan,
+        demoAuthenticated,
         editingPlanId,
         onboardingCompleted,
         onboardingDraft,

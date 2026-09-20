@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { BrandLogo } from "@/components/brand/brand-logo";
@@ -15,9 +16,16 @@ type AppShellProps = {
   children: ReactNode;
   currentStep: AppStep;
   eyebrow?: string;
+  immersive?: boolean;
 };
 
-export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
+export function AppShell({
+  children,
+  currentStep,
+  eyebrow,
+  immersive = false,
+}: AppShellProps) {
+  const pathname = usePathname();
   const online = useOnlineStatus();
   const connected = useServiceStore((s) => s.calendarConnected);
   const virtualNow = useServiceStore((s) => s.virtualNow);
@@ -56,26 +64,31 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
             </div>
           </div>
 
-          <div className="app-frame" data-flow-step={currentStep}>
-            <header className="site-header mx-5 flex items-center justify-between py-2">
-              <Link
-                aria-label="깨딱 홈"
-                className="inline-flex min-h-11 items-center"
-                href="/"
-              >
-                <BrandLogo className="brand-logo-header" priority />
-              </Link>
-              <Link
-                aria-label="개인정보 설정"
-                className="header-icon-button"
-                href="/settings"
-              >
-                <svg aria-hidden="true" viewBox="0 0 24 24">
-                  <path d="M12 15.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5Z" />
-                  <path d="M19.4 13.5a7.8 7.8 0 0 0 .05-3l1.6-1.25-2-3.46-1.9.77a8.1 8.1 0 0 0-2.6-1.5L14.25 3h-4.5l-.3 2.06a8.1 8.1 0 0 0-2.6 1.5l-1.9-.77-2 3.46 1.6 1.25a7.8 7.8 0 0 0 .05 3L3 14.75l2 3.46 1.9-.77a8.1 8.1 0 0 0 2.55 1.5l.3 2.06h4.5l.3-2.06a8.1 8.1 0 0 0 2.55-1.5l1.9.77 2-3.46-1.6-1.25Z" />
-                </svg>
-              </Link>
-            </header>
+          <div
+            className={`app-frame${immersive ? " app-frame--immersive" : ""}`}
+            data-flow-step={currentStep}
+          >
+            {!immersive && (
+              <header className="site-header mx-5 flex items-center justify-between py-2">
+                <Link
+                  aria-label="깨딱 홈"
+                  className="inline-flex min-h-11 items-center"
+                  href="/"
+                >
+                  <BrandLogo className="brand-logo-header" priority />
+                </Link>
+                <Link
+                  aria-label="마이페이지"
+                  className="header-icon-button"
+                  href="/settings"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <circle cx="12" cy="8" r="3.5" />
+                    <path d="M5.5 20c.6-4.2 2.8-6.3 6.5-6.3s5.9 2.1 6.5 6.3" />
+                  </svg>
+                </Link>
+              </header>
+            )}
 
             {!online ? (
               <p
@@ -89,7 +102,11 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
             ) : null}
 
             <main
-              className="mt-4 w-full px-5 pb-16"
+              className={
+                immersive
+                  ? "entry-main w-full"
+                  : "mt-4 w-full px-5 pb-16"
+              }
               id="main-content"
               tabIndex={-1}
             >
@@ -99,17 +116,33 @@ export function AppShell({ children, currentStep, eyebrow }: AppShellProps) {
           </div>
 
           <div className="iphone-home-indicator" aria-hidden="true" />
-          {connected && (
+          {connected && !immersive && (
             <nav className="service-tabbar" aria-label="주 메뉴">
-              <Link href="/">아침</Link>
-              <Link href="/calendar">캘린더</Link>
-              <Link href="/history">기록</Link>
-              <Link href="/settings">설정</Link>
+              <Link data-active={pathname === "/sleep"} href="/sleep">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M18.7 15.5A7.8 7.8 0 0 1 8.5 5.3 8.2 8.2 0 1 0 18.7 15.5Z" /></svg>
+                <span>수면 패턴</span>
+              </Link>
+              <Link data-active={pathname === "/calendar"} href="/calendar">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="15" rx="3" /><path d="M7.5 3.5v4M16.5 3.5v4M3.5 10h17" /></svg>
+                <span>캘린더</span>
+              </Link>
+              <Link className="service-tabbar-home" data-active={pathname === "/"} href="/">
+                <span className="service-tabbar-home-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 11 8-7 8 7v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19.5V11Z" /><path d="M9 21v-6h6v6" /></svg></span>
+                <span>홈</span>
+              </Link>
+              <Link data-active={pathname === "/history"} href="/history">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></svg>
+                <span>기록</span>
+              </Link>
+              <Link data-active={pathname.startsWith("/settings")} href="/settings">
+                <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" /><path d="M5.5 20c.6-4.2 2.8-6.3 6.5-6.3s5.9 2.1 6.5 6.3" /></svg>
+                <span>마이</span>
+              </Link>
             </nav>
           )}
         </div>
       </div>
-      {connected && <DemoControls />}
+      {connected && !immersive && <DemoControls />}
     </div>
   );
 }

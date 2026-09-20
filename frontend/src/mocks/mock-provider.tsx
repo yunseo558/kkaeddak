@@ -2,7 +2,11 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 
-const mockingEnabled = process.env.NEXT_PUBLIC_API_MOCKING === "enabled";
+const mockingMode = process.env.NEXT_PUBLIC_API_MOCKING;
+// The public web submission is a self-contained demo: calendar and HealthKit
+// are intentionally represented by sample adapters unless an integration
+// environment explicitly opts out.
+const mockingEnabled = mockingMode !== "disabled";
 let workerStartPromise: Promise<void> | null = null;
 
 function startMockWorker() {

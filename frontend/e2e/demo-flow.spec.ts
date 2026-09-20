@@ -14,13 +14,17 @@ async function startScenario(page: Page, scenario: (typeof scenarios)[number]) {
   await page.getByRole("button", { name: "내일 기상 계획 만들기" }).click();
   await expect(page).toHaveURL(/\/onboarding$/);
 
-  for (const heading of ["일정 유형", "알람 설정", "개인정보"]) {
-    await page.getByRole("button", { name: "다음" }).click();
+  for (const heading of ["일정 유형", "알람 설정", "데이터 연동"]) {
+    await page.getByRole("button", { name: "다음", exact: true }).click();
     await expect(page.getByRole("heading", { name: heading })).toBeVisible();
   }
+  await page.getByRole("button", { name: "수면 데이터 연결하기" }).click();
+  await page.getByRole("button", { name: "캘린더 연결하기" }).click();
+  await page.getByRole("button", { name: "다음", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "개인정보" })).toBeVisible();
   const completeButton = page.getByRole("button", { name: "설정 완료" });
   await completeButton.press("Enter");
-  await expect(page).toHaveURL(/\/calendar$/);
+  await expect(page).toHaveURL(/\/$/);
   await page.goto("/tomorrow");
   await expect(
     page.getByRole("heading", { level: 1, name: scenario }),
