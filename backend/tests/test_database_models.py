@@ -15,7 +15,9 @@ EXPECTED_TABLES = {
     "routine_profiles",
     "schedule_events",
     "user_profiles",
+    "wake_alarm_events",
     "wake_outcome_summaries",
+    "wake_plan_reports",
     "wake_plan_steps",
     "wake_plans",
 }

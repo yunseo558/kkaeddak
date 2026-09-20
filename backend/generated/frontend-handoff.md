@@ -38,6 +38,28 @@ OpenAPI 변경 이력은 Git 히스토리로 관리합니다. 이 단계에서�
 
 `POST /api/v1/preparation-suggestions`의 각 항목은 `status`와 최신 `revision`을 함께 반환한다. `PATCH /api/v1/preparation-tasks/{task_id}`에는 해당 `revision`을 그대로 보내고, 성공 응답의 새 `revision`으로 로컬 캐시를 교체한다. 완료 시간 계산에는 `COMPLETED` 상태만 반영한다.
 
+## 날짜별 기상 리포트 연결
+
+기상 계획 생성 뒤 `PUT /api/v1/wake-plans/{plan_id}/report-context`로 계획 당시의
+일정, 건강 요약, 최근 기상 집계, 사용자 알람 선호와 AI 판단을 저장한다. 건강 입력은
+`restMinutes`, `activityLevel`, `conditionLevel` 같은 요약값만 허용하며 HealthKit 원본은
+전송하지 않는다.
+
+각 알람 단계가 실행될 때마다 `POST /api/v1/wake-plans/{plan_id}/alarm-events`를 호출한다.
+같은 계획·단계·이벤트 종류와 시각의 재전송은 같은 결과를 반환하므로 네트워크 재시도에
+안전하다. 같은 이벤트 종류를 다른 시각으로 다시 보내면 `409 ALARM_EVENT_CONFLICT`가
+발생한다.
+
+기상 결과를 로컬 학습에 적용한 뒤 `PUT /api/v1/wake-plans/{plan_id}/learning-effect`로
+학습 전후의 첫 알람 보정 분과 안전 단계 변화, 다음 추천 문구를 저장한다.
+
+- 목록: `GET /api/v1/history/reports?from=YYYY-MM-DD&to=YYYY-MM-DD`
+- 상세: `GET /api/v1/history/reports/{localDate}`
+
+상세 응답은 `decisionContext`, 계획된 각 알람과 실행 이벤트를 합친 `alarmTimeline`,
+`outcome`, `learningEffect`를 제공한다. 기록 화면은 `reportReady`가 참인 날짜를 눌러
+상세 화면으로 이동시키면 된다.
+
 ## 8단계로 남긴 항목
 
 배포·CORS 허용 도메인과 운영 헬스체크 구현은 다음 단계에서 확정합니다. 현 단계에서는 운영 CORS 정책이나 배포 주소 모니터링을 추가하지 않습니다.

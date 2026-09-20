@@ -30,7 +30,7 @@ async def operational_client(tmp_path: Path) -> AsyncIterator[AsyncClient]:
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
         await connection.execute(text("CREATE TABLE alembic_version (version_num VARCHAR(32))"))
-        await connection.execute(text("INSERT INTO alembic_version VALUES ('0001')"))
+        await connection.execute(text("INSERT INTO alembic_version VALUES ('0002')"))
     await engine.dispose()
 
     app = create_app(settings)
@@ -52,7 +52,7 @@ async def test_health_reports_current_migration(
         "status": "ok",
         "api": "ok",
         "database": "ok",
-        "migrationVersion": "0001",
+        "migrationVersion": "0002",
     }
 
 

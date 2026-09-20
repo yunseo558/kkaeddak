@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from kkaeddak.schemas.health import HealthResponse
 
 router = APIRouter()
-EXPECTED_MIGRATION_HEAD = "0001"
+EXPECTED_MIGRATION_HEAD = "0002"
 
 
 @router.get(

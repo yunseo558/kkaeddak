@@ -1,6 +1,17 @@
 {
   "components": {
     "schemas": {
+      "AlarmEventType": {
+        "enum": [
+          "RANG",
+          "DISMISSED",
+          "CONFIRMED_AWAKE",
+          "MISSED",
+          "CANCELLED"
+        ],
+        "title": "AlarmEventType",
+        "type": "string"
+      },
       "AlarmPreferences": {
         "additionalProperties": false,
         "properties": {
@@ -377,6 +388,162 @@
           "database"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "HistoryReportDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "alarmTimeline": {
+            "items": {
+              "$ref": "#/components/schemas/WakeAlarmTimelineStep"
+            },
+            "title": "Alarmtimeline",
+            "type": "array"
+          },
+          "decisionContext": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WakePlanReportContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "learningEffect": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WakeLearningEffect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "localDate": {
+            "format": "date",
+            "title": "Localdate",
+            "type": "string"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WakeOutcomeReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "plan": {
+            "$ref": "#/components/schemas/WakePlanDetail"
+          }
+        },
+        "required": [
+          "localDate",
+          "plan",
+          "alarmTimeline"
+        ],
+        "title": "HistoryReportDetail",
+        "type": "object"
+      },
+      "HistoryReportListItem": {
+        "additionalProperties": false,
+        "properties": {
+          "alarmCount": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Alarmcount",
+            "type": "integer"
+          },
+          "eventTitle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eventtitle"
+          },
+          "finalAlarmAt": {
+            "format": "date-time",
+            "title": "Finalalarmat",
+            "type": "string"
+          },
+          "firstAlarmAt": {
+            "format": "date-time",
+            "title": "Firstalarmat",
+            "type": "string"
+          },
+          "localDate": {
+            "format": "date",
+            "title": "Localdate",
+            "type": "string"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WakeOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "planId": {
+            "format": "uuid",
+            "title": "Planid",
+            "type": "string"
+          },
+          "reportReady": {
+            "title": "Reportready",
+            "type": "boolean"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PlanStatus"
+          }
+        },
+        "required": [
+          "localDate",
+          "planId",
+          "status",
+          "firstAlarmAt",
+          "finalAlarmAt",
+          "alarmCount",
+          "reportReady"
+        ],
+        "title": "HistoryReportListItem",
+        "type": "object"
+      },
+      "HistoryReportsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "fromDate": {
+            "format": "date",
+            "title": "Fromdate",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryReportListItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "toDate": {
+            "format": "date",
+            "title": "Todate",
+            "type": "string"
+          }
+        },
+        "required": [
+          "fromDate",
+          "toDate",
+          "items"
+        ],
+        "title": "HistoryReportsResponse",
         "type": "object"
       },
       "HistorySummaryResponse": {
@@ -1000,6 +1167,252 @@
         "title": "RejectedScheduleEvent",
         "type": "object"
       },
+      "ReportAlarmPreferences": {
+        "additionalProperties": false,
+        "properties": {
+          "keepSafetyAlarm": {
+            "title": "Keepsafetyalarm",
+            "type": "boolean"
+          },
+          "preferredAlarmCount": {
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Preferredalarmcount",
+            "type": "integer"
+          },
+          "preferredIntervalMin": {
+            "maximum": 30.0,
+            "minimum": 3.0,
+            "title": "Preferredintervalmin",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "preferredAlarmCount",
+          "preferredIntervalMin",
+          "keepSafetyAlarm"
+        ],
+        "title": "ReportAlarmPreferences",
+        "type": "object"
+      },
+      "ReportHealthSummary": {
+        "additionalProperties": false,
+        "description": "Aggregate-only health signals; raw HealthKit samples are never accepted.",
+        "properties": {
+          "activityLevel": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "moderate",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activitylevel"
+          },
+          "conditionLevel": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "normal",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conditionlevel"
+          },
+          "restMinutes": {
+            "anyOf": [
+              {
+                "maximum": 960.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restminutes"
+          },
+          "usualRestMinutes": {
+            "anyOf": [
+              {
+                "maximum": 720.0,
+                "minimum": 180.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usualrestminutes"
+          }
+        },
+        "title": "ReportHealthSummary",
+        "type": "object"
+      },
+      "ReportHistorySignals": {
+        "additionalProperties": false,
+        "properties": {
+          "learningDays": {
+            "maximum": 365.0,
+            "minimum": 0.0,
+            "title": "Learningdays",
+            "type": "integer"
+          },
+          "protocolAdjustment": {
+            "maximum": 4.0,
+            "minimum": 0.0,
+            "title": "Protocoladjustment",
+            "type": "integer"
+          },
+          "recentAverageAlarmSteps": {
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Recentaveragealarmsteps",
+            "type": "number"
+          },
+          "recentLateCount": {
+            "maximum": 14.0,
+            "minimum": 0.0,
+            "title": "Recentlatecount",
+            "type": "integer"
+          },
+          "recentMissedCount": {
+            "maximum": 14.0,
+            "minimum": 0.0,
+            "title": "Recentmissedcount",
+            "type": "integer"
+          },
+          "recentOnTimeCount": {
+            "maximum": 14.0,
+            "minimum": 0.0,
+            "title": "Recentontimecount",
+            "type": "integer"
+          },
+          "recommendedAdvanceMinutes": {
+            "maximum": 90.0,
+            "minimum": 0.0,
+            "title": "Recommendedadvanceminutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "recentOnTimeCount",
+          "recentLateCount",
+          "recentMissedCount",
+          "recentAverageAlarmSteps",
+          "learningDays",
+          "recommendedAdvanceMinutes",
+          "protocolAdjustment"
+        ],
+        "title": "ReportHistorySignals",
+        "type": "object"
+      },
+      "ReportPersonalizationSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "automatic": {
+            "title": "Automatic",
+            "type": "boolean"
+          },
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "explanation": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Explanation",
+            "type": "string"
+          },
+          "fatigueLevel": {
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ],
+            "title": "Fatiguelevel",
+            "type": "string"
+          },
+          "fatigueScore": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Fatiguescore",
+            "type": "integer"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ExplanationSource"
+          }
+        },
+        "required": [
+          "fatigueScore",
+          "fatigueLevel",
+          "confidence",
+          "explanation",
+          "source",
+          "automatic"
+        ],
+        "title": "ReportPersonalizationSnapshot",
+        "type": "object"
+      },
+      "ReportScheduleSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "categoryCode": {
+            "examples": [
+              "PACK_BAG"
+            ],
+            "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
+            "title": "Categorycode",
+            "type": "string"
+          },
+          "categoryLabel": {
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Categorylabel",
+            "type": "string"
+          },
+          "startsAt": {
+            "format": "date-time",
+            "title": "Startsat",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "wakeLeadMin": {
+            "maximum": 300.0,
+            "minimum": 15.0,
+            "title": "Wakeleadmin",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "title",
+          "startsAt",
+          "categoryCode",
+          "categoryLabel",
+          "wakeLeadMin"
+        ],
+        "title": "ReportScheduleSnapshot",
+        "type": "object"
+      },
       "RoutineProfileResponse": {
         "additionalProperties": false,
         "properties": {
@@ -1543,6 +1956,167 @@
         "title": "ScheduleTypeRule",
         "type": "object"
       },
+      "WakeAlarmEventCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "eventType": {
+            "$ref": "#/components/schemas/AlarmEventType"
+          },
+          "occurredAt": {
+            "format": "date-time",
+            "title": "Occurredat",
+            "type": "string"
+          },
+          "stepOrder": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Steporder",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stepOrder",
+          "eventType",
+          "occurredAt"
+        ],
+        "title": "WakeAlarmEventCreate",
+        "type": "object"
+      },
+      "WakeAlarmEventResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "eventType": {
+            "$ref": "#/components/schemas/AlarmEventType"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "occurredAt": {
+            "format": "date-time",
+            "title": "Occurredat",
+            "type": "string"
+          },
+          "stepOrder": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Steporder",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stepOrder",
+          "eventType",
+          "occurredAt",
+          "id"
+        ],
+        "title": "WakeAlarmEventResponse",
+        "type": "object"
+      },
+      "WakeAlarmTimelineStep": {
+        "additionalProperties": false,
+        "properties": {
+          "channel": {
+            "examples": [
+              "PACK_BAG"
+            ],
+            "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
+            "title": "Channel",
+            "type": "string"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/WakeAlarmEventResponse"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "order": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Order",
+            "type": "integer"
+          },
+          "scheduledAt": {
+            "format": "date-time",
+            "title": "Scheduledat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "order",
+          "scheduledAt",
+          "channel",
+          "events"
+        ],
+        "title": "WakeAlarmTimelineStep",
+        "type": "object"
+      },
+      "WakeLearningEffect": {
+        "additionalProperties": false,
+        "properties": {
+          "nextAdvanceMinutes": {
+            "maximum": 90.0,
+            "minimum": 0.0,
+            "title": "Nextadvanceminutes",
+            "type": "integer"
+          },
+          "nextProtocolAdjustment": {
+            "maximum": 4.0,
+            "minimum": 0.0,
+            "title": "Nextprotocoladjustment",
+            "type": "integer"
+          },
+          "policyVersion": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Policyversion",
+            "type": "string"
+          },
+          "previousAdvanceMinutes": {
+            "maximum": 90.0,
+            "minimum": 0.0,
+            "title": "Previousadvanceminutes",
+            "type": "integer"
+          },
+          "previousProtocolAdjustment": {
+            "maximum": 4.0,
+            "minimum": 0.0,
+            "title": "Previousprotocoladjustment",
+            "type": "integer"
+          },
+          "reasonCodes": {
+            "items": {
+              "examples": [
+                "PACK_BAG"
+              ],
+              "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Reasoncodes",
+            "type": "array"
+          },
+          "recommendation": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Recommendation",
+            "type": "string"
+          }
+        },
+        "required": [
+          "previousAdvanceMinutes",
+          "nextAdvanceMinutes",
+          "previousProtocolAdjustment",
+          "nextProtocolAdjustment",
+          "recommendation",
+          "reasonCodes",
+          "policyVersion"
+        ],
+        "title": "WakeLearningEffect",
+        "type": "object"
+      },
       "WakeOutcome": {
         "enum": [
           "CONFIRMED_ON_TIME",
@@ -1601,6 +2175,54 @@
           "consentVersion"
         ],
         "title": "WakeOutcomeCreate",
+        "type": "object"
+      },
+      "WakeOutcomeReport": {
+        "additionalProperties": false,
+        "properties": {
+          "alarmStepsUsed": {
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Alarmstepsused",
+            "type": "integer"
+          },
+          "confirmedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmedat"
+          },
+          "onTime": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ontime"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/WakeOutcome"
+          },
+          "userCorrection": {
+            "title": "Usercorrection",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "outcome",
+          "alarmStepsUsed",
+          "userCorrection"
+        ],
+        "title": "WakeOutcomeReport",
         "type": "object"
       },
       "WakePlanCreate": {
@@ -1874,6 +2496,48 @@
           "revision"
         ],
         "title": "WakePlanDetail",
+        "type": "object"
+      },
+      "WakePlanReportContext": {
+        "additionalProperties": false,
+        "properties": {
+          "alarmPreferences": {
+            "$ref": "#/components/schemas/ReportAlarmPreferences"
+          },
+          "healthSummary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReportHealthSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "historySignals": {
+            "$ref": "#/components/schemas/ReportHistorySignals"
+          },
+          "personalization": {
+            "$ref": "#/components/schemas/ReportPersonalizationSnapshot"
+          },
+          "policyVersion": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Policyversion",
+            "type": "string"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/ReportScheduleSnapshot"
+          }
+        },
+        "required": [
+          "schedule",
+          "historySignals",
+          "alarmPreferences",
+          "personalization",
+          "policyVersion"
+        ],
+        "title": "WakePlanReportContext",
         "type": "object"
       },
       "WakePlanResponse": {
@@ -2762,6 +3426,328 @@
         "summary": "Check API, database, and migration health",
         "tags": [
           "operations"
+        ]
+      }
+    },
+    "/api/v1/history/reports": {
+      "get": {
+        "operationId": "list_history_reports_api_v1_history_reports_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "To",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Demo-Session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-Session"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryReportsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Consent or permission required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Revision or resource conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Disallowed privacy field"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Temporary dependency failure"
+          }
+        },
+        "summary": "List the latest explainable wake report for each date",
+        "tags": [
+          "history"
+        ]
+      }
+    },
+    "/api/v1/history/reports/{localDate}": {
+      "get": {
+        "operationId": "get_history_report_api_v1_history_reports__localDate__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "localDate",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Localdate",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Demo-Session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-Session"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryReportDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Consent or permission required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Revision or resource conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Disallowed privacy field"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Temporary dependency failure"
+          }
+        },
+        "summary": "Get the detailed decision, alarm timeline, outcome, and learning report",
+        "tags": [
+          "history"
         ]
       }
     },
@@ -4840,6 +5826,172 @@
         ]
       }
     },
+    "/api/v1/wake-plans/{plan_id}/alarm-events": {
+      "post": {
+        "operationId": "create_wake_alarm_event_api_v1_wake_plans__plan_id__alarm_events_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Demo-Session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-Session"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WakeAlarmEventCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WakeAlarmEventResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Consent or permission required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Revision or resource conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Disallowed privacy field"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Temporary dependency failure"
+          }
+        },
+        "summary": "Record one idempotent alarm-step lifecycle event",
+        "tags": [
+          "wake-plan"
+        ]
+      }
+    },
     "/api/v1/wake-plans/{plan_id}/decision": {
       "patch": {
         "operationId": "update_wake_plan_decision_api_v1_wake_plans__plan_id__decision_patch",
@@ -5003,6 +6155,338 @@
         "summary": "Record a wake plan decision",
         "tags": [
           "wake-plan"
+        ]
+      }
+    },
+    "/api/v1/wake-plans/{plan_id}/learning-effect": {
+      "put": {
+        "operationId": "upsert_wake_learning_effect_api_v1_wake_plans__plan_id__learning_effect_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Demo-Session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-Session"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WakeLearningEffect"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WakeLearningEffect"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Consent or permission required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Revision or resource conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Disallowed privacy field"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Temporary dependency failure"
+          }
+        },
+        "summary": "Store how a wake result changes the next recommendation",
+        "tags": [
+          "history"
+        ]
+      }
+    },
+    "/api/v1/wake-plans/{plan_id}/report-context": {
+      "put": {
+        "operationId": "upsert_wake_plan_report_context_api_v1_wake_plans__plan_id__report_context_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Demo-Session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-Session"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WakePlanReportContext"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WakePlanReportContext"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Consent or permission required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Revision or resource conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Disallowed privacy field"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Temporary dependency failure"
+          }
+        },
+        "summary": "Store the privacy-limited decision context for a wake plan",
+        "tags": [
+          "history"
         ]
       }
     }
