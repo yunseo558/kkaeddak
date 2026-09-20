@@ -53,6 +53,17 @@ const profiles = new Map<string, ProfileResponse>();
 const routines = new Map<string, RoutineProfileResponse>();
 const scheduleEvents = new Map<string, ScheduleEventResponse[]>();
 
+export function upsertScheduleEvents(
+  existing: ScheduleEventResponse[],
+  incoming: ScheduleEventsBatchCreate["events"],
+) {
+  const merged = new Map(existing.map((event) => [event.clientId, event]));
+  incoming.forEach((event) =>
+    merged.set(event.clientId, { ...event, id: event.clientId }),
+  );
+  return Array.from(merged.values());
+}
+
 function getSessionId(request: Request) {
   return request.headers.get("X-Demo-Session") ?? "local";
 }
@@ -195,9 +206,10 @@ export const handlers = [
     "/api/v1/schedule-events:batch",
     async ({ request }) => {
       const body = await request.json();
+      const sessionId = getSessionId(request);
       scheduleEvents.set(
-        getSessionId(request),
-        body.events.map((event) => ({ ...event, id: event.clientId })),
+        sessionId,
+        upsertScheduleEvents(scheduleEvents.get(sessionId) ?? [], body.events),
       );
       return HttpResponse.json(
         { accepted: body.events.length, rejected: [] },

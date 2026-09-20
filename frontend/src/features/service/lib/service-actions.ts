@@ -235,7 +235,7 @@ export async function generateServicePlan() {
   const now = serviceNow();
   const targetDate = addDays(localDate(now), 1);
   const headers = demoSessionHeaders(sessionId());
-  const [schedules, routines] = await Promise.all([
+  const loadTargetSchedules = () =>
     apiClient.GET("/api/v1/schedule-events", {
       headers,
       params: {
@@ -245,9 +245,26 @@ export async function generateServicePlan() {
           limit: 100,
         },
       },
-    }),
+    });
+  const [initialSchedules, routines] = await Promise.all([
+    loadTargetSchedules(),
     apiClient.GET("/api/v1/routines", { headers }),
   ]);
+  let schedules = initialSchedules;
+  const locallyStoredTarget = store.events.some(
+    (event) => localDate(event.startsAt) === targetDate,
+  );
+  if (
+    schedules.data &&
+    !schedules.error &&
+    schedules.data.items.length === 0 &&
+    locallyStoredTarget
+  ) {
+    // The public web demo keeps its imported calendar in local storage while
+    // the mock API is memory-only. Rehydrate it after a reload before planning.
+    await saveCalendarEvents(store.events);
+    schedules = await loadTargetSchedules();
+  }
   if (!schedules.data || schedules.error || !routines.data || routines.error)
     throw new Error(
       "일정과 준비 시간을 불러오지 못했어요. 다시 시도해 주세요.",
