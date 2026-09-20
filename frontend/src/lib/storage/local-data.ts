@@ -2,14 +2,16 @@ import type { components } from "@kkaeddak/api-client";
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 
 type WakeOutcome = components["schemas"]["WakeOutcome"];
+type HistoryReportDetail = components["schemas"]["HistoryReportDetail"];
 
 export const LOCAL_DATABASE_NAME = "kkaeddak-local";
-export const LOCAL_DATABASE_VERSION = 1;
+export const LOCAL_DATABASE_VERSION = 2;
 
 export const LOCAL_STORE_NAMES = [
   "health-inputs",
   "wake-model",
   "wake-events",
+  "wake-reports",
 ] as const;
 
 export type LocalStoreName = (typeof LOCAL_STORE_NAMES)[number];
@@ -50,6 +52,11 @@ export type WakeEventRecord = {
   userCorrection?: boolean;
 };
 
+export type LocalWakeReportRecord = HistoryReportDetail & {
+  id: string;
+  updatedAt: string;
+};
+
 interface KkaeddakLocalDatabase extends DBSchema {
   "health-inputs": {
     key: string;
@@ -63,12 +70,17 @@ interface KkaeddakLocalDatabase extends DBSchema {
     key: string;
     value: WakeEventRecord;
   };
+  "wake-reports": {
+    key: string;
+    value: LocalWakeReportRecord;
+  };
 }
 
 type LocalRecordMap = {
   "health-inputs": HealthInputRecord;
   "wake-events": WakeEventRecord;
   "wake-model": WakeModelRecord;
+  "wake-reports": LocalWakeReportRecord;
 };
 
 type OpenDatabase = () => Promise<IDBPDatabase<KkaeddakLocalDatabase>>;
@@ -103,6 +115,7 @@ export class LocalDataStore {
     "health-inputs": new Map<string, HealthInputRecord>(),
     "wake-events": new Map<string, WakeEventRecord>(),
     "wake-model": new Map<string, WakeModelRecord>(),
+    "wake-reports": new Map<string, LocalWakeReportRecord>(),
   };
 
   constructor(private readonly openDatabase: OpenDatabase = openLocalDatabase) {}

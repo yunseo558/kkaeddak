@@ -9,7 +9,25 @@ export type WakeLearningResult = {
   applied: boolean;
   model: WakeModelRecord;
   nextRecommendation: string;
+  previousAdvanceMinutes: number;
+  nextAdvanceMinutes: number;
+  previousProtocolAdjustment: number;
+  nextProtocolAdjustment: number;
+  reasonCodes: string[];
 };
+
+function learningReasonCodes(result: WakeResult) {
+  if (
+    result.outcome === "CONFIRMED_LATE" ||
+    result.outcome === "UNCONFIRMED"
+  ) {
+    return ["RECENT_WAKE_FAILURE"];
+  }
+  if (result.outcome === "CONFIRMED_ON_TIME" && result.alarmStepsUsed <= 1) {
+    return ["FIRST_ALARM_SUCCESS"];
+  }
+  return ["ALARM_STEP_USAGE"];
+}
 
 function nextProtocolAdjustment(
   current: number,
@@ -61,14 +79,21 @@ export async function applyWakeLearning(
   const outcomeId = `outcome:${result.planId}:${result.completedAt}`;
   const existing = models.find((model) => model.id === "personal");
   if (events.some((event) => event.id === outcomeId) && existing) {
+    const advanceMinutes = existing.parameters.recommendedAdvanceMinutes ?? 0;
+    const protocolAdjustment = existing.parameters.protocolAdjustment ?? 0;
     return {
       applied: false,
       model: existing,
       nextRecommendation: recommendationCopy(
         result,
-        existing.parameters.protocolAdjustment ?? 0,
-        existing.parameters.recommendedAdvanceMinutes ?? 0,
+        protocolAdjustment,
+        advanceMinutes,
       ),
+      previousAdvanceMinutes: advanceMinutes,
+      nextAdvanceMinutes: advanceMinutes,
+      previousProtocolAdjustment: protocolAdjustment,
+      nextProtocolAdjustment: protocolAdjustment,
+      reasonCodes: learningReasonCodes(result),
     };
   }
 
@@ -128,5 +153,10 @@ export async function applyWakeLearning(
       protocolAdjustment,
       recommendedAdvanceMinutes,
     ),
+    previousAdvanceMinutes: parameters.recommendedAdvanceMinutes ?? 0,
+    nextAdvanceMinutes: recommendedAdvanceMinutes,
+    previousProtocolAdjustment: parameters.protocolAdjustment ?? 0,
+    nextProtocolAdjustment: protocolAdjustment,
+    reasonCodes: learningReasonCodes(result),
   };
 }

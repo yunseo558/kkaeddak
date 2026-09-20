@@ -4,37 +4,20 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useDemoSessionStore } from "@/features/demo-session/model/demo-session-store";
 import {
+  confirmCurrentAlarm,
   connectCalendar,
+  dismissCurrentAlarm,
   ensureMockCalendarCoverage,
   generateServicePlan,
-  saveServiceOutcome,
   serviceAction,
   serviceNow,
+  syncPendingAlarmEvents,
+  triggerNextAlarmStep,
 } from "../lib/service-actions";
 import { startAlarmSound, stopAlarmSound } from "../lib/alarm-audio";
 import { useServiceStore } from "../model/service-store";
 import { addDays, clockTime, localDate } from "../model/service-policy";
-
-const ALARM_GRACE_MS = 4 * 60 * 60 * 1000;
-
-export function isAlarmDue(
-  plan: {
-    id: string;
-    status: string;
-    firstAlarmAt: string;
-    finalAlarmAt: string;
-  },
-  now: string,
-  lastTriggeredAlarmPlanId: string | null,
-) {
-  const nowMs = Date.parse(now);
-  return (
-    ["APPROVED", "EDITED"].includes(plan.status) &&
-    plan.id !== lastTriggeredAlarmPlanId &&
-    nowMs >= Date.parse(plan.firstAlarmAt) &&
-    nowMs <= Date.parse(plan.finalAlarmAt) + ALARM_GRACE_MS
-  );
-}
+import { alarmScheduledAt, nextAlarmStep } from "../lib/alarm-sequence";
 
 function hasLiveSession() {
   const session = useDemoSessionStore.getState();
@@ -65,21 +48,37 @@ export function GlobalAlarmScheduler() {
       }
 
       const now = serviceNow();
-      if (
-        state.alarmStage === "idle" &&
-        state.plan &&
-        isAlarmDue(state.plan, now, state.lastTriggeredAlarmPlanId)
-      ) {
-        state.set({
-          alarmStage: "ringing",
-          lastTriggeredAlarmPlanId: state.plan.id,
+      const dueStep = state.plan
+        ? nextAlarmStep(state.plan, state.alarmRuntime, now)
+        : null;
+      const hasPendingEvents = state.alarmRuntime.events.some(
+        (event) => !event.synced,
+      );
+      if (state.plan && (dueStep || hasPendingEvents)) {
+        void serviceAction(async () => {
+          await syncPendingAlarmEvents();
+          if (dueStep) await triggerNextAlarmStep();
         });
-        void startAlarmSound().catch(() =>
-          state.set({
-            message:
-              "음소거 자동 재생이 차단됐어요. 알람 화면에서 재생 버튼을 눌러 주세요.",
-          }),
-        );
+        if (dueStep) return;
+      }
+
+      if (
+        state.plan &&
+        state.alarmStage === "idle" &&
+        state.alarmRuntime.planId === state.plan.id &&
+        state.alarmRuntime.currentStepOrder !== null
+      ) {
+        const awaitingConfirmation =
+          state.alarmRuntime.awaitingConfirmationStepOrder !== null;
+        state.set({ alarmStage: awaitingConfirmation ? "confirm" : "ringing" });
+        if (!awaitingConfirmation) {
+          void startAlarmSound().catch(() =>
+            state.set({
+              message:
+                "음소거 자동 재생이 차단됐어요. 알람 화면에서 재생 버튼을 눌러 주세요.",
+            }),
+          );
+        }
         return;
       }
 
@@ -116,6 +115,10 @@ export function GlobalAlarmScheduler() {
   useEffect(() => () => stopAlarmSound(), []);
 
   if (pathname === "/" || alarmStage === "idle" || !plan) return null;
+  const activeStepOrder =
+    useServiceStore.getState().alarmRuntime.currentStepOrder ??
+    useServiceStore.getState().alarmRuntime.awaitingConfirmationStepOrder ??
+    1;
 
   return (
     <div
@@ -130,14 +133,13 @@ export function GlobalAlarmScheduler() {
             ? "일어날 시간이에요"
             : "잠깐, 정말 일어났나요?"}
         </p>
-        <p className="service-clock">{clockTime(plan.firstAlarmAt)}</p>
+        <p className="service-clock">
+          {clockTime(alarmScheduledAt(plan, activeStepOrder))}
+        </p>
         {alarmStage === "ringing" ? (
           <button
             className="service-primary"
-            onClick={() => {
-              stopAlarmSound();
-              useServiceStore.getState().set({ alarmStage: "confirm" });
-            }}
+            onClick={() => void serviceAction(dismissCurrentAlarm)}
           >
             알람 끄기
           </button>
@@ -146,14 +148,14 @@ export function GlobalAlarmScheduler() {
             <button
               className="service-primary"
               disabled={busy}
-              onClick={() => void serviceAction(() => saveServiceOutcome(true))}
+              onClick={() => void serviceAction(() => confirmCurrentAlarm(true))}
             >
               네, 일어났어요
             </button>
             <button
               className="service-secondary"
               disabled={busy}
-              onClick={() => void serviceAction(() => saveServiceOutcome(false))}
+              onClick={() => void serviceAction(() => confirmCurrentAlarm(false))}
             >
               못 일어났어요
             </button>

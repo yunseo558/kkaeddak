@@ -1,5 +1,29 @@
 import { expect, test, type Page } from "@playwright/test";
 
+async function localReportDates(page: Page) {
+  return page.evaluate(
+    () =>
+      new Promise<string[]>((resolve, reject) => {
+        const request = indexedDB.open("kkaeddak-local");
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction("wake-reports", "readonly");
+          const getAll = transaction.objectStore("wake-reports").getAll();
+          getAll.onerror = () => reject(getAll.error);
+          getAll.onsuccess = () => {
+            resolve(
+              (getAll.result as Array<{ localDate: string }>).map(
+                (report) => report.localDate,
+              ),
+            );
+            database.close();
+          };
+        };
+      }),
+  );
+}
+
 async function setup(page: Page) {
   await page.clock.install({ time: new Date("2026-09-20T09:00:00+09:00") });
   await page.goto("/");
@@ -52,8 +76,29 @@ test("survey, calendar editing, actual plan approval and failed-wake learning", 
   await page.getByRole("button", { name: "알람 끄기" }).click();
   await page.getByRole("button", { name: "못 일어났어요" }).click();
   await expect(
-    page.getByText("다음 계획에서는 예비 알람을 강화할게요."),
+    page.locator(".service-error").getByText(
+      "다음 알람을 준비할게요. 조금 더 쉬어도 괜찮아요.",
+    ),
   ).toBeVisible();
+  await page.getByRole("button", { name: "알람 지금 울리기" }).click();
+  await page.getByRole("button", { name: "알람 끄기" }).click();
+  await page.getByRole("button", { name: "네, 일어났어요" }).click();
+  await expect(page.getByText("잘 일어났어요. 다음 추천에도 반영할게요.")).toBeVisible();
+
+  await page.getByRole("link", { name: "기록", exact: true }).click();
+  const reportRow = page.locator(".history-report-link").first();
+  await expect(reportRow).toBeVisible();
+  await reportRow.click();
+  await expect(page).toHaveURL(/\/history\/\d{4}-\d{2}-\d{2}$/);
+  await expect(page.getByText("알람을 정한 기준")).toBeVisible();
+  await expect(page.getByText("다음 계획에 미친 영향")).toBeVisible();
+  await expect(page.getByText(/Gemini 분석|안전 폴백/)).toBeVisible();
+  await expect(page.getByText("2번째 알람까지 사용했어요.")).toBeVisible();
+  await expect(page).toHaveScreenshot("history-report-detail.png", {
+    animations: "disabled",
+  });
+  await page.getByRole("link", { name: "기록 목록으로 돌아가기" }).click();
+
   await page.getByRole("button", { name: /다음 자동화 시각으로/ }).click();
   await expect(
     page.getByRole("button", { name: "이 계획 승인" }),
@@ -133,6 +178,8 @@ test("24시간 데모 세션이 만료되면 일정과 설정을 자동 복구�
   page,
 }) => {
   await setup(page);
+  const reportsBeforeRecovery = await localReportDates(page);
+  expect(reportsBeforeRecovery.length).toBeGreaterThan(0);
   const previousSessionId = await page.evaluate(() => {
     const key = "kkaeddak-demo-session";
     const persisted = JSON.parse(window.localStorage.getItem(key) ?? "{}");
@@ -157,6 +204,9 @@ test("24시간 데모 세션이 만료되면 일정과 설정을 자동 복구�
     )
     .not.toBe(previousSessionId);
   await expect(page.getByRole("button", { name: "이 계획 승인" })).toBeVisible();
+  await expect.poll(() => localReportDates(page)).toEqual(
+    expect.arrayContaining(reportsBeforeRecovery),
+  );
 });
 
 test("short sleep stays approval-based; learned routine applies automatically and can be cancelled", async ({

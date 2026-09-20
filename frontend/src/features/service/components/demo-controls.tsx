@@ -2,12 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useServiceStore } from "../model/service-store";
-import { advanceAutomation, serviceAction } from "../lib/service-actions";
 import {
-  enableWebAlarmNotifications,
-  startAlarmSound,
-  stopAlarmSound,
-} from "../lib/alarm-audio";
+  advanceAutomation,
+  dismissCurrentAlarm,
+  serviceAction,
+  triggerDemoAlarmStep,
+} from "../lib/service-actions";
+import { enableWebAlarmNotifications } from "../lib/alarm-audio";
 import { clockTime, localDate } from "../model/service-policy";
 
 export function DemoControls() {
@@ -26,15 +27,11 @@ export function DemoControls() {
         계획 저장과 결과 학습은 실제로 실행됩니다.
       </p>
       <button
-        disabled={store.busy || !canRing}
+        disabled={store.busy || !canRing || store.alarmStage !== "idle"}
         onClick={() =>
           void serviceAction(async () => {
             await enableWebAlarmNotifications();
-            await startAlarmSound();
-            store.set({
-              alarmStage: "ringing",
-              virtualNow: store.plan!.firstAlarmAt,
-            });
+            await triggerDemoAlarmStep();
             router.push("/");
           })
         }
@@ -43,10 +40,7 @@ export function DemoControls() {
       </button>
       {store.alarmStage === "ringing" && (
         <button
-          onClick={() => {
-            stopAlarmSound();
-            store.set({ alarmStage: "confirm" });
-          }}
+          onClick={() => void serviceAction(dismissCurrentAlarm)}
         >
           소리 끄기
         </button>

@@ -13,13 +13,14 @@ import {
   clockTime,
 } from "../model/service-policy";
 import {
+  confirmCurrentAlarm,
   decideServicePlan,
+  dismissCurrentAlarm,
   generateServicePlan,
-  saveServiceOutcome,
   serviceAction,
   serviceNow,
 } from "../lib/service-actions";
-import { stopAlarmSound } from "../lib/alarm-audio";
+import { alarmScheduledAt } from "../lib/alarm-sequence";
 import { ClayIcon } from "@/components/brand/clay-icon";
 import { HomeAlarmScene, SetupGuidanceScene } from "./home-alarm-scene";
 import styles from "./service-home.module.css";
@@ -195,6 +196,10 @@ export function ServiceHome() {
     requiresApproval: false,
   });
   const approved = plan && ["APPROVED", "EDITED"].includes(plan.status);
+  const activeStepOrder =
+    store.alarmRuntime?.currentStepOrder ??
+    store.alarmRuntime?.awaitingConfirmationStepOrder ??
+    1;
   const status = !plan
     ? "계획 없음"
     : plan.status === "COMPLETED"
@@ -241,15 +246,12 @@ export function ServiceHome() {
                 : "잠깐, 정말 일어났나요?"}
             </p>
             <p className="service-clock">
-              {plan && clockTime(plan.firstAlarmAt)}
+              {plan && clockTime(alarmScheduledAt(plan, activeStepOrder))}
             </p>
             {store.alarmStage === "ringing" ? (
               <button
                 className="service-primary"
-                onClick={() => {
-                  stopAlarmSound();
-                  store.set({ alarmStage: "confirm" });
-                }}
+                onClick={() => void serviceAction(dismissCurrentAlarm)}
               >
                 알람 끄기
               </button>
@@ -259,7 +261,7 @@ export function ServiceHome() {
                   disabled={store.busy}
                   className="service-primary"
                   onClick={() =>
-                    void serviceAction(() => saveServiceOutcome(true))
+                    void serviceAction(() => confirmCurrentAlarm(true))
                   }
                 >
                   네, 일어났어요
@@ -268,7 +270,7 @@ export function ServiceHome() {
                   disabled={store.busy}
                   className="service-secondary"
                   onClick={() =>
-                    void serviceAction(() => saveServiceOutcome(false))
+                    void serviceAction(() => confirmCurrentAlarm(false))
                   }
                 >
                   못 일어났어요
@@ -317,14 +319,7 @@ export function ServiceHome() {
                           : "예비 알람"}
                     </span>
                     <strong>
-                      {clockTime(
-                        index === plan.steps.length - 1
-                          ? plan.finalAlarmAt
-                          : new Date(
-                              Date.parse(plan.firstAlarmAt) +
-                                step.offsetMin * 60000,
-                            ).toISOString(),
-                      )}
+                      {clockTime(alarmScheduledAt(plan, step.order))}
                     </strong>
                   </div>
                 ))}

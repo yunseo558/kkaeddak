@@ -13,6 +13,21 @@ import {
 } from "@/features/wake-plan/api/wake-plan-api";
 import { applyWakeLearning } from "@/features/wake-result/lib/wake-learning";
 import { syncWakeOutcome } from "@/features/wake-result/api/wake-outcome-api";
+import {
+  postAlarmEvent,
+  putWakeLearningEffect,
+  putWakePlanReportContext,
+  type AlarmEventType,
+  type WakeLearningEffect,
+} from "@/features/wake-report/api/wake-report-api";
+import {
+  saveLocalAlarmEvent,
+  saveLocalLearningEffect,
+  saveLocalReportContext,
+  saveLocalWakeOutcome,
+  updateLocalReportPlan,
+} from "@/features/wake-report/lib/local-wake-reports";
+import { createWakePlanReportContext } from "@/features/wake-report/lib/report-context";
 import { localDataStore } from "@/lib/storage/local-data";
 import { getApiStatus } from "@/lib/api/api-recovery";
 import {
@@ -29,7 +44,16 @@ import {
   localDate,
   mergeAlarmOffsetsWithSafety,
 } from "../model/service-policy";
-import { stopAlarmSound } from "./alarm-audio";
+import { startAlarmSound, stopAlarmSound } from "./alarm-audio";
+import {
+  alarmEventKey,
+  alarmScheduledAt,
+  completeAlarmStep,
+  emptyAlarmRuntime,
+  nextAlarmStep,
+  queueAlarmEvent,
+  remainingAlarmStepOrders,
+} from "./alarm-sequence";
 import {
   createMockCalendar,
   healthKitDemoSource,
@@ -69,8 +93,8 @@ async function restoreLocalStateToNewSession() {
 
   store.set({
     alarmStage: "idle",
+    alarmRuntime: emptyAlarmRuntime(),
     lastAutomationSlot: null,
-    lastTriggeredAlarmPlanId: null,
     plan: null,
   });
   flow.setActiveWakePlan(null);
@@ -706,7 +730,7 @@ export async function generateServicePlan() {
     plan,
     `service:${crypto.randomUUID()}`,
   );
-  let persisted = { revision: saved.revision, status: saved.status as string };
+  let persisted = { revision: saved.revision, status: saved.status };
   if (eligibility.automatic)
     persisted = await updateWakePlanDecision(sessionId(), saved.id, {
       decision: "APPROVE",
@@ -761,7 +785,79 @@ export async function generateServicePlan() {
           : "LOW"),
     aiConfidence: personalized?.confidence ?? 0.35,
   };
-  store.set({ plan: result, lastAutomationSlot: localDate(now) });
+  const reportContext = createWakePlanReportContext({
+    schedule: {
+      title: event.displayTitle ?? "내일 일정",
+      startsAt: event.startsAt,
+      categoryCode: scheduleType.code,
+      categoryLabel: scheduleType.label,
+      wakeLeadMin: scheduleType.wakeLeadMin,
+    },
+    healthSummary: healthInput
+      ? {
+          restMinutes: healthInput.sleepDurationMinutes ?? null,
+          usualRestMinutes: 420,
+          activityLevel:
+            healthInput.activityLevel === "usual"
+              ? "moderate"
+              : (healthInput.activityLevel ?? null),
+          conditionLevel:
+            healthInput.conditionLevel === "usual"
+              ? "normal"
+              : (healthInput.conditionLevel ?? null),
+        }
+      : null,
+    historySignals: {
+      recentOnTimeCount: personalizationHistory.filter(
+        (record) => record.outcome === "CONFIRMED_ON_TIME",
+      ).length,
+      recentLateCount: personalizationHistory.filter(
+        (record) => record.outcome === "CONFIRMED_LATE",
+      ).length,
+      recentMissedCount: personalizationHistory.filter(
+        (record) => record.outcome === "UNCONFIRMED",
+      ).length,
+      recentAverageAlarmSteps: personalizationHistory.length
+        ? personalizationHistory.reduce(
+            (total, record) =>
+              total + (record.alarmStepsUsed ?? store.preferredAlarmCount),
+            0,
+          ) / personalizationHistory.length
+        : store.preferredAlarmCount,
+      learningDays: elapsedLearningDays,
+      recommendedAdvanceMinutes:
+        learned?.parameters.recommendedAdvanceMinutes ?? 0,
+      protocolAdjustment: learned?.parameters.protocolAdjustment ?? 0,
+    },
+    alarmPreferences: {
+      preferredAlarmCount: store.preferredAlarmCount,
+      preferredIntervalMin: store.alarmIntervalMinutes,
+      keepSafetyAlarm: store.keepSafetyAlarm,
+    },
+    personalization: {
+      fatigueScore: result.fatigueScore,
+      fatigueLevel: result.fatigueLevel,
+      confidence: result.aiConfidence,
+      explanation: result.reason,
+      source: result.explanationSource,
+      automatic: result.automatic,
+    },
+  });
+  store.set({
+    plan: result,
+    lastAutomationSlot: localDate(now),
+    alarmRuntime: emptyAlarmRuntime(
+      result.id,
+      result.steps.map((step) => step.order),
+    ),
+    alarmStage: "idle",
+  });
+  await saveLocalReportContext(result, reportContext);
+  try {
+    await putWakePlanReportContext(sessionId(), result.id, reportContext);
+  } catch {
+    // The local report remains available even if optional server sync fails.
+  }
   useCurrentFlowStore.getState().setWakeResult(null);
   useCurrentFlowStore
     .getState()
@@ -805,27 +901,265 @@ export async function decideServicePlan(
     ...(firstAlarmAt ? { firstAlarmAt, finalAlarmAt } : {}),
   };
   store.set({ plan: updated });
+  await updateLocalReportPlan(updated);
   useCurrentFlowStore
     .getState()
     .setActiveWakePlan(decision === "DECLINE" ? null : updated);
 }
 
-export async function saveServiceOutcome(success: boolean) {
+function eventOccurredAt() {
+  return useServiceStore.getState().virtualNow ?? new Date().toISOString();
+}
+
+function runtimeForPlan(plan: ServicePlan) {
+  const runtime = useServiceStore.getState().alarmRuntime;
+  if (runtime?.planId === plan.id) {
+    return {
+      ...runtime,
+      remainingStepOrders:
+        runtime.remainingStepOrders ??
+        plan.steps
+          .map((step) => step.order)
+          .filter(
+            (order) =>
+              order !== runtime.currentStepOrder &&
+              !runtime.completedStepOrders.includes(order),
+          ),
+    };
+  }
+  return emptyAlarmRuntime(
+    plan.id,
+    plan.steps.map((step) => step.order),
+  );
+}
+
+export async function recordAlarmLifecycleEvent(
+  plan: ServicePlan,
+  stepOrder: number,
+  eventType: AlarmEventType,
+  occurredAt = eventOccurredAt(),
+) {
+  const store = useServiceStore.getState();
+  let runtime = runtimeForPlan(plan);
+  const key = alarmEventKey(plan.id, stepOrder, eventType);
+  const existing = runtime.events.find((event) => event.key === key);
+  if (!existing) {
+    runtime = queueAlarmEvent(runtime, {
+      planId: plan.id,
+      stepOrder,
+      eventType,
+      occurredAt,
+    });
+    store.set({ alarmRuntime: runtime });
+    await saveLocalAlarmEvent(plan, stepOrder, eventType, occurredAt);
+  }
+  const queued = existing ?? runtime.events.find((event) => event.key === key);
+  if (!queued || queued.synced) return;
+  void syncAlarmEvent(plan, queued);
+}
+
+const syncingAlarmEventKeys = new Set<string>();
+
+async function syncAlarmEvent(
+  plan: ServicePlan,
+  queued: ReturnType<typeof runtimeForPlan>["events"][number],
+) {
+  if (syncingAlarmEventKeys.has(queued.key)) return;
+  syncingAlarmEventKeys.add(queued.key);
+  try {
+    await postAlarmEvent(
+      sessionId(),
+      plan.id,
+      {
+        stepOrder: queued.stepOrder,
+        eventType: queued.eventType,
+        occurredAt: queued.occurredAt,
+      },
+    );
+    const latest = runtimeForPlan(plan);
+    useServiceStore.getState().set({
+      alarmRuntime: {
+        ...latest,
+        events: latest.events.map((event) =>
+          event.key === queued.key ? { ...event, synced: true } : event,
+        ),
+      },
+    });
+  } catch {
+    // Alarm interaction is local-first; the same natural event key is retried.
+  } finally {
+    syncingAlarmEventKeys.delete(queued.key);
+  }
+}
+
+export async function syncPendingAlarmEvents() {
+  const plan = useServiceStore.getState().plan;
+  if (!plan) return;
+  const pending = runtimeForPlan(plan).events.filter((event) => !event.synced);
+  for (const event of pending) {
+    await syncAlarmEvent(plan, event);
+  }
+}
+
+export async function triggerNextAlarmStep(force = false) {
+  const store = useServiceStore.getState();
+  const plan = store.plan;
+  if (!plan || plan.status === "COMPLETED") return false;
+  let runtime = runtimeForPlan(plan);
+  const now = eventOccurredAt();
+  const step = nextAlarmStep(plan, runtime, now, force);
+  if (!step) return false;
+
+  const unresolved =
+    runtime.awaitingConfirmationStepOrder ?? runtime.currentStepOrder;
+  if (unresolved !== null && unresolved !== step.order) {
+    await recordAlarmLifecycleEvent(plan, unresolved, "MISSED", now);
+    runtime = completeAlarmStep(runtimeForPlan(plan), unresolved);
+    store.set({ alarmRuntime: runtime, alarmStage: "idle" });
+    stopAlarmSound();
+  }
+
+  await recordAlarmLifecycleEvent(plan, step.order, "RANG", now);
+  runtime = runtimeForPlan(plan);
+  store.set({
+    alarmRuntime: {
+      ...runtime,
+      currentStepOrder: step.order,
+      awaitingConfirmationStepOrder: null,
+      remainingStepOrders: runtime.remainingStepOrders.filter(
+        (order) => order !== step.order,
+      ),
+    },
+    alarmStage: "ringing",
+  });
+  try {
+    await startAlarmSound();
+  } catch {
+    store.set({
+      message:
+        "음소거 자동 재생이 차단됐어요. 알람 화면에서 재생 버튼을 눌러 주세요.",
+    });
+  }
+  return true;
+}
+
+export async function triggerDemoAlarmStep() {
+  const store = useServiceStore.getState();
+  const plan = store.plan;
+  if (!plan) return false;
+  const runtime = runtimeForPlan(plan);
+  const step = nextAlarmStep(plan, runtime, eventOccurredAt(), true);
+  if (!step) return false;
+  store.set({ virtualNow: alarmScheduledAt(plan, step.order) });
+  return triggerNextAlarmStep(true);
+}
+
+export async function dismissCurrentAlarm() {
+  const store = useServiceStore.getState();
+  const plan = store.plan;
+  const stepOrder = plan ? runtimeForPlan(plan).currentStepOrder : null;
+  if (!plan || stepOrder === null) return;
+  stopAlarmSound();
+  await recordAlarmLifecycleEvent(plan, stepOrder, "DISMISSED");
+  const runtime = runtimeForPlan(plan);
+  store.set({
+    alarmStage: "confirm",
+    alarmRuntime: {
+      ...runtime,
+      awaitingConfirmationStepOrder: stepOrder,
+    },
+  });
+}
+
+export async function confirmCurrentAlarm(success: boolean) {
+  const store = useServiceStore.getState();
+  const plan = store.plan;
+  if (!plan) return;
+  const runtime = runtimeForPlan(plan);
+  const stepOrder =
+    runtime.awaitingConfirmationStepOrder ?? runtime.currentStepOrder;
+  if (stepOrder === null) return;
+  const now = eventOccurredAt();
+
+  if (success) {
+    await recordAlarmLifecycleEvent(plan, stepOrder, "CONFIRMED_AWAKE", now);
+    for (const remainingOrder of remainingAlarmStepOrders(
+      plan,
+      runtimeForPlan(plan),
+    )) {
+      await recordAlarmLifecycleEvent(
+        plan,
+        remainingOrder,
+        "CANCELLED",
+        now,
+      );
+    }
+    const completed = completeAlarmStep(runtimeForPlan(plan), stepOrder);
+    store.set({
+      alarmRuntime: {
+        ...completed,
+        completedStepOrders: plan.steps.map((step) => step.order),
+        remainingStepOrders: [],
+      },
+    });
+    await saveServiceOutcome(true, stepOrder);
+    return;
+  }
+
+  await recordAlarmLifecycleEvent(plan, stepOrder, "MISSED", now);
+  const completed = completeAlarmStep(runtimeForPlan(plan), stepOrder);
+  const remaining = remainingAlarmStepOrders(plan, completed);
+  store.set({ alarmRuntime: completed, alarmStage: "idle" });
+  if (remaining.length) {
+    store.set({ message: "다음 알람을 준비할게요. 조금 더 쉬어도 괜찮아요." });
+    return;
+  }
+  const executedSteps = completed.events.filter(
+    (event) => event.eventType === "RANG",
+  ).length;
+  await saveServiceOutcome(false, Math.max(1, executedSteps));
+}
+
+export async function saveServiceOutcome(
+  success: boolean,
+  alarmStepsUsed?: number,
+) {
   stopAlarmSound();
   const store = useServiceStore.getState();
   const plan = store.plan;
   if (!plan || plan.status === "COMPLETED") return;
   const completedAt = store.virtualNow ?? new Date().toISOString();
-  const outcome = success ? "CONFIRMED_ON_TIME" : "UNCONFIRMED";
+  const outcome = success
+    ? Date.parse(completedAt) <= Date.parse(plan.finalAlarmAt)
+      ? "CONFIRMED_ON_TIME"
+      : "CONFIRMED_LATE"
+    : "UNCONFIRMED";
   const result = {
     planId: plan.id,
     outcome,
-    alarmStepsUsed: success ? 1 : plan.steps.length,
+    alarmStepsUsed:
+      alarmStepsUsed ?? (success ? 1 : plan.steps.length),
     completedAt,
-    confirmedAt: success ? plan.firstAlarmAt : null,
+    confirmedAt: success ? completedAt : null,
     userCorrection: true,
   } as const;
   const learning = await applyWakeLearning(result, plan.localDate);
+  const learningEffect: WakeLearningEffect = {
+    previousAdvanceMinutes: learning.previousAdvanceMinutes,
+    nextAdvanceMinutes: learning.nextAdvanceMinutes,
+    previousProtocolAdjustment: learning.previousProtocolAdjustment,
+    nextProtocolAdjustment: learning.nextProtocolAdjustment,
+    recommendation: learning.nextRecommendation,
+    reasonCodes: learning.reasonCodes,
+    policyVersion: "wake-learning-1",
+  };
+  await saveLocalWakeOutcome(plan, result);
+  await saveLocalLearningEffect(plan.localDate, learningEffect);
+  try {
+    await putWakeLearningEffect(sessionId(), plan.id, learningEffect);
+  } catch {
+    // Learning remains local and can still explain future recommendations.
+  }
   let syncMessage: string | null = learning.nextRecommendation;
   if (useCurrentFlowStore.getState().onboardingDraft.outcomeSync) {
     try {

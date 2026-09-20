@@ -135,7 +135,7 @@ export function AppShell({
           </div>
 
           <div className="iphone-home-indicator" aria-hidden="true" />
-          {authenticated && pathname !== "/onboarding" && !immersive && (
+          {authenticated && currentPath !== "/onboarding" && !immersive && (
             <nav className="service-tabbar" aria-label="주 메뉴">
               {homeTabs.map((tab) => {
                 const active = isTabActive(tab.href);
