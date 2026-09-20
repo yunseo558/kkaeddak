@@ -11,9 +11,9 @@ async function setup(page: Page) {
   await page.getByLabel("매일 알람을 정할 시각").fill("21:00");
   await page.getByRole("button", { name: "다음", exact: true }).click();
   await page.getByRole("button", { name: "Apple 건강 샘플 연결하기" }).click();
-  await expect(page.getByText("연동 완료")).toHaveCount(1);
-  await page.getByRole("button", { name: "캘린더 연결하기" }).click();
-  await expect(page.getByText("연동 완료")).toHaveCount(2);
+  await expect(page.getByText("샘플 연동 완료")).toHaveCount(1);
+  await page.getByRole("button", { name: "캘린더 샘플 연결하기" }).click();
+  await expect(page.getByText("샘플 연동 완료")).toHaveCount(2);
   await page.getByRole("button", { name: "다음", exact: true }).click();
   await page.getByRole("button", { name: "설정 완료" }).click();
   await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
@@ -79,6 +79,9 @@ test("AI 일정 유형과 조기 자동화 설정을 실제 서비스 흐름으�
   await page.getByRole("button", { name: "닫기" }).click();
 
   await page.getByRole("link", { name: "마이", exact: true }).click();
+  await expect(page.getByText("최근 건강 분석")).toHaveCount(0);
+  await expect(page.getByText("제안 알람")).toHaveCount(0);
+  await expect(page.locator(".settings-clay-icon")).toHaveCount(6);
   await expect(page).toHaveScreenshot("mypage.png", {
     animations: "disabled",
   });

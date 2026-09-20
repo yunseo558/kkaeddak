@@ -20,6 +20,9 @@ import {
   serviceNow,
 } from "../lib/service-actions";
 import { stopAlarmSound } from "../lib/alarm-audio";
+import { ClayIcon } from "@/components/brand/clay-icon";
+import { HomeAlarmScene, SetupGuidanceScene } from "./home-alarm-scene";
+import styles from "./service-home.module.css";
 
 const subscribeHydration = () => () => {};
 let splashShownInRuntime = false;
@@ -64,11 +67,11 @@ export function ServiceHome() {
           type="button"
         >
           <Image
-            alt="일정과 수면 패턴을 분석해 알람을 준비하는 깨딱"
+            alt="일정과 온디바이스 건강 데이터를 분석해 알람을 준비하는 깨딱"
             className="splash-artwork"
-            height={1672}
+            height={1671}
             priority
-            src="/brand/kkaeddak-splash.png"
+            src="/brand/kkaeddak-splash-matte-bright.png"
             width={941}
           />
         </button>
@@ -105,47 +108,33 @@ export function ServiceHome() {
     );
   if (!completed)
     return (
-      <AppShell currentStep="소개">
-        <div className="setup-home">
-          <header className="service-heading">
+      <AppShell currentStep="소개" homeScene>
+        <div className={`${styles.home} setup-home`}>
+          <header className={`service-heading ${styles.heading}`}>
             <div>
               <p className="service-muted">처음 오셨군요</p>
               <h1>내일 아침을 준비해볼까요?</h1>
             </div>
             <span className="service-tag">설정 전</span>
           </header>
-          <section className="setup-card">
-            <div className="setup-icon" aria-hidden="true">
-              <Image
-                alt=""
-                height={560}
-                priority
-                src="/brand/kkaeddak-alarm-clock.png"
-                width={600}
-              />
-            </div>
-            <p className="service-kicker">첫 기상 계획</p>
-            <h2>먼저 기본 설정이 필요해요</h2>
-            <p className="service-muted">
-              평소 기상 습관과 일정 유형을 알려주면 내일 필요한 알람을
-              계산할게요.
-            </p>
-            <Link className="service-primary" href="/onboarding">
-              설정하러 가기
-            </Link>
-          </section>
+          <SetupGuidanceScene
+            description="캘린더와 온디바이스 건강 데이터를 연결하면 내일의 기상 난이도를 추정해 필요한 최소한의 알람을 제안할게요."
+            href="/onboarding"
+            label="설정하러 가기"
+            title="먼저 기본 설정이 필요해요"
+          />
           <section className="setup-preview" aria-label="설정 후 제공 기능">
             <div>
               <span>01</span>
-              <p>캘린더 일정 유형 판단</p>
+              <p>일정·건강 데이터 연결</p>
             </div>
             <div>
               <span>02</span>
-              <p>맞춤 기상 시각 계산</p>
+              <p>Gemini 피로도·기상 난이도 분석</p>
             </div>
             <div>
               <span>03</span>
-              <p>기상 결과 학습</p>
+              <p>최소 알람 전략 학습</p>
             </div>
           </section>
         </div>
@@ -153,17 +142,19 @@ export function ServiceHome() {
     );
   if (!store.calendarConnected)
     return (
-      <AppShell currentStep="소개">
-        <section className="service-section">
-          <p className="service-kicker">마지막으로</p>
-          <h1>내일 일정을 연결해 주세요</h1>
-          <p className="service-muted">
-            첫 일정의 유형을 판단해 필요한 기상 시각을 계산할게요.
-          </p>
-          <Link className="service-primary" href="/settings/connections">
-            연동 설정으로 가기
-          </Link>
-        </section>
+      <AppShell currentStep="소개" homeScene>
+        <div className={styles.home}>
+          <header className={`service-heading ${styles.heading}`}>
+            <div><p className="service-muted">마지막 준비예요</p><h1>내일 아침</h1></div>
+            <span className="service-tag">연동 전</span>
+          </header>
+          <SetupGuidanceScene
+            description="캘린더를 연결하면 첫 일정의 시각과 유형을 판단하고, 건강 데이터와 함께 내일의 기상 난이도를 계산할게요."
+            href="/settings/connections"
+            label="연동 설정하기"
+            title="내일 일정을 연결해 주세요"
+          />
+        </div>
       </AppShell>
     );
   const plan = store.plan;
@@ -189,9 +180,9 @@ export function ServiceHome() {
             : "알람이 설정됐어요"
           : "확인을 기다리고 있어요";
   return (
-    <AppShell currentStep="계획">
-      <div className="service-home service-home-dashboard">
-        <header className="service-heading">
+    <AppShell currentStep="계획" homeScene>
+      <div className={styles.home}>
+        <header className={`service-heading ${styles.heading}`}>
           <div>
             <p className="service-muted">
               {new Date(serviceNow()).toLocaleDateString("ko-KR", {
@@ -214,8 +205,9 @@ export function ServiceHome() {
             {store.message}
           </p>
         )}
+        <HomeAlarmScene ringing={store.alarmStage === "ringing"}>
         {store.alarmStage !== "idle" ? (
-          <section className="service-alarm" aria-live="polite">
+          <section className={`${styles.bubble} ${styles.alarmBubble}`} aria-live="polite">
             <p className="service-kicker">
               {store.alarmStage === "ringing"
                 ? "일어날 시간이에요"
@@ -258,33 +250,27 @@ export function ServiceHome() {
             )}
           </section>
         ) : (
-          <section className="service-plan">
-            <div className="service-row">
-              <span className="service-kicker">{status}</span>
-              <span className="home-clay-status" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M7 4.8 4.4 7.2M17 4.8l2.6 2.4" />
-                  <circle cx="12" cy="13" r="6.5" />
-                  <path d="M12 9.5V13l2.4 1.5M8.5 19.2 7 21M15.5 19.2 17 21" />
-                </svg>
-              </span>
+          <section className={styles.bubble} aria-label="내일의 알람 계획" aria-busy={store.busy}>
+            <div className={styles.bubbleStatus}>
+              <span className={styles.statusDot} />
+              <span>{status}</span>
             </div>
+            <h2 className={styles.bubbleTitle}>
+              {plan?.status === "PROPOSED" ? "이 시간에 깨워드릴까요?" : approved ? "내일 아침도, 깨딱과 함께" : plan?.status === "COMPLETED" ? "오늘의 아침을 기억할게요" : "여유로운 아침을 준비해요"}
+            </h2>
+            <div className={styles.timeRow}>
             <p className="service-clock">
               {plan ? clockTime(plan.firstAlarmAt) : "— : —"}
             </p>
-            <p className="service-muted">
+            <p className={styles.timeMeta}>
               {plan
                 ? `${plan.localDate.slice(5).replace("-", "/")} · ${plan.steps.length}개의 알람`
                 : "내일 일정을 확인해 주세요"}
             </p>
+            </div>
             {plan && (
-              <div className="home-plan-target">
-                <span aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <rect x="3.5" y="5.5" width="17" height="15" rx="3" />
-                    <path d="M7.5 3.5v4M16.5 3.5v4M3.5 10h17" />
-                  </svg>
-                </span>
+              <div className={styles.planTarget}>
+                <ClayIcon name="calendar" size={30} />
                 <div>
                   <small>내일 첫 일정 · {plan.scheduleTypeLabel}</small>
                   <strong>{plan.eventTitle}</strong>
@@ -395,16 +381,22 @@ export function ServiceHome() {
             )}
           </section>
         )}
+        </HomeAlarmScene>
+        <div className={styles.detailsHeading}>
+          <span>내일을 위한 작은 준비</span>
+          <span aria-hidden="true">↓</span>
+        </div>
         {plan && (
-          <section className="service-section home-reason-card">
+          <section className={`service-section ${styles.glass}`}>
             <div className="service-row">
-              <h2>
+              <h2 className={styles.cardTitle}>
+                <ClayIcon name="spark" />
                 {plan.explanationSource === "MODEL"
-                  ? "AI가 이렇게 정했어요"
-                  : "기본 분석으로 정했어요"}
+                  ? "Gemini 피로도 분석"
+                  : "피로도 안전 분석 결과예요"}
               </h2>
               <span className="home-ai-badge">
-                {plan.explanationSource === "MODEL" ? "AI 개인화" : "안전 폴백"}
+                {plan.explanationSource === "MODEL" ? "Gemini 개인화" : "안전 폴백"}
               </span>
             </div>
             <p className="service-muted">{plan.reason}</p>
@@ -428,8 +420,8 @@ export function ServiceHome() {
             </div>
             <p className="service-footnote">
               {plan.explanationSource === "MODEL"
-                ? `AI가 피로도와 최근 기상 반응을 분석해 ${clockTime(plan.firstAlarmAt)}부터 ${plan.steps.length}개의 알람을 배치했어요.`
-                : "AI 연결에 실패해 이번 계획은 로컬 안전 기준으로 계산했어요."}
+                ? `Gemini가 수면·활동·컨디션과 최근 기상 반응을 종합해 피로도를 판단하고 ${clockTime(plan.firstAlarmAt)}부터 ${plan.steps.length}개의 알람을 배치했어요.`
+                : "Gemini 연결이 없어 이번 계획은 건강 신호와 기상 기록을 이용한 로컬 안전 기준으로 계산했어요."}
             </p>
             {!approved && plan.status === "PROPOSED" && (
               <p className="service-footnote">
@@ -440,9 +432,9 @@ export function ServiceHome() {
             )}
           </section>
         )}
-        <section className="service-section">
+        <section className={`service-section ${styles.glass}`}>
           <div className="service-row">
-            <h2>내일 첫 일정</h2>
+            <h2 className={styles.cardTitle}><ClayIcon name="calendar" />내일 첫 일정</h2>
             <Link href="/calendar">수정</Link>
           </div>
           <div className="calendar-summary">
@@ -459,24 +451,28 @@ export function ServiceHome() {
             </div>
           </div>
         </section>
-        <section className="service-section">
+        <section className={`service-section ${styles.glass}`}>
           <div className="service-row">
-            <h2>나의 수면</h2>
+            <h2 className={styles.cardTitle}><ClayIcon name="health" />오늘의 기상 난이도</h2>
             <Link href="/sleep">자세히</Link>
           </div>
           <strong className="sleep-summary">
-            {store.healthConnected
-              ? `${Math.floor(store.sleepMinutes / 60)}시간 ${store.sleepMinutes % 60}분`
-              : "아직 연결하지 않았어요"}
+            {plan
+              ? `피로도 ${plan.fatigueLevel === "HIGH" ? "높음" : plan.fatigueLevel === "MEDIUM" ? "보통" : "낮음"} · ${plan.fatigueScore}점`
+              : store.healthConnected
+                ? "건강 데이터 분석 대기 중"
+                : "아직 연결하지 않았어요"}
           </strong>
           <p className="service-muted">
-            {store.healthConnected
-              ? "최근 수면 기록을 다음 알람에 반영해요."
-              : "수면 기록이 있으면 더 알맞게 추천할 수 있어요."}
+            {plan
+              ? `${plan.explanationSource === "MODEL" ? "Gemini가" : "안전 모델이"} 온디바이스 건강 신호를 종합해 내일 ${plan.steps.length}개의 알람이 필요하다고 판단했어요.`
+              : store.healthConnected
+                ? "수면·걸음·활동·컨디션을 다음 기상 계획에 함께 반영해요."
+                : "Apple 건강 데이터를 연결하면 피로도와 필요한 알람 개수를 더 알맞게 추정할 수 있어요."}
           </p>
         </section>
-        <section className="service-section">
-          <h2>매일 {store.automationTime}, 내일을 준비해요</h2>
+        <section className={`service-section ${styles.glass}`}>
+          <h2 className={styles.cardTitle}><ClayIcon name="chart" />매일 {store.automationTime}, 내일을 준비해요</h2>
           <p className="service-muted">
             {eligibility.count}/10일 기록 · 적응 기간{" "}
             {Math.min(14, eligibility.elapsedDays)}/14일

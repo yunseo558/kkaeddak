@@ -19,6 +19,22 @@ type DemoSessionState = {
   }) => void;
 };
 
+type DemoSessionIdentity = Pick<
+  DemoSessionState,
+  "expiresAt" | "mode" | "sessionId"
+>;
+
+export function isDemoSessionExpired(
+  session: DemoSessionIdentity,
+  now = Date.now(),
+) {
+  if (session.mode !== "server") return false;
+  const expiresAt = session.expiresAt
+    ? Date.parse(session.expiresAt)
+    : Number.NaN;
+  return !session.sessionId || !Number.isFinite(expiresAt) || expiresAt <= now;
+}
+
 const initialState = {
   expiresAt: null,
   mode: null,

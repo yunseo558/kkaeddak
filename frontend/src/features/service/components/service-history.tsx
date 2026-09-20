@@ -1,11 +1,26 @@
 "use client";
 import { AppShell } from "@/components/layout/app-shell";
-import { WakeHistorySummary } from "@/features/wake-result/components/wake-history-summary";
+import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 import { useServiceStore } from "../model/service-store";
+import { SetupGuidanceScene } from "./home-alarm-scene";
 
 export function ServiceHistory() {
   const store = useServiceStore();
-  if (!store.calendarConnected) return <WakeHistorySummary />;
+  const completed = useCurrentFlowStore((state) => state.onboardingCompleted);
+  if (!completed || !store.calendarConnected)
+    return (
+      <AppShell currentStep="결과" homeScene>
+        <div className="service-home">
+          <header className="service-heading"><div><p className="service-kicker">기상 학습</p><h1>기록</h1></div><span className="service-tag">기록 전</span></header>
+          <SetupGuidanceScene
+            description="첫 기상 계획을 만들면 알람을 끈 뒤 실제로 일어났는지를 확인해요. 실패한 경우에만 다음 알람을 실행하고, 결과를 다음 계획에 학습할게요."
+            href="/onboarding"
+            label="첫 계획 설정하기"
+            title="첫 아침을 기록할 준비를 해요"
+          />
+        </div>
+      </AppShell>
+    );
   const records = [...store.records]
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 30);
@@ -13,7 +28,7 @@ export function ServiceHistory() {
     (r) => r.outcome === "CONFIRMED_ON_TIME",
   ).length;
   return (
-    <AppShell currentStep="결과">
+    <AppShell currentStep="결과" homeScene>
       <div className="service-home">
         <header className="service-heading">
           <h1>나의 아침 기록</h1>

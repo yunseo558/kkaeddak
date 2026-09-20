@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
+import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 import { useServiceStore, type CalendarEntry } from "../model/service-store";
 import { atTime, clockTime, localDate } from "../model/service-policy";
 import {
@@ -12,6 +12,7 @@ import {
   serviceAction,
   serviceNow,
 } from "../lib/service-actions";
+import { SetupGuidanceScene } from "./home-alarm-scene";
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -38,6 +39,7 @@ function moveMonth(cursor: string, amount: number) {
 
 export function ServiceCalendar() {
   const store = useServiceStore();
+  const completed = useCurrentFlowStore((state) => state.onboardingCompleted);
   const initialDate = store.plan?.localDate ?? localDate(serviceNow());
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [cursor, setCursor] = useState(initialDate.slice(0, 7));
@@ -106,24 +108,24 @@ export function ServiceCalendar() {
     });
   };
 
-  if (!store.calendarConnected) {
+  if (!completed || !store.calendarConnected) {
     return (
-      <AppShell currentStep="분석">
+      <AppShell currentStep="분석" homeScene>
         <div className="service-home">
-          <header className="service-heading"><h1>캘린더</h1></header>
-          <section className="service-empty-state">
-            <div className="service-empty-icon" aria-hidden="true">📅</div>
-            <h2>캘린더 연동이 필요해요</h2>
-            <p>연동 설정에서 일정을 불러오면 AI가 기상 시각을 계산해요.</p>
-            <Link className="service-primary" href="/settings/connections">연동 설정으로 가기</Link>
-          </section>
+          <header className="service-heading"><div><p className="service-kicker">내일 일정</p><h1>캘린더</h1></div><span className="service-tag">분석 전</span></header>
+          <SetupGuidanceScene
+            description={completed ? "캘린더 샘플을 연결하면 첫 일정의 시각과 유형을 판단해 언제부터 알람이 필요한지 계산할게요." : "기본 설정에서 캘린더를 연결하면 내일 첫 일정을 기준으로 기상 난이도를 분석할게요."}
+            href={completed ? "/settings/connections" : "/onboarding"}
+            label={completed ? "캘린더 연동하기" : "기본 설정하기"}
+            title={completed ? "내일 일정을 연결해 주세요" : "첫 일정부터 확인할게요"}
+          />
         </div>
       </AppShell>
     );
   }
 
   return (
-    <AppShell currentStep="분석">
+    <AppShell currentStep="분석" homeScene>
       <div className="service-home calendar-screen">
         <header className="service-heading">
           <div><p className="service-kicker">연동 완료</p><h1>캘린더</h1></div>

@@ -9,6 +9,11 @@ export type HealthKitSleepValue =
   | "HKCategoryValueSleepAnalysisAsleepDeep"
   | "HKCategoryValueSleepAnalysisAsleepREM";
 
+export type HealthKitMenstrualValue =
+  | "HKCategoryValueMenstrualFlowLight"
+  | "HKCategoryValueMenstrualFlowMedium"
+  | "HKCategoryValueMenstrualFlowHeavy";
+
 type HealthKitSourceRevision = {
   source: { name: string; bundleIdentifier: string };
   version: string;
@@ -18,10 +23,12 @@ type HealthKitSourceRevision = {
 export type HealthKitCategorySample = {
   uuid: string;
   sampleType: "HKCategorySample";
-  typeIdentifier: "HKCategoryTypeIdentifierSleepAnalysis";
+  typeIdentifier:
+    | "HKCategoryTypeIdentifierSleepAnalysis"
+    | "HKCategoryTypeIdentifierMenstrualFlow";
   startDate: string;
   endDate: string;
-  value: HealthKitSleepValue;
+  value: HealthKitSleepValue | HealthKitMenstrualValue;
   sourceRevision: HealthKitSourceRevision;
 };
 
@@ -65,7 +72,7 @@ export function createHealthKitMockSnapshot(input: {
     ["HKCategoryValueSleepAnalysisAwake", awakeMinutes],
   ];
   let cursor = end - (input.sleepMinutes + awakeMinutes) * 60_000;
-  const categorySamples = stages.map(([value, minutes], index) => {
+  const sleepSamples: HealthKitCategorySample[] = stages.map(([value, minutes], index) => {
     const startDate = new Date(cursor).toISOString();
     cursor += minutes * 60_000;
     return {
@@ -78,6 +85,16 @@ export function createHealthKitMockSnapshot(input: {
       sourceRevision: demoSourceRevision,
     };
   });
+  const cycleStart = end - 17 * 86_400_000;
+  const menstrualSample: HealthKitCategorySample = {
+    uuid: "healthkit-menstrual-1",
+    sampleType: "HKCategorySample",
+    typeIdentifier: "HKCategoryTypeIdentifierMenstrualFlow",
+    startDate: new Date(cycleStart).toISOString(),
+    endDate: new Date(cycleStart + 86_400_000).toISOString(),
+    value: "HKCategoryValueMenstrualFlowMedium",
+    sourceRevision: demoSourceRevision,
+  };
   const dayStart = new Date(end - 12 * 3600_000).toISOString();
   const dayEnd = new Date(end).toISOString();
   const quantitySamples: HealthKitQuantitySample[] = [
@@ -109,7 +126,7 @@ export function createHealthKitMockSnapshot(input: {
       sourceRevision: demoSourceRevision,
     },
   ];
-  return { categorySamples, quantitySamples };
+  return { categorySamples: [...sleepSamples, menstrualSample], quantitySamples };
 }
 
 export function normalizeHealthKitSnapshot(
@@ -123,7 +140,11 @@ export function normalizeHealthKitSnapshot(
   ]);
   const sleepDurationMinutes = Math.round(
     snapshot.categorySamples
-      .filter((sample) => sleepValues.has(sample.value))
+      .filter(
+        (sample) =>
+          sample.typeIdentifier === "HKCategoryTypeIdentifierSleepAnalysis" &&
+          sleepValues.has(sample.value as HealthKitSleepValue),
+      )
       .reduce(
         (total, sample) =>
           total + (Date.parse(sample.endDate) - Date.parse(sample.startDate)) / 60_000,
@@ -137,6 +158,30 @@ export function normalizeHealthKitSnapshot(
   const steps = quantity("HKQuantityTypeIdentifierStepCount");
   const exercise = quantity("HKQuantityTypeIdentifierAppleExerciseTime");
   const activeEnergy = quantity("HKQuantityTypeIdentifierActiveEnergyBurned");
+  const latestMenstrualSample = snapshot.categorySamples
+    .filter(
+      (sample) =>
+        sample.typeIdentifier === "HKCategoryTypeIdentifierMenstrualFlow",
+    )
+    .sort((a, b) => b.startDate.localeCompare(a.startDate))[0];
+  const menstrualCycleDay = latestMenstrualSample
+    ? Math.max(
+        1,
+        Math.floor(
+          (Date.parse(input.now) - Date.parse(latestMenstrualSample.startDate)) /
+            86_400_000,
+        ) + 1,
+      )
+    : undefined;
+  const menstrualCyclePhase = !menstrualCycleDay
+    ? undefined
+    : menstrualCycleDay <= 5
+      ? "menstrual"
+      : menstrualCycleDay <= 13
+        ? "follicular"
+        : menstrualCycleDay <= 16
+          ? "ovulation"
+          : "luteal";
   const activityLevel =
     steps >= 10_000 || exercise >= 60 || activeEnergy >= 600
       ? "high"
@@ -147,6 +192,11 @@ export function normalizeHealthKitSnapshot(
     id: "service-health",
     source: "sample",
     sleepDurationMinutes,
+    stepCount: Math.round(steps),
+    activeEnergyKcal: Math.round(activeEnergy),
+    exerciseMinutes: Math.round(exercise),
+    menstrualCycleDay,
+    menstrualCyclePhase,
     activityLevel,
     conditionLevel:
       sleepDurationMinutes < 360

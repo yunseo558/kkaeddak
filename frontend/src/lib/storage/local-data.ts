@@ -20,6 +20,11 @@ export type HealthInputRecord = {
   source: "manual" | "sample";
   scenarioId?: string;
   sleepDurationMinutes?: number;
+  stepCount?: number;
+  activeEnergyKcal?: number;
+  exerciseMinutes?: number;
+  menstrualCycleDay?: number;
+  menstrualCyclePhase?: "menstrual" | "follicular" | "ovulation" | "luteal";
   activityLevel?: "low" | "usual" | "high";
   conditionLevel?: "low" | "usual" | "high";
   recentFirstAlarmSucceeded?: boolean;

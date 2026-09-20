@@ -18,6 +18,10 @@ describe("HealthKit demo adapter", () => {
           sampleType: "HKCategorySample",
           typeIdentifier: "HKCategoryTypeIdentifierSleepAnalysis",
         }),
+        expect.objectContaining({
+          sampleType: "HKCategorySample",
+          typeIdentifier: "HKCategoryTypeIdentifierMenstrualFlow",
+        }),
       ]),
     );
     expect(snapshot.quantitySamples.map((sample) => sample.typeIdentifier)).toEqual(
@@ -39,6 +43,11 @@ describe("HealthKit demo adapter", () => {
     expect(normalized).toMatchObject({
       source: "sample",
       sleepDurationMinutes: 300,
+      stepCount: 12_480,
+      activeEnergyKcal: 690,
+      exerciseMinutes: 64,
+      menstrualCycleDay: 18,
+      menstrualCyclePhase: "luteal",
       activityLevel: "high",
       conditionLevel: "low",
       recentFirstAlarmSucceeded: false,

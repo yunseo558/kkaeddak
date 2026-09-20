@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { ClayIcon } from "@/components/brand/clay-icon";
 import { useServiceStore } from "@/features/service/model/service-store";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 import {
@@ -305,11 +306,11 @@ export function OnboardingFlow() {
                 계산할 수 있어요. 웹 데모에서는 샘플 데이터를 불러와요.
               </p>
               <section className="onboarding-connection-card">
-                <div><span aria-hidden="true">📅</span><p><strong>캘린더</strong><small>2026년 10월 30일까지의 샘플 일정</small></p></div>
-                {service.calendarConnected ? <b>연동 완료</b> : <button aria-label="캘린더 연결하기" type="button" disabled={service.busy} onClick={() => void serviceAction(connectCalendar)}>연결하기</button>}
+                <div><span aria-hidden="true" className="connection-clay-icon"><ClayIcon name="calendar" size={42} /></span><p><strong>캘린더</strong><small>2026년 10월 30일까지의 샘플 일정</small></p></div>
+                {service.calendarConnected ? <b>샘플 연동 완료</b> : <button aria-label="캘린더 샘플 연결하기" type="button" disabled={service.busy} onClick={() => void serviceAction(connectCalendar)}>샘플 연결</button>}
               </section>
               <section className="onboarding-connection-card">
-                <div><span aria-hidden="true">🌙</span><p><strong>Apple 건강</strong><small>HealthKit 원본 구조 샘플 · 공통 어댑터 분석</small></p></div>
+                <div><span aria-hidden="true" className="connection-clay-icon"><ClayIcon name="health" size={42} /></span><p><strong>Apple 건강</strong><small>HealthKit 원본 구조 샘플 · 공통 어댑터 분석</small></p></div>
                 {service.healthConnected ? <b>샘플 연동 완료</b> : <button aria-label="Apple 건강 샘플 연결하기" type="button" disabled={service.busy} onClick={() => void serviceAction(connectHealth)}>샘플 연결</button>}
               </section>
               {service.message && <p role="alert" className="service-error">{service.message}</p>}
