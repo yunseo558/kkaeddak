@@ -1864,6 +1864,20 @@ body {
   padding: 22px;
   background: #f4f7ea;
 }
+.global-alarm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(30, 33, 25, 0.32);
+  backdrop-filter: blur(12px);
+}
+.global-alarm-overlay .service-alarm {
+  width: min(100%, 360px);
+  box-shadow: 0 28px 70px rgba(41, 47, 31, 0.24);
+}
 .service-dot {
   width: 7px;
   height: 7px;

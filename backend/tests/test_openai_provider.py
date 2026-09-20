@@ -17,6 +17,7 @@ from kkaeddak.services.ai import (
     PreparationCandidate,
     ScheduleCategoryCandidate,
     ScheduleClassificationAiRequest,
+    ScheduleClassificationBatchAiRequest,
 )
 from kkaeddak.services.openai_provider import (
     OPENAI_RESPONSES_URL,
@@ -107,6 +108,32 @@ async def test_schedule_classification_uses_strict_private_response_request() ->
 
 
 @pytest.mark.anyio
+async def test_batch_schedule_classification_uses_one_response_request() -> None:
+    expected = {
+        "items": [
+            {"title": "자료구조 수업", "category_code": "CLASS", "confidence": 0.95},
+            {"title": "카카오 면접", "category_code": "IMPORTANT", "confidence": 0.97},
+        ]
+    }
+    transport = RecordingTransport(_response(expected))
+    result = await _provider(transport).classify_schedules(
+        ScheduleClassificationBatchAiRequest(
+            titles=["자료구조 수업", "카카오 면접"],
+            categories=[
+                ScheduleCategoryCandidate(code="CLASS", label="수업"),
+                ScheduleCategoryCandidate(code="IMPORTANT", label="시험·면접"),
+                ScheduleCategoryCandidate(code="OTHER", label="기타", is_fallback=True),
+            ],
+        )
+    )
+
+    assert result == expected
+    assert len(transport.calls) == 1
+    schema = transport.calls[0]["body"]["text"]["format"]["schema"]
+    assert schema["properties"]["items"]["maxItems"] == 2
+
+
+@pytest.mark.anyio
 async def test_provider_explains_and_selects_only_candidate_tasks() -> None:
     transport = RecordingTransport(
         _response({"explanation": "최근 실패를 반영해 조금 더 일찍 시작해요."}, direct=True),
@@ -151,7 +178,6 @@ async def test_provider_requests_a_structured_personalized_wake_plan() -> None:
 
     result = await provider.personalize_wake_plan(
         PersonalizedWakePlanAiRequest(
-            external_ai_consent=True,
             category="CLASS",
             importance="NORMAL",
             event_hour=11,

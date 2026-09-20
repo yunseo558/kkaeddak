@@ -35,9 +35,24 @@ class ScheduleClassificationResponse(APIModel):
     source: ExplanationSource
 
 
+class ScheduleClassificationBatchCreate(APIModel):
+    titles: list[str] = Field(min_length=1, max_length=50)
+    categories: list[ScheduleCategoryCandidate] = Field(min_length=1, max_length=20)
+
+
+class ScheduleClassificationBatchItem(APIModel):
+    title: str = Field(min_length=1, max_length=100)
+    category_code: Code
+    confidence: float = Field(ge=0, le=1)
+    source: ExplanationSource
+
+
+class ScheduleClassificationBatchResponse(APIModel):
+    items: list[ScheduleClassificationBatchItem] = Field(min_length=1, max_length=50)
+
+
 class PersonalizedWakePlanCreate(APIModel):
     category: Code
-    external_ai_consent: Literal[True]
     importance: Importance
     event_hour: int = Field(ge=0, le=23)
     base_wake_lead_min: int = Field(ge=15, le=300)

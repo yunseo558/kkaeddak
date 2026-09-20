@@ -21,7 +21,6 @@ vi.mock("@/features/service/lib/service-actions", async (importOriginal) => {
   return {
     ...actual,
     generateServicePlan: vi.fn(async () => undefined),
-    reclassifyCalendarWithAi: vi.fn(async () => undefined),
     saveServicePreferences: vi.fn(async () => undefined),
     saveServiceProfile: vi.fn(async () => undefined),
   };
@@ -56,15 +55,14 @@ describe("OnboardingFlow", () => {
       screen.getByRole("heading", { name: "데이터 연동" }),
     ).toBeInTheDocument();
 
-    useServiceStore.getState().set({ calendarConnected: true });
+    useServiceStore
+      .getState()
+      .set({ calendarConnected: true, healthConnected: true });
     await user.click(screen.getByRole("button", { name: "다음" }));
     expect(
       screen.getByRole("heading", { name: "개인정보" }),
     ).toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole("checkbox", { name: /AI 개인화 분석 동의/ }),
-    );
     await user.click(screen.getByRole("button", { name: "설정 완료" }));
 
     expect(useCurrentFlowStore.getState().demoAuthenticated).toBe(true);

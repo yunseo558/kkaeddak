@@ -24,6 +24,7 @@ EXPECTED_OPERATIONS = {
     "/api/v1/history/summary": {"get"},
     "/api/v1/ai/explanations": {"post"},
     "/api/v1/ai/schedule-classifications": {"post"},
+    "/api/v1/ai/schedule-classifications:batch": {"post"},
     "/api/v1/ai/wake-plan-recommendations": {"post"},
     "/api/v1/health": {"get"},
 }

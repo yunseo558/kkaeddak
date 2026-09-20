@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ai/schedule-classifications:batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Classify multiple schedule titles in one model interaction */
+        post: operations["classify_schedules_api_v1_ai_schedule_classifications_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ai/wake-plan-recommendations": {
         parameters: {
             query?: never;
@@ -519,11 +536,6 @@ export interface components {
             conditionLevel?: ("low" | "normal" | "high") | null;
             /** Eventhour */
             eventHour: number;
-            /**
-             * Externalaiconsent
-             * @constant
-             */
-            externalAiConsent: true;
             importance: components["schemas"]["Importance"];
             /** Keepsafetyalarm */
             keepSafetyAlarm: boolean;
@@ -773,6 +785,31 @@ export interface components {
             isFallback: boolean;
             /** Label */
             label: string;
+        };
+        /** ScheduleClassificationBatchCreate */
+        ScheduleClassificationBatchCreate: {
+            /** Categories */
+            categories: components["schemas"]["ScheduleCategoryCandidate"][];
+            /** Titles */
+            titles: string[];
+        };
+        /** ScheduleClassificationBatchItem */
+        ScheduleClassificationBatchItem: {
+            /**
+             * Categorycode
+             * @example PACK_BAG
+             */
+            categoryCode: string;
+            /** Confidence */
+            confidence: number;
+            source: components["schemas"]["ExplanationSource"];
+            /** Title */
+            title: string;
+        };
+        /** ScheduleClassificationBatchResponse */
+        ScheduleClassificationBatchResponse: {
+            /** Items */
+            items: components["schemas"]["ScheduleClassificationBatchItem"][];
         };
         /** ScheduleClassificationCreate */
         ScheduleClassificationCreate: {
@@ -1160,6 +1197,114 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScheduleClassificationResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid or expired session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or permission required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Revision or resource conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Disallowed privacy field */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Temporary dependency failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    classify_schedules_api_v1_ai_schedule_classifications_batch_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-Session"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleClassificationBatchCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleClassificationBatchResponse"];
                 };
             };
             /** @description Invalid request */

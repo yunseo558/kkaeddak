@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
 import { MockProvider } from "@/mocks/mock-provider";
+import { GlobalAlarmScheduler } from "@/features/service/components/global-alarm-scheduler";
 import {
   apiRetryDelay,
   shouldRetryApiRequest,
@@ -30,7 +31,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
   return (
     <MockProvider>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <GlobalAlarmScheduler />
+        {children}
+      </QueryClientProvider>
     </MockProvider>
   );
 }

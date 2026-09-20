@@ -13,6 +13,7 @@ from kkaeddak.services.ai import (
     PersonalizedWakePlanAiRequest,
     ScheduleCategoryCandidate,
     ScheduleClassificationAiRequest,
+    ScheduleClassificationBatchAiRequest,
 )
 from kkaeddak.services.gemini_provider import (
     GEMINI_INTERACTIONS_URL,
@@ -72,7 +73,6 @@ def _provider(transport: RecordingTransport) -> GeminiInteractionsProvider:
 
 def _payload() -> PersonalizedWakePlanAiRequest:
     return PersonalizedWakePlanAiRequest(
-        external_ai_consent=True,
         category="CLASS",
         importance="NORMAL",
         event_hour=11,
@@ -142,6 +142,32 @@ async def test_schedule_classification_uses_only_allowed_user_categories() -> No
     assert sent["title"] == "개인 면접 일정"
     schema = transport.calls[0]["body"]["response_format"]["schema"]
     assert schema["properties"]["category_code"]["enum"] == ["IMPORTANT", "OTHER"]
+
+
+@pytest.mark.anyio
+async def test_batch_schedule_classification_uses_one_interaction() -> None:
+    expected = {
+        "items": [
+            {"title": "자료구조 수업", "category_code": "CLASS", "confidence": 0.95},
+            {"title": "카카오 면접", "category_code": "IMPORTANT", "confidence": 0.97},
+        ]
+    }
+    transport = RecordingTransport(_response(expected))
+    result = await _provider(transport).classify_schedules(
+        ScheduleClassificationBatchAiRequest(
+            titles=["자료구조 수업", "카카오 면접"],
+            categories=[
+                ScheduleCategoryCandidate(code="CLASS", label="수업"),
+                ScheduleCategoryCandidate(code="IMPORTANT", label="시험·면접"),
+                ScheduleCategoryCandidate(code="OTHER", label="기타", is_fallback=True),
+            ],
+        )
+    )
+
+    assert result == expected
+    assert len(transport.calls) == 1
+    schema = transport.calls[0]["body"]["response_format"]["schema"]
+    assert schema["properties"]["items"]["minItems"] == 2
 
 
 def test_output_text_reads_direct_and_step_responses() -> None:

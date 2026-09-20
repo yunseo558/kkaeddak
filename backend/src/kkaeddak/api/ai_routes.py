@@ -8,6 +8,9 @@ from kkaeddak.schemas.ai import (
     ExplanationResponse,
     PersonalizedWakePlanCreate,
     PersonalizedWakePlanResponse,
+    ScheduleClassificationBatchCreate,
+    ScheduleClassificationBatchItem,
+    ScheduleClassificationBatchResponse,
     ScheduleClassificationCreate,
     ScheduleClassificationResponse,
 )
@@ -18,6 +21,7 @@ from kkaeddak.services.ai import (
     PersonalizedWakePlanAiRequest,
     ScheduleCategoryCandidate,
     ScheduleClassificationAiRequest,
+    ScheduleClassificationBatchAiRequest,
 )
 
 router = APIRouter()
@@ -75,6 +79,43 @@ async def classify_schedule(
         category_code=result.category_code,
         confidence=result.confidence,
         source=source,
+    )
+
+
+@router.post(
+    "/ai/schedule-classifications:batch",
+    response_model=ScheduleClassificationBatchResponse,
+    tags=["ai"],
+    summary="Classify multiple schedule titles in one model interaction",
+)
+async def classify_schedules(
+    payload: ScheduleClassificationBatchCreate,
+    current: CurrentSession,
+    database: DatabaseSession,
+    request: Request,
+) -> ScheduleClassificationBatchResponse:
+    provider: AiProvider | None = request.app.state.ai_provider
+    result, source = await AiService(database, provider).classify_schedules(
+        ScheduleClassificationBatchAiRequest(
+            titles=payload.titles,
+            categories=[
+                ScheduleCategoryCandidate(
+                    code=candidate.code,
+                    label=candidate.label,
+                    is_fallback=candidate.is_fallback,
+                )
+                for candidate in payload.categories
+            ],
+        )
+    )
+    return ScheduleClassificationBatchResponse(
+        items=[
+            ScheduleClassificationBatchItem(
+                **item.model_dump(),
+                source=source,
+            )
+            for item in result.items
+        ]
     )
 
 

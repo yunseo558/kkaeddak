@@ -21,7 +21,6 @@ import {
   connectCalendar,
   connectHealth,
   generateServicePlan,
-  reclassifyCalendarWithAi,
   saveServicePreferences,
   saveServiceProfile,
   serviceAction,
@@ -34,7 +33,7 @@ const STEP_FIELDS: Array<Array<keyof OnboardingValues>> = [
   [],
   ["preferredAlarmCount", "keepSafetyAlarm"],
   [],
-  ["aiPersonalizationConsent", "outcomeSync"],
+  ["outcomeSync"],
 ];
 
 const inputClassName = "field-control mt-2 min-h-12 w-full px-4 py-3";
@@ -82,7 +81,10 @@ export function OnboardingFlow() {
   };
 
   const complete = handleSubmit(async (values) => {
-    const nextValues = { ...values, automationMode: "suggest" as const };
+    const nextValues = {
+      ...values,
+      automationMode: "suggest" as const,
+    };
     setDraft(nextValues);
     service.set({
       preferredAlarmCount: nextValues.preferredAlarmCount,
@@ -91,7 +93,6 @@ export function OnboardingFlow() {
     const completedSuccessfully = await serviceAction(async () => {
       await saveServicePreferences();
       await saveServiceProfile();
-      await reclassifyCalendarWithAi();
       await generateServicePlan();
     });
     if (!completedSuccessfully) return;
@@ -308,7 +309,7 @@ export function OnboardingFlow() {
                 {service.calendarConnected ? <b>연동 완료</b> : <button aria-label="캘린더 연결하기" type="button" disabled={service.busy} onClick={() => void serviceAction(connectCalendar)}>연결하기</button>}
               </section>
               <section className="onboarding-connection-card">
-                <div><span aria-hidden="true">🌙</span><p><strong>Apple 건강</strong><small>HealthKit 연동과 동일한 분석 입력 샘플</small></p></div>
+                <div><span aria-hidden="true">🌙</span><p><strong>Apple 건강</strong><small>HealthKit 원본 구조 샘플 · 공통 어댑터 분석</small></p></div>
                 {service.healthConnected ? <b>샘플 연동 완료</b> : <button aria-label="Apple 건강 샘플 연결하기" type="button" disabled={service.busy} onClick={() => void serviceAction(connectHealth)}>샘플 연결</button>}
               </section>
               {service.message && <p role="alert" className="service-error">{service.message}</p>}
@@ -350,27 +351,15 @@ export function OnboardingFlow() {
                 입니다.
               </div>
 
-              <label className="choice-card flex items-start gap-3 rounded-[var(--radius-control)] p-4">
-                <input
-                  className="mt-1"
-                  type="checkbox"
-                  {...register("aiPersonalizationConsent")}
-                />
-                <span>
-                  <strong className="block">AI 개인화 분석 동의 (필수)</strong>
-                  <span className="text-sm leading-6 text-muted">
-                    일정 유형 판단에는 일정 이름과 내가 정한 유형 이름을,
-                    피로도·알람 계획에는 수면 시간과 활동·컨디션, 최근
-                    기상 결과의 요약값만 Google Gemini로 전송합니다. 일정
-                    메모·위치와 Apple 건강 원본 샘플은 보내지 않습니다.
-                  </span>
-                  {errors.aiPersonalizationConsent ? (
-                    <span className="mt-1 block text-sm text-danger">
-                      {errors.aiPersonalizationConsent.message}
-                    </span>
-                  ) : null}
+              <div className="choice-card rounded-[var(--radius-control)] p-4">
+                <strong className="block">AI 개인화 분석 안내</strong>
+                <span className="text-sm leading-6 text-muted">
+                  깨딱은 일정 유형 분류와 피로도·알람 계획에 Google
+                  Gemini를 사용해요. 일정 이름·사용자 유형 이름과 수면
+                  시간·활동·컨디션·기상 결과 요약값만 전송하고, 일정
+                  메모·위치와 Apple 건강 원본은 전송하지 않아요.
                 </span>
-              </label>
+              </div>
 
               <label className="choice-card flex items-start gap-3 rounded-[var(--radius-control)] p-4">
                 <input
@@ -401,7 +390,10 @@ export function OnboardingFlow() {
             {step < 4 ? (
               <button
                 className="action-primary min-h-11 flex-1 px-5 py-3"
-                disabled={step === 3 && !service.calendarConnected}
+                disabled={
+                  step === 3 &&
+                  (!service.calendarConnected || !service.healthConnected)
+                }
                 onClick={(event) => {
                   event.preventDefault();
                   void moveForward();

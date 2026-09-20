@@ -81,6 +81,31 @@ class ScheduleClassificationAiResponse(StrictModel):
     confidence: float = Field(ge=0, le=1)
 
 
+class ScheduleClassificationBatchAiRequest(StrictModel):
+    titles: list[str] = Field(min_length=1, max_length=50)
+    categories: list[ScheduleCategoryCandidate] = Field(min_length=1, max_length=20)
+
+    @field_validator("titles")
+    @classmethod
+    def validate_titles(cls, value: list[str]) -> list[str]:
+        normalized = [_validate_display_text(title.strip()) for title in value]
+        if any(not title or len(title) > 100 for title in normalized):
+            raise ValueError("schedule titles must contain 1 to 100 characters")
+        if len(normalized) != len(set(normalized)):
+            raise ValueError("schedule titles must be unique")
+        return normalized
+
+
+class ScheduleClassificationBatchItem(StrictModel):
+    title: str = Field(min_length=1, max_length=100)
+    category_code: str = Field(pattern=r"^[A-Z][A-Z0-9_]{1,63}$")
+    confidence: float = Field(ge=0, le=1)
+
+
+class ScheduleClassificationBatchAiResponse(StrictModel):
+    items: list[ScheduleClassificationBatchItem] = Field(min_length=1, max_length=50)
+
+
 FatigueLevel = Literal["LOW", "MEDIUM", "HIGH"]
 ActivityLevel = Literal["low", "moderate", "high"]
 ConditionLevel = Literal["low", "normal", "high"]
@@ -104,7 +129,6 @@ class PersonalizedWakePlanAiRequest(StrictModel):
     """Aggregated health signals only; raw health samples stay local."""
 
     category: str = Field(pattern=r"^[A-Z][A-Z0-9_]{1,63}$")
-    external_ai_consent: Literal[True]
     importance: Importance
     event_hour: int = Field(ge=0, le=23)
     base_wake_lead_min: int = Field(ge=15, le=300)
@@ -161,6 +185,8 @@ class AiProvider(Protocol):
     async def explain(self, payload: ExplanationAiRequest) -> Any: ...
 
     async def classify_schedule(self, payload: ScheduleClassificationAiRequest) -> Any: ...
+
+    async def classify_schedules(self, payload: ScheduleClassificationBatchAiRequest) -> Any: ...
 
     async def personalize_wake_plan(self, payload: PersonalizedWakePlanAiRequest) -> Any: ...
 
@@ -248,6 +274,25 @@ def schedule_classification_template(
     )
 
 
+def schedule_classification_batch_template(
+    payload: ScheduleClassificationBatchAiRequest,
+) -> ScheduleClassificationBatchAiResponse:
+    return ScheduleClassificationBatchAiResponse(
+        items=[
+            ScheduleClassificationBatchItem(
+                title=title,
+                **schedule_classification_template(
+                    ScheduleClassificationAiRequest(
+                        title=title,
+                        categories=payload.categories,
+                    )
+                ).model_dump(),
+            )
+            for title in payload.titles
+        ]
+    )
+
+
 def personalized_wake_plan_template(
     payload: PersonalizedWakePlanAiRequest,
 ) -> PersonalizedWakePlanAiResponse:
@@ -291,7 +336,7 @@ def personalized_wake_plan_template(
     level: FatigueLevel = "LOW" if score < 35 else "MEDIUM" if score < 65 else "HIGH"
     failure_count = payload.recent_late_count + payload.recent_missed_count
     alarm_count = min(
-        5,
+        4,
         max(
             payload.preferred_alarm_count,
             3 if level == "HIGH" or failure_count >= 2 else 2 if level == "MEDIUM" else 1,
@@ -464,6 +509,49 @@ class AiService:
             status="FALLBACK",
         )
         return schedule_classification_template(payload), ExplanationSource.TEMPLATE
+
+    async def classify_schedules(
+        self,
+        payload: ScheduleClassificationBatchAiRequest,
+    ) -> tuple[ScheduleClassificationBatchAiResponse, ExplanationSource]:
+        started_at = monotonic()
+        classifier = getattr(self.provider, "classify_schedules", None)
+        if classifier is not None:
+            try:
+                raw = await classifier(payload)
+                result = ScheduleClassificationBatchAiResponse.model_validate(raw)
+                allowed_codes = {candidate.code for candidate in payload.categories}
+                expected_titles = set(payload.titles)
+                result_titles = [item.title for item in result.items]
+                if (
+                    len(result_titles) != len(set(result_titles))
+                    or set(result_titles) != expected_titles
+                    or any(item.category_code not in allowed_codes for item in result.items)
+                ):
+                    raise ValueError
+            except Exception:
+                pass
+            else:
+                await self._record(
+                    feature="SCHEDULE_CLASSIFICATION_BATCH",
+                    payload=payload,
+                    started_at=started_at,
+                    status="MODEL",
+                )
+                return result, ExplanationSource.MODEL
+
+        if self.provider is not None:
+            logger.warning(
+                "AI provider unavailable; batch schedule classification fallback used",
+                extra={"feature": "SCHEDULE_CLASSIFICATION_BATCH"},
+            )
+        await self._record(
+            feature="SCHEDULE_CLASSIFICATION_BATCH",
+            payload=payload,
+            started_at=started_at,
+            status="FALLBACK",
+        )
+        return schedule_classification_batch_template(payload), ExplanationSource.TEMPLATE
 
     async def personalize_wake_plan(
         self,

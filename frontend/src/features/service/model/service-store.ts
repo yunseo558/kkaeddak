@@ -60,6 +60,7 @@ type ServiceState = {
   plan: ServicePlan | null;
   sleepMinutes: number;
   lastAutomationSlot: string | null;
+  lastTriggeredAlarmPlanId: string | null;
   preview: boolean;
   alarmStage: "idle" | "ringing" | "confirm";
   message: string | null;
@@ -84,6 +85,7 @@ const initial = {
   plan: null,
   sleepMinutes: 420,
   lastAutomationSlot: null,
+  lastTriggeredAlarmPlanId: null,
   preview: false,
   alarmStage: "idle",
   message: null,
@@ -115,6 +117,7 @@ export const useServiceStore = create<ServiceState>()(
         plan,
         sleepMinutes,
         lastAutomationSlot,
+        lastTriggeredAlarmPlanId,
         preview,
       }) => ({
         enrolledAt,
@@ -133,6 +136,7 @@ export const useServiceStore = create<ServiceState>()(
         plan,
         sleepMinutes,
         lastAutomationSlot,
+        lastTriggeredAlarmPlanId,
         preview,
       }),
     },

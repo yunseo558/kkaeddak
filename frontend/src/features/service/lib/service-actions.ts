@@ -57,7 +57,7 @@ export async function serviceAction(action: () => Promise<void>) {
     store.set({
       message:
         status === 401
-          ? "연결이 만료됐어요. 캘린더에서 다시 연결해 주세요."
+          ? "연결이 만료돼 자동으로 복구하고 있어요. 잠시 후 다시 시도해 주세요."
           : status === 409
             ? "다른 변경과 겹쳤어요. 캘린더에서 계획을 다시 계산해 주세요."
             : error instanceof Error && !status
@@ -142,7 +142,6 @@ async function explainServicePlan(reasonCodes: string[], summary: string) {
 }
 
 async function personalizeWakePlan(input: {
-  externalAiConsent: true;
   category: string;
   importance: "NORMAL" | "IMPORTANT" | "CRITICAL";
   eventHour: number;
@@ -177,10 +176,33 @@ async function personalizeWakePlan(input: {
 async function classifyCalendarEvents(events: CalendarEntry[]) {
   const classifications: Record<string, ScheduleClassification> = {};
   const titles = [...new Set(events.map((event) => event.displayTitle ?? "일정"))];
-  const resolved = await Promise.all(
-    titles.map(async (title) => [title, await classifyScheduleTitle(title)] as const),
+  const scheduleTypes = useServiceStore.getState().scheduleTypes;
+  const result = await apiClient.POST(
+    "/api/v1/ai/schedule-classifications:batch",
+    {
+      headers: demoSessionHeaders(sessionId()),
+      body: {
+        titles,
+        categories: scheduleTypes.map(({ code, label, isFallback }) => ({
+          code,
+          label,
+          isFallback,
+        })),
+      },
+    },
   );
-  const byTitle = new Map(resolved);
+  if (!result.data || result.error)
+    throw new Error("캘린더 일정을 AI로 분류하지 못했어요.");
+  const byTitle = new Map(
+    result.data.items.map((item) => [
+      item.title,
+      {
+        categoryCode: item.categoryCode,
+        confidence: item.confidence,
+        source: item.source,
+      } satisfies ScheduleClassification,
+    ]),
+  );
   for (const event of events) {
     const classification = byTitle.get(event.displayTitle ?? "일정");
     if (!classification) throw new Error("일정 유형을 판단하지 못했어요.");
@@ -195,59 +217,12 @@ async function classifyCalendarEvents(events: CalendarEntry[]) {
   };
 }
 
-function classifyCalendarEventsLocally(events: CalendarEntry[]) {
-  const store = useServiceStore.getState();
-  const hints: Record<string, string[]> = {
-    CLASS: ["수업", "강의", "세미나", "전공", "교양"],
-    WORK: ["출근", "근무", "회의", "미팅", "프로젝트", "업무"],
-    IMPORTANT: ["시험", "면접", "발표", "공모전", "오디션"],
-    APPOINTMENT: ["약속", "브런치", "점심", "저녁", "병원", "예약", "치과"],
-    EXERCISE: ["운동", "헬스", "러닝", "요가", "필라테스", "PT"],
-  };
-  const fallback =
-    store.scheduleTypes.find((type) => type.isFallback) ?? store.scheduleTypes[0];
-  const classifications: Record<string, ScheduleClassification> = {};
-  const classifiedEvents = events.map((event) => {
-    const title = event.displayTitle ?? "";
-    const matched = store.scheduleTypes.find((type) =>
-      (hints[type.code] ?? []).some((hint) =>
-        title.toLocaleLowerCase("ko-KR").includes(hint.toLocaleLowerCase("ko-KR")),
-      ),
-    );
-    const category = matched ?? fallback;
-    classifications[event.clientId] = {
-      categoryCode: category.code,
-      confidence: matched ? 0.9 : 0.35,
-      source: "TEMPLATE",
-    };
-    return { ...event, category: category.code };
-  });
-  return { events: classifiedEvents, classifications };
-}
-
 export async function reclassifyCalendarWithAi() {
   const store = useServiceStore.getState();
   if (!store.calendarConnected || !store.events.length) return;
-  const nextEvent = [...store.events]
-    .filter((event) => event.startsAt > serviceNow())
-    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
-  if (!nextEvent) return;
-  const title = nextEvent.displayTitle ?? "일정";
-  const classification = await classifyScheduleTitle(title);
-  const matchingEvents = store.events.map((event) =>
-    (event.displayTitle ?? "일정") === title
-      ? { ...event, category: classification.categoryCode }
-      : event,
-  );
-  const classifications = { ...store.classifications };
-  for (const event of matchingEvents) {
-    if ((event.displayTitle ?? "일정") === title)
-      classifications[event.clientId] = classification;
-  }
-  await saveCalendarEvents(
-    matchingEvents.filter((event) => (event.displayTitle ?? "일정") === title),
-  );
-  store.set({ events: matchingEvents, classifications });
+  const classified = await classifyCalendarEvents(store.events);
+  await saveCalendarEvents(classified.events);
+  store.set(classified);
 }
 
 export async function saveServicePreferences() {
@@ -277,11 +252,11 @@ export async function saveServicePreferences() {
     throw new Error("알람 설정을 저장하지 못했어요.");
 }
 
-export async function connectCalendar() {
+export async function connectCalendar(forceRefresh = false) {
   const store = useServiceStore.getState();
   let id = useDemoSessionStore.getState().sessionId;
   const expires = useDemoSessionStore.getState().expiresAt;
-  if (!id || !expires || Date.parse(expires) <= Date.now()) {
+  if (forceRefresh || !id || !expires || Date.parse(expires) <= Date.now()) {
     const session = await createDemoSession("regular-class");
     useDemoSessionStore.getState().startServer({
       sessionId: session.sessionId,
@@ -335,10 +310,12 @@ export async function connectCalendar() {
   if (!savedProfile.data || savedProfile.error)
     throw new Error("알람 설정을 저장하지 못했어요.");
   const today = localDate(serviceNow());
-  const importedEvents = createMockCalendar(today);
-  const { events, classifications } = survey.aiPersonalizationConsent
-    ? await classifyCalendarEvents(importedEvents)
-    : classifyCalendarEventsLocally(importedEvents);
+  const importedEvents =
+    forceRefresh && store.events.length
+      ? store.events
+      : createMockCalendar(today);
+  const { events, classifications } =
+    await classifyCalendarEvents(importedEvents);
   await saveCalendarEvents(events);
   store.set({
     events,
@@ -501,11 +478,8 @@ export async function generateServicePlan() {
     : 0;
   let personalized: Awaited<ReturnType<typeof personalizeWakePlan>> | null =
     null;
-  if (survey.aiPersonalizationConsent === true) {
-    const explicitConsent: true = survey.aiPersonalizationConsent;
-    try {
-      personalized = await personalizeWakePlan({
-        externalAiConsent: explicitConsent,
+  try {
+    personalized = await personalizeWakePlan({
         category: scheduleType.code,
         importance: event.importance,
         eventHour: new Date(
@@ -541,10 +515,9 @@ export async function generateServicePlan() {
         preferredAlarmCount: store.preferredAlarmCount,
         preferredIntervalMin: store.alarmIntervalMinutes,
         keepSafetyAlarm: store.keepSafetyAlarm,
-      });
-    } catch {
-      // Provider/network failures must not prevent the scheduled alarm.
-    }
+    });
+  } catch {
+    // Provider/network failures must not prevent the scheduled alarm.
   }
   const personalizedOffsets = personalized
     ? mergeAlarmOffsetsWithSafety(

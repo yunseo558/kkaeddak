@@ -13,6 +13,7 @@ from kkaeddak.services.ai import (
     PersonalizedWakePlanAiRequest,
     PreparationAiRequest,
     ScheduleClassificationAiRequest,
+    ScheduleClassificationBatchAiRequest,
 )
 
 GEMINI_INTERACTIONS_URL = "https://generativelanguage.googleapis.com/v1beta/interactions"
@@ -165,6 +166,47 @@ class GeminiInteractionsProvider:
                 ["category_code", "confidence"],
             ),
             max_output_tokens=120,
+        )
+
+    async def classify_schedules(
+        self,
+        payload: ScheduleClassificationBatchAiRequest,
+    ) -> Mapping[str, Any]:
+        category_codes = [candidate.code for candidate in payload.categories]
+        return await self._structured_response(
+            instructions=(
+                "Classify every calendar title into exactly one user-defined category. "
+                "Return one item for every supplied title using the title verbatim and only a "
+                "supplied category code. Infer meaning from titles and labels, use the fallback "
+                "when genuinely unclear, and never invent schedule details."
+            ),
+            input_data=payload.model_dump(mode="json"),
+            schema=_object_schema(
+                {
+                    "items": {
+                        "type": "array",
+                        "minItems": len(payload.titles),
+                        "maxItems": len(payload.titles),
+                        "items": _object_schema(
+                            {
+                                "title": {"type": "string", "enum": payload.titles},
+                                "category_code": {
+                                    "type": "string",
+                                    "enum": category_codes,
+                                },
+                                "confidence": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1,
+                                },
+                            },
+                            ["title", "category_code", "confidence"],
+                        ),
+                    }
+                },
+                ["items"],
+            ),
+            max_output_tokens=min(1800, 80 + len(payload.titles) * 55),
         )
 
     async def explain(self, payload: ExplanationAiRequest) -> Mapping[str, Any]:

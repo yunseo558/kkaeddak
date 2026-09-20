@@ -28,6 +28,10 @@ type ScheduleClassificationCreate =
   components["schemas"]["ScheduleClassificationCreate"];
 type ScheduleClassificationResponse =
   components["schemas"]["ScheduleClassificationResponse"];
+type ScheduleClassificationBatchCreate =
+  components["schemas"]["ScheduleClassificationBatchCreate"];
+type ScheduleClassificationBatchResponse =
+  components["schemas"]["ScheduleClassificationBatchResponse"];
 type PersonalizedWakePlanCreate =
   components["schemas"]["PersonalizedWakePlanCreate"];
 type PersonalizedWakePlanResponse =
@@ -231,6 +235,22 @@ export const handlers = [
     "/api/v1/ai/schedule-classifications",
     async ({ request }) =>
       HttpResponse.json(classifyMockSchedule(await request.json())),
+  ),
+  http.post<
+    never,
+    ScheduleClassificationBatchCreate,
+    ScheduleClassificationBatchResponse
+  >(
+    "/api/v1/ai/schedule-classifications:batch",
+    async ({ request }) => {
+      const body = await request.json();
+      return HttpResponse.json({
+        items: body.titles.map((title) => ({
+          title,
+          ...classifyMockSchedule({ title, categories: body.categories }),
+        })),
+      });
+    },
   ),
   http.post<never, ExplanationCreate, ExplanationResponse>(
     "/api/v1/ai/explanations",
