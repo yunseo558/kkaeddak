@@ -102,25 +102,26 @@ cp .env.example .env
 
 ## 운영 배포
 
-Railway 백엔드는 루트의 `.railway/railway.ts`와 `backend/Dockerfile`을 사용합니다. Railway 환경의 공유 변수에 실제 Vercel 원본을 먼저 등록합니다.
+현재 배포 경로는 Vercel(프론트) + Render(API·PostgreSQL)입니다.
+루트의 [`render.yaml`](../render.yaml)을 Render Blueprint로 연결합니다.
+웹사이트에서 입력할 값과 생성 순서는 [배포 안내](../DEPLOYMENT.md)를 따릅니다.
 
-```dotenv
-KKAEDDAK_CORS_ALLOWED_ORIGINS=["https://<vercel-domain>"]
-```
+API는 `backend/Dockerfile`로 빌드합니다. 무료 Web Service에서도 동작하도록
+시작 명령에서 `alembic upgrade head`가 성공한 뒤 Uvicorn을 실행합니다.
+`/api/v1/health`는 DB 연결과 마이그레이션 상태를 검사합니다.
 
-Railway CLI 5.42.1 이상으로 프로젝트를 연결하고 IaC 변경을 검토·적용합니다.
+운영 필수 환경변수는 `KKAEDDAK_DATABASE_URL`, `KKAEDDAK_ENVIRONMENT=production`,
+`KKAEDDAK_DEBUG=false`, `KKAEDDAK_CORS_ALLOWED_ORIGINS`입니다.
+DB URL은 Blueprint에서 자동 연결합니다. CORS에는 실제 Vercel HTTPS 원본을
+JSON 배열로 입력합니다. 와일드카드와 빈 배열은 허용하지 않습니다.
 
-```bash
-railway login
-railway link
-railway config plan
-railway config apply
-```
-
-IaC는 PostgreSQL, API, 매시 실행되는 만료 세션 정리 서비스를 함께 정의합니다. API 배포 전에 `alembic upgrade head`가 실행되고 `/api/v1/health`가 API·DB·마이그레이션 상태를 검사합니다. 정리 서비스는 같은 이미지에서 다음 명령을 실행하고 종료합니다.
+만료된 세션은 API 접근이 거부되지만, DB 행 삭제는 별도 작업입니다.
+정기 삭제가 필요한 운영 환경에서는 [배포 안내](../DEPLOYMENT.md)의
+Render Cron Job을 추가하여 다음 명령을 실행합니다.
 
 ```bash
 python -m kkaeddak.jobs.cleanup_expired_sessions
 ```
 
-운영 CORS는 와일드카드를 허용하지 않으며 HTTPS 원본을 최소 하나 명시해야 시작됩니다. IaC 적용 후 API 서비스에 Railway 생성 도메인을 발급하고 그 주소를 Vercel의 `KKAEDDAK_BACKEND_ORIGIN`으로 설정합니다.
+실제 키와 DB 접속 정보는 Render 환경변수에만 등록합니다.
+기존 `.railway/railway.ts`는 이전 Railway용 대안이며 Render 배포에는 사용하지 않습니다.

@@ -61,12 +61,20 @@ npm run test:e2e
 
 ## Vercel 배포
 
-루트의 `vercel.json`은 모노레포에서 `frontend` 앱과 생성 OpenAPI 클라이언트를 함께 빌드합니다. Vercel 프로젝트의 Root Directory는 저장소 루트로 유지하고 다음 환경변수를 설정합니다.
+Vercel 프로젝트의 **Root Directory를 `frontend`**로 설정하고,
+**Include source files outside of the Root Directory in the Build Step**을 켭니다.
+`@kkaeddak/api-client`가 `../backend/generated/typescript`에 있어 이 옵션이 필요합니다.
+`frontend/vercel.json`이 공용 클라이언트와 프론트 의존성을 설치하고 Next.js를 빌드합니다.
+Framework Preset은 Next.js, Output Directory는 기본값으로 둡니다.
 
 ```dotenv
-KKAEDDAK_BACKEND_ORIGIN=https://<railway-api-domain>
-NEXT_PUBLIC_KKAEDDAK_API_BASE_URL=
+KKAEDDAK_BACKEND_ORIGIN=https://<render-api-domain>
 NEXT_PUBLIC_API_MOCKING=disabled
 ```
 
-브라우저는 같은 원본의 `/api/v1/*`를 호출하고 Next.js rewrite가 Railway API로 전달합니다. 직접 API 호출과 운영 점검을 위해 Railway의 `KKAEDDAK_CORS_ALLOWED_ORIGINS`에 실제 Vercel 도메인을 같이 설정합니다.
+`NEXT_PUBLIC_KKAEDDAK_API_BASE_URL`은 등록하지 않거나 빈 값으로 둡니다.
+브라우저는 같은 원본의 `/api/v1/*`를 호출하고 Next.js rewrite가 Render API로 전달합니다.
+`KKAEDDAK_BACKEND_ORIGIN`은 빌드 시 rewrite에 반영되므로 변경하면 재배포해야 합니다.
+
+최초 프로젝트 생성 순서, Render 설정, 실제 연결 확인은
+[배포 안내](../DEPLOYMENT.md)를 따릅니다.

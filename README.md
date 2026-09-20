@@ -33,3 +33,8 @@
 - OpenAPI 생성 TypeScript 클라이언트
 
 로컬 실행과 검증 방법은 [`frontend/README.md`](frontend/README.md)를 참고합니다.
+
+## 배포
+
+한 저장소의 `main`을 Vercel(프론트)과 Render(API·PostgreSQL)에 연결합니다.
+웹사이트에서 입력할 설정과 최초 배포 순서는 [DEPLOYMENT.md](DEPLOYMENT.md)에 있습니다.
