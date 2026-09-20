@@ -1040,6 +1040,131 @@ label:has(select:focus-visible) {
   line-height: 1.5;
 }
 
+.health-screen {
+  gap: 16px;
+}
+
+.health-ai-card {
+  display: grid;
+  gap: 13px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  border-radius: 26px;
+  background: #f4f8e8;
+  box-shadow: 0 12px 28px rgba(85, 102, 47, 0.09);
+}
+
+.health-ai-card h2 {
+  margin-top: 4px;
+  color: #3f4c30;
+  font-size: 22px;
+  letter-spacing: -0.04em;
+}
+
+.health-ai-card > p {
+  color: #626956;
+  font-size: 12px;
+  line-height: 1.75;
+  word-break: keep-all;
+}
+
+.health-decision-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.health-decision-row span {
+  padding: 7px 9px;
+  border: 1px solid rgba(108, 125, 55, 0.1);
+  border-radius: 999px;
+  background: #fffaf1;
+  color: #596541;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.health-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.health-metric-grid article {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 21px;
+  background: #fffaf1;
+  box-shadow: 0 8px 20px rgba(91, 73, 58, 0.055);
+}
+
+.health-metric-grid span,
+.health-metric-grid small {
+  color: #7a7868;
+  font-size: 9px;
+}
+
+.health-metric-grid strong {
+  color: #465336;
+  font-size: 17px;
+  letter-spacing: -0.04em;
+}
+
+.health-signal-list {
+  display: grid;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 24px;
+  background: rgba(255, 250, 241, 0.86);
+  box-shadow: 0 8px 24px rgba(91, 73, 58, 0.055);
+}
+
+.health-signal-list > div {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 14px 16px;
+}
+
+.health-signal-list > .service-row {
+  display: flex;
+}
+
+.health-signal-list > div + div {
+  border-top: 1px solid rgba(111, 116, 91, 0.1);
+}
+
+.health-signal-list h2 {
+  font-size: 14px;
+}
+
+.health-signal-list .service-row > span {
+  color: #7a7868;
+  font-size: 9px;
+}
+
+.health-signal-list p {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.health-signal-list strong {
+  color: #465036;
+  font-size: 12px;
+}
+
+.health-signal-list small {
+  color: #747765;
+  font-size: 10px;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+
 .mypage-health {
   color: inherit;
   text-decoration: none;
@@ -2674,4 +2799,252 @@ body {
     width: calc(100% - 32px);
     margin: 24px 16px;
   }
+}
+
+/* Material system: bright marshmallow colors without plastic glare. */
+:root {
+  --hot-pink: #f58fac;
+  --avocado: #bedf69;
+  --brand-soft: #fde8ee;
+  --text-secondary: #60675c;
+  --kkaeddak-glass: rgba(255, 251, 244, 0.8);
+  --kkaeddak-glass-strong: rgba(255, 251, 244, 0.92);
+  --kkaeddak-line: rgba(91, 87, 70, 0.1);
+  --kkaeddak-shadow: 0 15px 34px rgba(94, 76, 59, 0.08);
+  --kkaeddak-clay-shadow: 0 9px 18px rgba(90, 100, 51, 0.14);
+  --shadow-card: 0 18px 44px rgba(103, 79, 62, 0.09);
+  --shadow-control: 0 9px 21px rgba(103, 79, 62, 0.075);
+}
+
+.iphone-shell {
+  border-color: #171915;
+  background: #242621;
+  box-shadow: 0 38px 96px rgba(37, 40, 33, 0.24);
+}
+
+.brand-logo-header,
+.brand-logo-hero,
+.auth-logo {
+  filter: drop-shadow(0 8px 13px rgba(112, 82, 53, 0.11));
+}
+
+.glass-card,
+.soft-card,
+.service-home-dashboard > .service-section,
+.month-calendar,
+.selected-event-list,
+.sleep-chart-card,
+.sleep-insight-list,
+.connection-card,
+.calendar-editor,
+.mypage-menu,
+.mypage-links a,
+.settings-choice {
+  border-color: var(--kkaeddak-line) !important;
+  background: rgba(255, 252, 246, 0.9) !important;
+  background-image: none !important;
+  box-shadow: var(--kkaeddak-shadow) !important;
+  backdrop-filter: blur(18px) saturate(0.88);
+}
+
+.header-icon-button,
+.status-pill,
+.progress-rail,
+.home-plan-target,
+.service-secondary,
+.action-ghost,
+.action-secondary {
+  background-image: none !important;
+  box-shadow: var(--shadow-control) !important;
+}
+
+.header-icon-button,
+.status-pill,
+.progress-rail,
+.home-plan-target {
+  border-color: rgba(91, 87, 70, 0.09);
+  background: rgba(255, 251, 244, 0.82);
+  backdrop-filter: blur(16px) saturate(0.85);
+}
+
+.service-home-dashboard .service-plan,
+.service-alarm,
+.sleep-hero-card,
+.mypage-health,
+.time-panel,
+.accent-panel {
+  border-color: rgba(121, 143, 58, 0.14) !important;
+  background: #f2f8dc !important;
+  background-image: none !important;
+  box-shadow: 0 15px 32px rgba(88, 102, 45, 0.1) !important;
+}
+
+.service-home-dashboard .service-plan::after {
+  border: 0;
+  background: #f7dce6;
+  background-image: none;
+  box-shadow: none;
+  opacity: 0.72;
+}
+
+.service-primary,
+.action-primary,
+.auth-button {
+  border-color: #df7397 !important;
+  background: #ef8baa !important;
+  background-image: none !important;
+  color: #4f1d30 !important;
+  box-shadow: 0 10px 21px rgba(190, 84, 121, 0.18) !important;
+}
+
+.service-primary:hover,
+.action-primary:hover,
+.auth-button:hover {
+  background: #e77e9f !important;
+}
+
+.service-secondary,
+.action-secondary {
+  border-color: rgba(110, 132, 45, 0.18) !important;
+  background: #d9eba2 !important;
+  color: #34451d !important;
+}
+
+.service-primary:active,
+.action-primary:active,
+.auth-button:active,
+.service-secondary:active,
+.action-secondary:active {
+  box-shadow: 0 4px 10px rgba(95, 70, 54, 0.15) !important;
+}
+
+.service-tag,
+.home-ai-badge,
+.settings-human-loop,
+.connection-card-heading b[data-connected="true"] {
+  border-color: rgba(111, 133, 47, 0.11);
+  background: #eef6d5;
+  background-image: none;
+  box-shadow: none;
+}
+
+.home-clay-status,
+.home-plan-target > span,
+.service-tabbar-home-icon,
+.calendar-add-button,
+.mypage-avatar,
+.mypage-menu-icon,
+.service-empty-icon,
+.connection-card-heading > span,
+.onboarding-connection-card > div > span {
+  border-color: rgba(108, 125, 55, 0.13);
+  background-image: none !important;
+  box-shadow: 0 7px 15px rgba(92, 104, 48, 0.13) !important;
+}
+
+.home-clay-status,
+.service-tabbar-home-icon,
+.mypage-avatar,
+.mypage-menu-icon--avocado,
+.service-empty-icon,
+.connection-card-heading > span,
+.onboarding-connection-card > div > span {
+  background: #c7e477 !important;
+}
+
+.home-plan-target > span,
+.calendar-add-button,
+.mypage-menu-icon--pink {
+  background: #f8b0c3 !important;
+  color: #8f284f;
+}
+
+.mypage-menu-icon--cream {
+  background: #f7ead2 !important;
+}
+
+.mypage-menu-icon--danger {
+  background: #f7c5cf !important;
+}
+
+.service-tabbar-home[data-active="true"] .service-tabbar-home-icon {
+  background: #f58fac !important;
+  color: #5c2036;
+  box-shadow: 0 9px 18px rgba(189, 74, 113, 0.18) !important;
+}
+
+.progress-step[data-state="active"] {
+  background: #d9eca1;
+  background-image: none;
+  box-shadow: 0 5px 12px rgba(91, 107, 46, 0.1);
+}
+
+.choice-card[data-selected="true"],
+.choice-card:has(input:checked),
+.settings-choice:has(input:checked) {
+  border-color: rgba(194, 73, 113, 0.25) !important;
+  background: #fbe7ed !important;
+  background-image: none !important;
+  box-shadow: 0 8px 18px rgba(167, 68, 101, 0.08) !important;
+}
+
+.month-calendar-grid > button[data-selected="true"] {
+  border-color: #e5799d;
+  background: #f58fac;
+  background-image: none;
+  color: #542033;
+  box-shadow: 0 6px 13px rgba(194, 73, 113, 0.16);
+}
+
+.sleep-bars span {
+  border-color: rgba(110, 132, 45, 0.12);
+  background: #bedf69;
+  background-image: none;
+  box-shadow: 0 5px 11px rgba(91, 106, 47, 0.11);
+}
+
+.sleep-bars div:last-child span {
+  background: #f58fac;
+  background-image: none;
+  box-shadow: 0 5px 11px rgba(193, 74, 112, 0.13);
+}
+
+.settings-warning .service-checkbox input[type="checkbox"]:checked {
+  background: #f58fac;
+  background-image: none;
+}
+
+.settings-warning .service-checkbox input[type="checkbox"]::after {
+  background: #fff8ed;
+  background-image: none;
+  box-shadow: 0 3px 7px rgba(65, 58, 47, 0.16);
+}
+
+.wake-display {
+  background: #f8e9e9 !important;
+  background-image: none !important;
+}
+
+.feature-list li,
+.alarm-step,
+.metric-card,
+.mypage-health-stats,
+.home-signal-grid {
+  background: rgba(255, 251, 244, 0.88);
+  background-image: none;
+  box-shadow: 0 7px 17px rgba(91, 73, 58, 0.055);
+}
+
+.connection-clay-icon {
+  width: 44px !important;
+  height: 44px !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.connection-clay-icon svg {
+  display: block;
+  width: 42px;
+  height: 42px;
 }

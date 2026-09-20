@@ -2,7 +2,10 @@ import { demoSessionHeaders } from "@kkaeddak/api-client";
 import { apiClient } from "@/lib/api/client";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 import { createDemoSession } from "@/features/demo-session/api/create-demo-session";
-import { useDemoSessionStore } from "@/features/demo-session/model/demo-session-store";
+import {
+  isDemoSessionExpired,
+  useDemoSessionStore,
+} from "@/features/demo-session/model/demo-session-store";
 import { calculateWakeRecommendation } from "@/features/wake-plan/lib/recommendation-engine";
 import {
   createWakePlan,
@@ -11,6 +14,7 @@ import {
 import { applyWakeLearning } from "@/features/wake-result/lib/wake-learning";
 import { syncWakeOutcome } from "@/features/wake-result/api/wake-outcome-api";
 import { localDataStore } from "@/lib/storage/local-data";
+import { getApiStatus } from "@/lib/api/api-recovery";
 import {
   useServiceStore,
   type CalendarEntry,
@@ -34,11 +38,79 @@ import {
 export const serviceNow = () =>
   useServiceStore.getState().virtualNow ?? new Date().toISOString();
 
+export class ServiceRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ServiceRequestError";
+  }
+}
+
+function requestFailed(message: string, status: number): never {
+  throw new ServiceRequestError(message, status);
+}
+
 function sessionId() {
   const id = useDemoSessionStore.getState().sessionId;
   if (!id)
     throw new Error("연결된 계정이 없습니다. 캘린더 연결부터 완료해 주세요.");
   return id;
+}
+
+let sessionRecoveryPromise: Promise<void> | null = null;
+
+async function restoreLocalStateToNewSession() {
+  const store = useServiceStore.getState();
+  const flow = useCurrentFlowStore.getState();
+  const calendarWasConnected = store.calendarConnected;
+  const localEvents = [...store.events];
+
+  store.set({
+    alarmStage: "idle",
+    lastAutomationSlot: null,
+    lastTriggeredAlarmPlanId: null,
+    plan: null,
+  });
+  flow.setActiveWakePlan(null);
+  flow.setEditingPlanId(null);
+  flow.setWakeResult(null);
+
+  await saveServicePreferences();
+  await saveServiceProfile();
+
+  if (!calendarWasConnected) return;
+  const events = localEvents.length
+    ? localEvents
+    : createMockCalendar(localDate(serviceNow()));
+  await saveCalendarEvents(events);
+  store.set({ calendarConnected: true, events });
+  await generateServicePlan();
+}
+
+export async function recoverDemoSession() {
+  sessionRecoveryPromise ??= (async () => {
+    const previous = useDemoSessionStore.getState();
+    const scenarioId = previous.scenarioId ?? "regular-class";
+    const session = await createDemoSession(scenarioId);
+    useDemoSessionStore.getState().startServer({
+      expiresAt: session.expiresAt,
+      scenarioId,
+      sessionId: session.sessionId,
+    });
+    await restoreLocalStateToNewSession();
+    useServiceStore.getState().set({ message: "데모 연결을 복구했어요" });
+  })().finally(() => {
+    sessionRecoveryPromise = null;
+  });
+  return sessionRecoveryPromise;
+}
+
+export async function ensureFreshDemoSession() {
+  if (!isDemoSessionExpired(useDemoSessionStore.getState())) return false;
+  await recoverDemoSession();
+  return true;
 }
 
 // Mutations are serialized across the phone UI and its presentation controls.
@@ -47,17 +119,21 @@ export async function serviceAction(action: () => Promise<void>) {
   if (store.busy) return false;
   store.set({ busy: true, message: null });
   try {
-    await action();
+    const recovered = await ensureFreshDemoSession();
+    try {
+      await action();
+    } catch (error) {
+      if (recovered || getApiStatus(error) !== 401) throw error;
+      await recoverDemoSession();
+      await action();
+    }
     return true;
   } catch (error) {
-    const status =
-      typeof error === "object" && error && "status" in error
-        ? error.status
-        : null;
+    const status = getApiStatus(error);
     store.set({
       message:
         status === 401
-          ? "연결이 만료돼 자동으로 복구하고 있어요. 잠시 후 다시 시도해 주세요."
+          ? "데모 연결을 복구하지 못했어요. 잠시 후 다시 시도해 주세요."
           : status === 409
             ? "다른 변경과 겹쳤어요. 캘린더에서 계획을 다시 계산해 주세요."
             : error instanceof Error && !status
@@ -74,7 +150,7 @@ export async function saveServiceProfile() {
   const headers = demoSessionHeaders(sessionId());
   const profile = await apiClient.GET("/api/v1/profile", { headers });
   if (!profile.data || profile.error)
-    throw new Error("프로필 설정을 불러오지 못했어요.");
+    requestFailed("프로필 설정을 불러오지 못했어요.", profile.response.status);
   const survey = useCurrentFlowStore.getState().onboardingDraft;
   const saved = await apiClient.PUT("/api/v1/profile", {
     headers,
@@ -91,7 +167,7 @@ export async function saveServiceProfile() {
     },
   });
   if (!saved.data || saved.error)
-    throw new Error("프로필 설정을 저장하지 못했어요.");
+    requestFailed("프로필 설정을 저장하지 못했어요.", saved.response.status);
 }
 
 export async function saveCalendarEvents(events: CalendarEntry[]) {
@@ -100,7 +176,10 @@ export async function saveCalendarEvents(events: CalendarEntry[]) {
     body: { events },
   });
   if (!result.data || result.error || result.data.rejected.length)
-    throw new Error("일정을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.");
+    requestFailed(
+      "일정을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.",
+      result.response.status,
+    );
 }
 
 export async function classifyScheduleTitle(
@@ -119,8 +198,9 @@ export async function classifyScheduleTitle(
     },
   });
   if (!result.data || result.error)
-    throw new Error(
+    requestFailed(
       "일정 유형을 판단하지 못했어요. 직접 유형을 선택해 주세요.",
+      result.response.status,
     );
   return result.data;
 }
@@ -135,7 +215,10 @@ async function explainServicePlan(reasonCodes: string[], summary: string) {
       },
     });
     if (result.data && !result.error) return result.data;
-  } catch {
+    if (result.response.status === 401)
+      requestFailed("AI 설명 연결이 만료됐어요.", result.response.status);
+  } catch (error) {
+    if (getApiStatus(error) === 401) throw error;
     // Explanations are optional; plan creation must keep working offline.
   }
   return { explanation: summary, source: "TEMPLATE" as const };
@@ -169,7 +252,10 @@ async function personalizeWakePlan(input: {
     },
   );
   if (!result.data || result.error)
-    throw new Error("AI 개인화 계획을 계산하지 못했어요.");
+    requestFailed(
+      "AI 개인화 계획을 계산하지 못했어요.",
+      result.response.status,
+    );
   return result.data;
 }
 
@@ -192,7 +278,10 @@ async function classifyCalendarEvents(events: CalendarEntry[]) {
     },
   );
   if (!result.data || result.error)
-    throw new Error("캘린더 일정을 AI로 분류하지 못했어요.");
+    requestFailed(
+      "캘린더 일정을 AI로 분류하지 못했어요.",
+      result.response.status,
+    );
   const byTitle = new Map(
     result.data.items.map((item) => [
       item.title,
@@ -230,7 +319,7 @@ export async function saveServicePreferences() {
   const headers = demoSessionHeaders(sessionId());
   const routine = await apiClient.GET("/api/v1/routines", { headers });
   if (!routine.data || routine.error)
-    throw new Error("알람 설정을 불러오지 못했어요.");
+    requestFailed("알람 설정을 불러오지 못했어요.", routine.response.status);
   const saved = await apiClient.PUT("/api/v1/routines", {
     headers,
     body: {
@@ -249,7 +338,7 @@ export async function saveServicePreferences() {
     },
   });
   if (!saved.data || saved.error)
-    throw new Error("알람 설정을 저장하지 못했어요.");
+    requestFailed("알람 설정을 저장하지 못했어요.", saved.response.status);
 }
 
 export async function connectCalendar(forceRefresh = false) {
@@ -257,11 +346,13 @@ export async function connectCalendar(forceRefresh = false) {
   let id = useDemoSessionStore.getState().sessionId;
   const expires = useDemoSessionStore.getState().expiresAt;
   if (forceRefresh || !id || !expires || Date.parse(expires) <= Date.now()) {
-    const session = await createDemoSession("regular-class");
+    const scenarioId =
+      useDemoSessionStore.getState().scenarioId ?? "regular-class";
+    const session = await createDemoSession(scenarioId);
     useDemoSessionStore.getState().startServer({
       sessionId: session.sessionId,
       expiresAt: session.expiresAt,
-      scenarioId: "regular-class",
+      scenarioId,
     });
     id = session.sessionId;
     store.set({ plan: null });
@@ -272,7 +363,10 @@ export async function connectCalendar(forceRefresh = false) {
     apiClient.GET("/api/v1/profile", { headers }),
   ]);
   if (!routine.data || !profile.data)
-    throw new Error("설정을 불러오지 못했어요. 다시 연결해 주세요.");
+    requestFailed(
+      "설정을 불러오지 못했어요. 다시 연결해 주세요.",
+      !routine.data ? routine.response.status : profile.response.status,
+    );
   const survey = useCurrentFlowStore.getState().onboardingDraft;
   const savedRoutine = await apiClient.PUT("/api/v1/routines", {
     headers,
@@ -292,7 +386,10 @@ export async function connectCalendar(forceRefresh = false) {
     },
   });
   if (!savedRoutine.data || savedRoutine.error)
-    throw new Error("일정 유형과 알람 설정을 저장하지 못했어요.");
+    requestFailed(
+      "일정 유형과 알람 설정을 저장하지 못했어요.",
+      savedRoutine.response.status,
+    );
   const savedProfile = await apiClient.PUT("/api/v1/profile", {
     headers,
     body: {
@@ -308,7 +405,10 @@ export async function connectCalendar(forceRefresh = false) {
     },
   });
   if (!savedProfile.data || savedProfile.error)
-    throw new Error("알람 설정을 저장하지 못했어요.");
+    requestFailed(
+      "알람 설정을 저장하지 못했어요.",
+      savedProfile.response.status,
+    );
   const today = localDate(serviceNow());
   const importedEvents =
     forceRefresh && store.events.length
@@ -400,8 +500,11 @@ export async function generateServicePlan() {
     schedules = await loadTargetSchedules();
   }
   if (!schedules.data || schedules.error || !routines.data || routines.error)
-    throw new Error(
+    requestFailed(
       "일정과 준비 시간을 불러오지 못했어요. 다시 시도해 주세요.",
+      !schedules.data || schedules.error
+        ? schedules.response.status
+        : routines.response.status,
     );
   const event = schedules.data.items.sort((a, b) =>
     a.startsAt.localeCompare(b.startsAt),
@@ -516,7 +619,8 @@ export async function generateServicePlan() {
         preferredIntervalMin: store.alarmIntervalMinutes,
         keepSafetyAlarm: store.keepSafetyAlarm,
     });
-  } catch {
+  } catch (error) {
+    if (getApiStatus(error) === 401) throw error;
     // Provider/network failures must not prevent the scheduled alarm.
   }
   const personalizedOffsets = personalized
@@ -610,11 +714,11 @@ export async function generateServicePlan() {
     });
   const reasonSummary = [
     `${scheduleType.label} 유형 · 일정 ${scheduleType.wakeLeadMin}분 전까지 기상`,
-    store.healthConnected
-      ? `최근 수면 ${Math.floor(store.sleepMinutes / 60)}시간 ${store.sleepMinutes % 60}분`
-      : "수면 데이터 연결 전이라 안전 알람을 포함했어요",
-    ...(store.healthConnected && store.sleepMinutes < 360
-      ? ["활동량이 많고 피곤한 상태라 안전 단계를 강화했어요"]
+    healthInput
+      ? `온디바이스 건강 요약 · 수면 ${Math.floor((healthInput.sleepDurationMinutes ?? 0) / 60)}시간 ${(healthInput.sleepDurationMinutes ?? 0) % 60}분 · 걸음 ${(healthInput.stepCount ?? 0).toLocaleString("ko-KR")}보 · 활동 ${healthInput.exerciseMinutes ?? 0}분`
+      : "건강 데이터 연결 전이라 일정과 기상 기록으로 안전 알람을 계산했어요",
+    ...(healthInput?.activityLevel === "high" || healthInput?.conditionLevel === "low"
+      ? ["활동량과 회복 신호를 종합한 피로도가 높아 안전 단계를 강화했어요"]
       : []),
     failures
       ? `최근 기상 실패 ${failures}회를 반영했어요`
@@ -726,7 +830,8 @@ export async function saveServiceOutcome(success: boolean) {
   if (useCurrentFlowStore.getState().onboardingDraft.outcomeSync) {
     try {
       await syncWakeOutcome(sessionId(), result);
-    } catch {
+    } catch (error) {
+      if (getApiStatus(error) === 401) throw error;
       syncMessage = `${learning.nextRecommendation} 서버 동기화는 실패했어요.`;
     }
   }

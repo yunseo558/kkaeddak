@@ -19,7 +19,7 @@ async function showWebAlarmNotification() {
   if (webAlarmPermission() !== "granted") return;
   const options: NotificationOptions = {
     body: "알람을 끄고 기상 여부를 알려주세요.",
-    icon: "/brand/kkaeddak-alarm-clock.png",
+    icon: "/brand/marshmallow-alarm-bright.png",
     tag: "kkaeddak-wake-alarm",
     requireInteraction: true,
   };

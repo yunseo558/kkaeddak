@@ -136,7 +136,7 @@ export function DemoStart() {
         </form>
 
         <ul className="feature-list text-sm leading-6 text-muted">
-          <li>일정과 수면 패턴을 바탕으로 기상 시간을 계산합니다.</li>
+          <li>일정과 온디바이스 건강 데이터로 기상 난이도를 계산합니다.</li>
           <li>필요할 때만 예비 알람을 추가해 불필요한 기상을 줄입니다.</li>
           <li>네트워크가 끊겨도 저장된 계획은 계속 확인할 수 있습니다.</li>
         </ul>

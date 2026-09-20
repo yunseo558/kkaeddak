@@ -12,7 +12,7 @@ export function BrandLogo({ className = "", priority = false }: BrandLogoProps) 
       className={`h-auto w-full object-contain ${className}`}
       height={923}
       priority={priority}
-      src="/brand/kkaeddak-logo.png"
+      src="/brand/kkaeddak-logo-marshmallow-bright.png"
       width={1704}
     />
   );

@@ -38,8 +38,12 @@ export function ServiceSettings() {
   const store = useServiceStore();
   const draft = useCurrentFlowStore((state) => state.onboardingDraft);
   const progress = automationEligibility({ enrolledAt: store.enrolledAt ?? serviceNow(), now: serviceNow(), consent: true, records: store.records, importance: "NORMAL", requiresApproval: false });
-  const sleepHours = Math.floor(store.sleepMinutes / 60);
-  const sleepRemainder = store.sleepMinutes % 60;
+  const fatigueLabel =
+    store.plan?.fatigueLevel === "HIGH"
+      ? "높음"
+      : store.plan?.fatigueLevel === "MEDIUM"
+        ? "보통"
+        : "낮음";
   const descriptions: Record<string, string> = {
     "자동화 설정": draft.automationMode === "automatic" ? "14일 학습 후 자동 적용" : "항상 확인 후 적용",
     "일정 유형 관리": `${store.scheduleTypes.length}개 유형 · AI 자동 분류`,
@@ -57,8 +61,8 @@ export function ServiceSettings() {
         </section>
 
         <Link className="mypage-health" href="/sleep" aria-labelledby="health-summary-title">
-          <div className="mypage-health-heading"><div><p>최근 건강 분석</p><h2 id="health-summary-title">{store.sleepMinutes < 390 ? "수면 시간이 조금 부족해요" : "수면 흐름이 안정적이에요"}</h2></div><span>자세히</span></div>
-          <div className="mypage-health-stats"><div><span>최근 수면</span><strong>{sleepHours}시간{sleepRemainder ? ` ${sleepRemainder}분` : ""}</strong></div><div><span>규칙성</span><strong>{Math.min(94, 72 + store.records.length * 3)}%</strong></div></div>
+          <div className="mypage-health-heading"><div><p>최근 건강 분석</p><h2 id="health-summary-title">{store.plan ? `피로도 ${fatigueLabel}으로 분석했어요` : "건강 신호를 기상 계획에 반영해요"}</h2></div><span>자세히</span></div>
+          <div className="mypage-health-stats"><div><span>AI 피로도</span><strong>{store.plan ? `${store.plan.fatigueScore}점` : "분석 전"}</strong></div><div><span>제안 알람</span><strong>{store.plan ? `${store.plan.steps.length}개` : `${store.preferredAlarmCount}개`}</strong></div></div>
         </Link>
 
         <h2 className="mypage-list-title">마이페이지</h2>

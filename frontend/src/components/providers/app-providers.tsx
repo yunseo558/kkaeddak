@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 
 import { MockProvider } from "@/mocks/mock-provider";
 import { GlobalAlarmScheduler } from "@/features/service/components/global-alarm-scheduler";
+import { DemoSessionRecovery } from "@/features/demo-session/components/demo-session-recovery";
 import {
   apiRetryDelay,
   shouldRetryApiRequest,
@@ -32,6 +33,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <MockProvider>
       <QueryClientProvider client={queryClient}>
+        <DemoSessionRecovery />
         <GlobalAlarmScheduler />
         {children}
       </QueryClientProvider>

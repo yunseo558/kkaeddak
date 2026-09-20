@@ -2,17 +2,16 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { demoSessionHeaders } from "@kkaeddak/api-client";
+import { ClayIcon } from "@/components/brand/clay-icon";
 import { AppShell } from "@/components/layout/app-shell";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
-import { useDemoSessionStore } from "@/features/demo-session/model/demo-session-store";
-import { apiClient } from "@/lib/api/client";
 import { automationEligibility } from "../model/service-policy";
 import { useServiceStore, type ScheduleTypeRule } from "../model/service-store";
 import {
   connectCalendar,
   connectHealth,
   saveCalendarEvents,
+  saveServiceProfile,
   saveServicePreferences,
   serviceAction,
   serviceNow,
@@ -44,14 +43,7 @@ export function AutomationSettings() {
     const nextDraft = { ...draft, automationMode: mode === "automatic" ? "automatic" as const : "suggest" as const };
     useCurrentFlowStore.getState().setOnboardingDraft(nextDraft);
     store.set({ earlyAutomationEnabled: mode === "automatic" && before14Days ? early : false });
-    const id = useDemoSessionStore.getState().sessionId;
-    if (id) {
-      const headers = demoSessionHeaders(id);
-      const profile = await apiClient.GET("/api/v1/profile", { headers });
-      if (!profile.data) throw new Error("설정을 불러오지 못했어요.");
-      const result = await apiClient.PUT("/api/v1/profile", { headers, body: { timezone: profile.data.timezone, locale: profile.data.locale, revision: profile.data.revision, automationMode: mode === "automatic" ? "AUTO_ROUTINE_DAYS" : "RECOMMEND_ONLY", allowImportantEventDetection: profile.data.allowImportantEventDetection, allowAggregateOutcomeSync: profile.data.allowAggregateOutcomeSync } });
-      if (!result.data || result.error) throw new Error("자동화 설정을 저장하지 못했어요.");
-    }
+    await saveServiceProfile();
     setSaved(true);
   };
 
@@ -98,5 +90,5 @@ export function AlarmSettings() {
 
 export function ConnectionSettings() {
   const store = useServiceStore();
-  return <AppShell currentStep="결과"><div className="service-home settings-detail"><SettingsHeader title="연동 설정" description="기상 계획에 사용할 일정과 수면 데이터를 관리해요." />{store.message && <p role="alert" className="service-error">{store.message}</p>}<section className="connection-card"><div className="connection-card-heading"><span aria-hidden="true">📅</span><div><h2>내 캘린더</h2><p>일정 이름과 시각으로 기상 기준을 계산해요.</p></div><b data-connected={store.calendarConnected}>{store.calendarConnected ? "연동 완료" : "미연동"}</b></div><p className="service-footnote">현재 연결 소스: 샘플 캘린더. 2026년 10월 30일까지 수업·회의·시험·면접·약속·운동 일정이 들어 있어요.</p><button disabled={store.busy} className="service-secondary" onClick={() => void serviceAction(() => connectCalendar(store.calendarConnected))}>{store.calendarConnected ? "연결 새로고침" : "캘린더 연결"}</button></section><section className="connection-card"><div className="connection-card-heading"><span aria-hidden="true">🌙</span><div><h2>Apple 건강</h2><p>수면·활동·컨디션을 예비 알람에 반영해요.</p></div><b data-connected={store.healthConnected}>{store.healthConnected ? "샘플 연동 완료" : "미연동"}</b></div><p className="service-footnote">웹 데모는 HealthKit의 HKCategorySample·HKQuantitySample 구조를 따른 샘플을 공통 어댑터로 정규화해 수면·활동·컨디션 분석을 실행해요. iOS 정식 버전에서는 같은 어댑터 경계에 HealthKit 조회 결과를 연결하면 됩니다.</p>{!store.healthConnected && <button disabled={store.busy} className="service-secondary" onClick={() => void serviceAction(connectHealth)}>HealthKit 샘플 연결</button>}</section></div></AppShell>;
+  return <AppShell currentStep="결과"><div className="service-home settings-detail"><SettingsHeader title="연동 설정" description="기상 계획에 사용할 일정과 수면 데이터를 관리해요." />{store.message && <p role="alert" className="service-error">{store.message}</p>}<section className="connection-card"><div className="connection-card-heading"><span aria-hidden="true" className="connection-clay-icon"><ClayIcon name="calendar" size={42} /></span><div><h2>내 캘린더</h2><p>일정 이름과 시각으로 기상 기준을 계산해요.</p></div><b data-connected={store.calendarConnected}>{store.calendarConnected ? "샘플 연동 완료" : "미연동"}</b></div><p className="service-footnote">현재 연결 소스: 샘플 캘린더. 2026년 10월 30일까지 수업·회의·시험·면접·약속·운동 일정이 들어 있어요.</p><button disabled={store.busy} className="service-secondary" onClick={() => void serviceAction(() => connectCalendar(store.calendarConnected))}>{store.calendarConnected ? "샘플 새로고침" : "샘플 연결"}</button></section><section className="connection-card"><div className="connection-card-heading"><span aria-hidden="true" className="connection-clay-icon"><ClayIcon name="health" size={42} /></span><div><h2>Apple 건강</h2><p>수면·활동·컨디션을 예비 알람에 반영해요.</p></div><b data-connected={store.healthConnected}>{store.healthConnected ? "샘플 연동 완료" : "미연동"}</b></div><p className="service-footnote">웹 데모는 HealthKit의 HKCategorySample·HKQuantitySample 구조를 따른 샘플을 공통 어댑터로 정규화해 수면·활동·컨디션 분석을 실행해요. iOS 정식 버전에서는 같은 어댑터 경계에 HealthKit 조회 결과를 연결하면 됩니다.</p>{!store.healthConnected && <button disabled={store.busy} className="service-secondary" onClick={() => void serviceAction(connectHealth)}>샘플 연결</button>}</section></div></AppShell>;
 }

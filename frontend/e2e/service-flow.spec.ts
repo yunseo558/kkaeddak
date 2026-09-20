@@ -11,9 +11,9 @@ async function setup(page: Page) {
   await page.getByLabel("매일 알람을 정할 시각").fill("21:00");
   await page.getByRole("button", { name: "다음", exact: true }).click();
   await page.getByRole("button", { name: "Apple 건강 샘플 연결하기" }).click();
-  await expect(page.getByText("연동 완료")).toHaveCount(1);
-  await page.getByRole("button", { name: "캘린더 연결하기" }).click();
-  await expect(page.getByText("연동 완료")).toHaveCount(2);
+  await expect(page.getByText("샘플 연동 완료")).toHaveCount(1);
+  await page.getByRole("button", { name: "캘린더 샘플 연결하기" }).click();
+  await expect(page.getByText("샘플 연동 완료")).toHaveCount(2);
   await page.getByRole("button", { name: "다음", exact: true }).click();
   await page.getByRole("button", { name: "설정 완료" }).click();
   await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
