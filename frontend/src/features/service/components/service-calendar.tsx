@@ -100,7 +100,9 @@ export function ServiceCalendar() {
       const label =
         store.scheduleTypes.find((item) => item.code === result.categoryCode)
           ?.label ?? "기타";
-      setClassificationFeedback(`AI 분류 완료 · ${label}`);
+      setClassificationFeedback(
+        `${result.source === "MODEL" ? "AI" : "기본"} 분류 완료 · ${label}`,
+      );
     });
   };
 
@@ -167,7 +169,7 @@ export function ServiceCalendar() {
               {selectedEvents.map((event) => (
                 <button key={event.clientId} className="selected-event" onClick={() => openEditor(event)}>
                   <time>{clockTime(event.startsAt)}</time>
-                  <span><strong>{event.displayTitle}</strong><small>{store.scheduleTypes.find((item) => item.code === event.category)?.label ?? "기타"}{store.classifications[event.clientId] ? " · AI 분류" : " · 직접 선택"}</small></span>
+                  <span><strong>{event.displayTitle}</strong><small>{store.scheduleTypes.find((item) => item.code === event.category)?.label ?? "기타"}{store.classifications[event.clientId]?.source === "MODEL" ? " · AI 분류" : store.classifications[event.clientId] ? " · 기본 분류" : " · 직접 선택"}</small></span>
                   <span aria-hidden="true">›</span>
                 </button>
               ))}

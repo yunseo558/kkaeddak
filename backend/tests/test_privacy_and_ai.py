@@ -21,6 +21,7 @@ from kkaeddak.services.ai import (
     AiProvider,
     ExplanationAiRequest,
     PreparationAiRequest,
+    ScheduleClassificationAiRequest,
 )
 
 
@@ -30,6 +31,7 @@ class SuccessfulProvider:
     def __init__(self) -> None:
         self.preparation_request: PreparationAiRequest | None = None
         self.explanation_request: ExplanationAiRequest | None = None
+        self.classification_request: ScheduleClassificationAiRequest | None = None
 
     async def suggest_preparation(self, payload: PreparationAiRequest) -> Any:
         self.preparation_request = payload
@@ -43,6 +45,10 @@ class SuccessfulProvider:
     async def explain(self, payload: ExplanationAiRequest) -> Any:
         self.explanation_request = payload
         return {"explanation": "이른 중요 일정에 맞춰 안전 알람을 유지했어요."}
+
+    async def classify_schedule(self, payload: ScheduleClassificationAiRequest) -> Any:
+        self.classification_request = payload
+        return {"category_code": "IMPORTANT", "confidence": 0.97}
 
 
 class TimeoutProvider:
@@ -179,6 +185,27 @@ async def test_schedule_classification_uses_safe_deterministic_fallback(tmp_path
         "confidence": 0.9,
         "source": "TEMPLATE",
     }
+
+
+@pytest.mark.anyio
+async def test_schedule_classification_uses_configured_model_provider(tmp_path: Path) -> None:
+    provider = SuccessfulProvider()
+    async with _api_harness(tmp_path, provider) as (client, _):
+        session_id = await _create_demo(client)
+        response = await client.post(
+            "/api/v1/ai/schedule-classifications",
+            headers=_headers(session_id),
+            json=_classification_payload("카카오 인턴 1차 인터뷰"),
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "categoryCode": "IMPORTANT",
+        "confidence": 0.97,
+        "source": "MODEL",
+    }
+    assert provider.classification_request is not None
+    assert provider.classification_request.title == "카카오 인턴 1차 인터뷰"
 
 
 @pytest.mark.anyio

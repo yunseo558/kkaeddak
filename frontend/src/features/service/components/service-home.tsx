@@ -456,7 +456,9 @@ export function ServiceHome() {
           <section className="service-section home-reason-card">
             <div className="service-row">
               <h2>이렇게 정했어요</h2>
-              <span className="home-ai-badge">AI 분석</span>
+              <span className="home-ai-badge">
+                {plan.explanationSource === "MODEL" ? "AI 분석" : "기본 분석"}
+              </span>
             </div>
             <p className="service-muted">{plan.reason}</p>
             <div className="home-signal-grid" aria-label="기상 계획 판단 기준">

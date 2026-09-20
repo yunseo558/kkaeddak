@@ -26,6 +26,16 @@ cp .env.example .env
 
 모든 JSON 요청은 중첩된 금지 건강·센서 필드까지 검사하며 발견 시 `422 PRIVACY_FIELD_NOT_ALLOWED`를 반환합니다. 서버 AI에는 정규화된 일정 정보, 루틴 코드, 제한된 추천 이유만 전달할 수 있습니다. AI 공급자는 `create_app(ai_provider=...)`으로 주입하며, 미설정·타임아웃·스키마 검증 실패 시 준비 작업과 추천 이유를 규칙 템플릿으로 반환합니다. AI 실행 로그에는 요청 본문이나 응답 전문 대신 기능, 상태, 지연시간과 허용 입력의 해시만 저장합니다.
 
+OpenAI Provider는 둘 다 설정된 경우에만 활성화됩니다. 실제 값은 저장소에 커밋하지 않습니다.
+
+- `KKAEDDAK_OPENAI_API_KEY`
+- `KKAEDDAK_OPENAI_MODEL`
+- `KKAEDDAK_OPENAI_TIMEOUT_SECONDS` (선택, 기본 10초)
+
+미설정 시에는 기존 규칙 기반 fallback을 그대로 사용합니다. OpenAI에는
+건강 원본 대신 일정 제목·허용 카테고리·이유 코드만 전달하며 Responses API
+구조화 출력과 `store: false`를 사용합니다.
+
 ## 검증
 
 ```bash
