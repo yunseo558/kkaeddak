@@ -37,3 +37,6 @@ frontend/.e2e/
 
 # Logs
 *.log
+
+# Local databases
+backend/kkaeddak-local.sqlite3

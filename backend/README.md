@@ -15,6 +15,7 @@ cd backend
 python3.12 -m venv .venv
 .venv/bin/python -m pip install -e '.[dev]'
 cp .env.example .env
+.venv/bin/alembic upgrade head
 .venv/bin/uvicorn kkaeddak.main:app --reload
 ```
 
