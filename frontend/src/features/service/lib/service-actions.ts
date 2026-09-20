@@ -230,6 +230,28 @@ export async function connectHealth() {
   if (store.calendarConnected) await generateServicePlan();
 }
 
+export async function ensureMockCalendarCoverage() {
+  const store = useServiceStore.getState();
+  if (!store.calendarConnected) return;
+  const existingIds = new Set(store.events.map((event) => event.clientId));
+  const missing = createMockCalendar(localDate(serviceNow())).filter(
+    (event) => !existingIds.has(event.clientId),
+  );
+  if (!missing.length) return;
+  const classified = await classifyCalendarEvents(missing);
+  const events = [...store.events, ...classified.events].sort((a, b) =>
+    a.startsAt.localeCompare(b.startsAt),
+  );
+  await saveCalendarEvents(events);
+  store.set({
+    events,
+    classifications: {
+      ...store.classifications,
+      ...classified.classifications,
+    },
+  });
+}
+
 export async function generateServicePlan() {
   const store = useServiceStore.getState();
   const now = serviceNow();
@@ -325,6 +347,8 @@ export async function generateServicePlan() {
       Math.min(2, failures),
       learned?.parameters.protocolAdjustment ?? 0,
     ),
+    historyAdvanceMinutes:
+      learned?.parameters.recommendedAdvanceMinutes ?? 0,
     healthInput,
   });
   const eligibility = automationEligibility({
@@ -380,6 +404,11 @@ export async function generateServicePlan() {
     failures
       ? `최근 기상 실패 ${failures}회를 반영했어요`
       : "최근 기상 패턴을 반영했어요",
+    ...((learned?.parameters.recommendedAdvanceMinutes ?? 0) > 0
+      ? [
+          `학습된 습관에 맞춰 첫 알람을 ${learned?.parameters.recommendedAdvanceMinutes}분 더 일찍 시작해요`,
+        ]
+      : []),
   ].join(". ");
   const result: ServicePlan = {
     ...plan,
@@ -452,18 +481,18 @@ export async function saveServiceOutcome(success: boolean) {
   const result = {
     planId: plan.id,
     outcome,
-    alarmStepsUsed: 1,
+    alarmStepsUsed: success ? 1 : plan.steps.length,
     completedAt,
     confirmedAt: success ? plan.firstAlarmAt : null,
     userCorrection: true,
   } as const;
-  await applyWakeLearning(result, plan.localDate);
-  let syncMessage: string | null = null;
+  const learning = await applyWakeLearning(result, plan.localDate);
+  let syncMessage: string | null = learning.nextRecommendation;
   if (useCurrentFlowStore.getState().onboardingDraft.outcomeSync) {
     try {
       await syncWakeOutcome(sessionId(), result);
     } catch {
-      syncMessage = "기상 기록은 저장했지만 서버 동기화에 실패했어요.";
+      syncMessage = `${learning.nextRecommendation} 서버 동기화는 실패했어요.`;
     }
   }
   const record = {

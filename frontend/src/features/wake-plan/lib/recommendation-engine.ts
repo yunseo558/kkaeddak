@@ -17,6 +17,7 @@ type RecommendationInput = {
   completedPreparationMinutes: number;
   deadlineAt: string;
   healthInput: HealthInputRecord | null;
+  historyAdvanceMinutes?: number;
   historyProtocolAdjustment?: number;
   importance: Importance;
   maxProtocolLevel: number;
@@ -55,7 +56,15 @@ export function calculateWakeRecommendation(
     0,
     Math.min(2, input.historyProtocolAdjustment ?? 0),
   );
+  const historyAdvanceMinutes = Math.max(
+    0,
+    Math.min(30, input.historyAdvanceMinutes ?? 0),
+  );
   let riskScore = historyProtocolAdjustment;
+  if (historyAdvanceMinutes > 0) {
+    reasonCodes.push("LEARNED_EARLIER_START");
+    riskScore = Math.max(1, riskScore);
+  }
 
   if (!health) {
     reasonCodes.push("LOW_MODEL_CONFIDENCE");
@@ -111,17 +120,18 @@ export function calculateWakeRecommendation(
     Math.min(recommendedLevel, input.maxProtocolLevel),
   );
   const interval = Math.max(3, Math.min(30, input.alarmIntervalMinutes ?? 0));
-  const offsets = input.alarmIntervalMinutes
-    ? protocolLevel === 1
+  const defaultSpan = input.alarmIntervalMinutes ? interval : 15;
+  const totalSpan =
+    protocolLevel === 1
+      ? 0
+      : (protocolLevel === 2 && !input.alarmIntervalMinutes ? 10 : defaultSpan) +
+        historyAdvanceMinutes;
+  const offsets =
+    protocolLevel === 1
       ? [0]
       : protocolLevel === 2
-        ? [0, interval]
-        : [0, Math.ceil(interval / 2), interval]
-    : protocolLevel === 1
-      ? [0]
-      : protocolLevel === 2
-        ? [0, 10]
-        : [0, 8, 15];
+        ? [0, totalSpan]
+        : [0, Math.ceil(totalSpan / 2), totalSpan];
   const channels =
     protocolLevel === 2
       ? [input.preferredFirstChannel, "FINAL_SAFETY"]
