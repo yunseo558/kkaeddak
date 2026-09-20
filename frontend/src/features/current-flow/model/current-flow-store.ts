@@ -23,7 +23,6 @@ export type WakeResult = {
 export type AutomationMode = "automatic" | "suggest";
 
 export type OnboardingDraft = {
-  usualWakeTime: string;
   recentFirstAlarmSucceeded: boolean;
   preferredAlarmCount: number;
   keepSafetyAlarm: boolean;
@@ -32,7 +31,6 @@ export type OnboardingDraft = {
 };
 
 const initialDraft: OnboardingDraft = {
-  usualWakeTime: "07:00",
   recentFirstAlarmSucceeded: true,
   preferredAlarmCount: 2,
   keepSafetyAlarm: true,
@@ -85,13 +83,12 @@ export const useCurrentFlowStore = create<CurrentFlowState>()(
     }),
     {
       name: "kkaeddak-current-flow",
-      version: 4,
+      version: 5,
       migrate: (persistedState, version) => {
         const state = persistedState as CurrentFlowState;
         return {
           ...state,
           onboardingDraft: {
-            usualWakeTime: state.onboardingDraft.usualWakeTime,
             recentFirstAlarmSucceeded:
               state.onboardingDraft.recentFirstAlarmSucceeded,
             preferredAlarmCount: state.onboardingDraft.preferredAlarmCount,

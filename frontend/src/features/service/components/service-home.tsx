@@ -6,8 +6,11 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
+import { AlarmSoundButton } from "./alarm-sound-button";
 import { useServiceStore } from "../model/service-store";
 import {
+  addDays,
+  localDate,
   alarmEditValidationMessage,
   alarmEditWindow,
   atTime,
@@ -188,6 +191,11 @@ export function ServiceHome() {
       </AppShell>
     );
   const plan = store.plan;
+  const today = localDate(serviceNow());
+  const dayLabel = (date: string) => date === today ? "오늘"
+    : date === addDays(today, 1) ? "내일" : date.slice(5).replace("-", "/");
+  const wakeDay = plan ? dayLabel(plan.localDate) : "내일";
+  const eventDay = plan ? dayLabel(localDate(plan.eventAt)) : "내일";
   const eligibility = automationEligibility({
     enrolledAt: store.enrolledAt!,
     now: serviceNow(),
@@ -211,7 +219,7 @@ export function ServiceHome() {
   const status = !plan
     ? "계획 없음"
     : plan.status === "COMPLETED"
-      ? "오늘 기상 기록 완료"
+      ? `${wakeDay} 기상 기록 완료`
       : plan.status === "DECLINED"
         ? "알람 취소됨"
         : approved
@@ -232,7 +240,7 @@ export function ServiceHome() {
                 weekday: "long",
               })}
             </p>
-            <h1>내일의 아침</h1>
+            <h1>{wakeDay}의 아침</h1>
           </div>
           <span className="service-tag">
             {eligibility.ready
@@ -257,12 +265,15 @@ export function ServiceHome() {
               {plan && clockTime(alarmScheduledAt(plan, activeStepOrder))}
             </p>
             {store.alarmStage === "ringing" ? (
-              <button
-                className="service-primary"
-                onClick={() => void serviceAction(dismissCurrentAlarm)}
-              >
-                알람 끄기
-              </button>
+              <div className="service-stack">
+                <button
+                  className="service-primary"
+                  onClick={() => void serviceAction(dismissCurrentAlarm)}
+                >
+                  알람 끄기
+                </button>
+                <AlarmSoundButton />
+              </div>
             ) : (
               <div className="service-stack">
                 <button
@@ -287,13 +298,13 @@ export function ServiceHome() {
             )}
           </section>
         ) : (
-          <section className={styles.bubble} aria-label="내일의 알람 계획" aria-busy={store.busy}>
+          <section className={styles.bubble} aria-label={`${wakeDay}의 알람 계획`} aria-busy={store.busy}>
             <div className={styles.bubbleStatus}>
               <span className={styles.statusDot} />
               <span>{status}</span>
             </div>
             <h2 className={styles.bubbleTitle}>
-              {plan?.status === "PROPOSED" ? "이 시간에 깨워드릴까요?" : approved ? "내일 아침도, 깨딱과 함께" : plan?.status === "COMPLETED" ? "오늘의 아침을 기억할게요" : "여유로운 아침을 준비해요"}
+              {plan?.status === "PROPOSED" ? "이 시간에 깨워드릴까요?" : approved ? `${wakeDay} 아침도, 깨딱과 함께` : plan?.status === "COMPLETED" ? `${wakeDay}의 아침을 기억할게요` : "여유로운 아침을 준비해요"}
             </h2>
             <div className={styles.timeRow}>
             <p className="service-clock">
@@ -309,7 +320,7 @@ export function ServiceHome() {
               <div className={styles.planTarget}>
                 <ClayIcon name="calendar" size={30} />
                 <div>
-                  <small>내일 첫 일정 · {plan.scheduleTypeLabel}</small>
+                  <small>{eventDay} 첫 일정 · {plan.scheduleTypeLabel}</small>
                   <strong>{plan.eventTitle}</strong>
                 </div>
                 <time>{clockTime(plan.eventAt)}</time>
@@ -503,12 +514,12 @@ export function ServiceHome() {
         )}
         <section className={`service-section ${styles.glass}`}>
           <div className="service-row">
-            <h2 className={styles.cardTitle}><ClayIcon name="calendar" />내일 첫 일정</h2>
+            <h2 className={styles.cardTitle}><ClayIcon name="calendar" />{eventDay} 첫 일정</h2>
             <Link href="/calendar">수정</Link>
           </div>
           <div className="calendar-summary">
             <span className="calendar-date">
-              {plan?.localDate.slice(-2) ?? "—"}
+              {plan ? localDate(plan.eventAt).slice(-2) : "—"}
             </span>
             <div>
               <strong>{plan?.eventTitle ?? "일정 연결"}</strong>
@@ -534,7 +545,7 @@ export function ServiceHome() {
           </strong>
           <p className="service-muted">
             {plan
-              ? `${plan.explanationSource === "MODEL" ? "Gemini가" : "안전 모델이"} 온디바이스 건강 신호를 종합해 내일 ${plan.steps.length}개의 알람이 필요하다고 판단했어요.`
+              ? `${plan.explanationSource === "MODEL" ? "Gemini가" : "안전 모델이"} 온디바이스 건강 신호를 종합해 ${wakeDay} ${plan.steps.length}개의 알람이 필요하다고 판단했어요.`
               : store.healthConnected
                 ? "수면·걸음·활동·컨디션을 다음 기상 계획에 함께 반영해요."
                 : "Apple 건강 데이터를 연결하면 피로도와 필요한 알람 개수를 더 알맞게 추정할 수 있어요."}

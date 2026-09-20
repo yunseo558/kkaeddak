@@ -21,6 +21,7 @@ import {
   type WakeLearningEffect,
 } from "@/features/wake-report/api/wake-report-api";
 import {
+  getLocalWakeReport,
   saveLocalAlarmEvent,
   saveLocalLearningEffect,
   saveLocalReportContext,
@@ -61,6 +62,12 @@ import {
   healthKitDemoSource,
 } from "./mock-integrations";
 
+import {
+  calculateSleepBaseline,
+  createSleepHistory,
+  sleepDurationLabel,
+} from "./sleep-baseline";
+
 export const serviceNow = () =>
   useServiceStore.getState().virtualNow ?? new Date().toISOString();
 
@@ -93,15 +100,8 @@ async function restoreLocalStateToNewSession() {
   const calendarWasConnected = store.calendarConnected;
   const localEvents = [...store.events];
 
-  store.set({
-    alarmStage: "idle",
-    alarmRuntime: emptyAlarmRuntime(),
-    lastAutomationSlot: null,
-    plan: null,
-  });
-  flow.setActiveWakePlan(null);
-  flow.setEditingPlanId(null);
-  flow.setWakeResult(null);
+  const previousPlan = store.plan;
+  const previousRuntime = store.alarmRuntime;
 
   await saveServicePreferences();
   await saveServiceProfile();
@@ -112,7 +112,40 @@ async function restoreLocalStateToNewSession() {
     : createMockCalendar(localDate(serviceNow()));
   await saveCalendarEvents(events);
   store.set({ calendarConnected: true, events });
-  await generateServicePlan();
+  if (previousPlan && ["APPROVED", "EDITED", "PROPOSED"].includes(previousPlan.status)) {
+    const saved = await createWakePlan(sessionId(), previousPlan, `recovery:${previousPlan.id}`);
+    let restored: ServicePlan = { ...previousPlan, ...saved };
+    if (previousPlan.status !== "PROPOSED") {
+      const decision = await updateWakePlanDecision(sessionId(), saved.id, {
+        decision: previousPlan.status === "EDITED" ? "EDIT" : "APPROVE",
+        revision: saved.revision,
+        ...(previousPlan.status === "EDITED" ? { changes: {
+          firstAlarmAt: previousPlan.firstAlarmAt, finalAlarmAt: previousPlan.finalAlarmAt,
+        } } : {}),
+      });
+      restored = { ...restored, ...decision };
+    }
+    const runtime = previousRuntime.planId === previousPlan.id ? {
+      ...previousRuntime,
+      planId: restored.id,
+      events: previousRuntime.events.map((event) => ({
+        ...event, planId: restored.id,
+        key: alarmEventKey(restored.id, event.stepOrder, event.eventType), synced: false,
+      })),
+    } : emptyAlarmRuntime(restored.id, restored.steps.map((step) => step.order));
+    store.set({ plan: restored, alarmRuntime: runtime });
+    flow.setActiveWakePlan(restored.status === "PROPOSED" ? null : restored);
+    await updateLocalReportPlan(restored);
+    const report = await getLocalWakeReport(restored.localDate);
+    if (report?.decisionContext) {
+      try { await putWakePlanReportContext(sessionId(), restored.id, report.decisionContext); } catch { /* Kept locally. */ }
+    }
+  } else {
+    store.set({ plan: null, alarmRuntime: emptyAlarmRuntime(), alarmStage: "idle" });
+    flow.setActiveWakePlan(null);
+    flow.setEditingPlanId(null);
+    await generateServicePlan();
+  }
 }
 
 export async function recoverDemoSession() {
@@ -125,7 +158,17 @@ export async function recoverDemoSession() {
       scenarioId,
       sessionId: session.sessionId,
     });
-    await restoreLocalStateToNewSession();
+    try {
+      await restoreLocalStateToNewSession();
+    } catch (error) {
+      // Keep the old identity retryable when rehydrating the new session fails.
+      if (previous.sessionId && previous.expiresAt && previous.scenarioId) {
+        useDemoSessionStore.getState().startServer({
+          sessionId: previous.sessionId, expiresAt: previous.expiresAt, scenarioId: previous.scenarioId,
+        });
+      } else useDemoSessionStore.getState().clear();
+      throw error;
+    }
     useServiceStore.getState().set({ message: "데모 연결을 복구했어요" });
   })().finally(() => {
     sessionRecoveryPromise = null;
@@ -172,12 +215,13 @@ export async function serviceAction(action: () => Promise<void>) {
   }
 }
 
-export async function saveServiceProfile() {
+export async function saveServiceProfile(
+  survey = useCurrentFlowStore.getState().onboardingDraft,
+) {
   const headers = demoSessionHeaders(sessionId());
   const profile = await apiClient.GET("/api/v1/profile", { headers });
   if (!profile.data || profile.error)
     requestFailed("프로필 설정을 불러오지 못했어요.", profile.response.status);
-  const survey = useCurrentFlowStore.getState().onboardingDraft;
   const saved = await apiClient.PUT("/api/v1/profile", {
     headers,
     body: {
@@ -256,6 +300,7 @@ async function personalizeWakePlan(input: {
   eventHour: number;
   baseWakeLeadMin: number;
   restMinutes: number | null;
+  usualRestMinutes: number | null;
   activityLevel: "low" | "moderate" | "high" | null;
   conditionLevel: "low" | "normal" | "high" | null;
   recentOnTimeCount: number;
@@ -271,10 +316,7 @@ async function personalizeWakePlan(input: {
     "/api/v1/ai/wake-plan-recommendations",
     {
       headers: demoSessionHeaders(sessionId()),
-      body: {
-        ...input,
-        usualRestMinutes: 420,
-      },
+      body: input,
     },
   );
   if (!result.data || result.error)
@@ -340,8 +382,14 @@ export async function reclassifyCalendarWithAi() {
   store.set(classified);
 }
 
-export async function saveServicePreferences() {
-  const store = useServiceStore.getState();
+type ServicePreferences = Pick<
+  ReturnType<typeof useServiceStore.getState>,
+  "automationTime" | "preferredAlarmCount" | "alarmIntervalMinutes" | "keepSafetyAlarm" | "scheduleTypes"
+>;
+
+export async function saveServicePreferences(
+  store: ServicePreferences = useServiceStore.getState(),
+) {
   const headers = demoSessionHeaders(sessionId());
   const routine = await apiClient.GET("/api/v1/routines", { headers });
   if (!routine.data || routine.error)
@@ -369,6 +417,9 @@ export async function saveServicePreferences() {
 
 export async function connectCalendar(forceRefresh = false) {
   const store = useServiceStore.getState();
+  if (forceRefresh && store.alarmRuntime.currentStepOrder !== null) {
+    throw new Error("진행 중인 알람의 기상 여부를 먼저 알려 주세요.");
+  }
   let id = useDemoSessionStore.getState().sessionId;
   const expires = useDemoSessionStore.getState().expiresAt;
   if (forceRefresh || !id || !expires || Date.parse(expires) <= Date.now()) {
@@ -468,32 +519,18 @@ export async function connectHealth() {
   if (store.calendarConnected) await generateServicePlan();
 }
 
-export async function ensureMockCalendarCoverage() {
-  const store = useServiceStore.getState();
-  if (!store.calendarConnected) return;
-  const existingIds = new Set(store.events.map((event) => event.clientId));
-  const missing = createMockCalendar(localDate(serviceNow())).filter(
-    (event) => !existingIds.has(event.clientId),
-  );
-  if (!missing.length) return;
-  const classified = await classifyCalendarEvents(missing);
-  const events = [...store.events, ...classified.events].sort((a, b) =>
-    a.startsAt.localeCompare(b.startsAt),
-  );
-  await saveCalendarEvents(events);
-  store.set({
-    events,
-    classifications: {
-      ...store.classifications,
-      ...classified.classifications,
-    },
-  });
-}
-
-export async function generateServicePlan() {
+export async function generateServicePlan(
+  targetDate = addDays(localDate(serviceNow()), 1),
+) {
   const store = useServiceStore.getState();
   const now = serviceNow();
-  const targetDate = addDays(localDate(now), 1);
+  if (
+    store.plan &&
+    store.alarmRuntime.planId === store.plan.id &&
+    store.alarmRuntime.currentStepOrder !== null
+  ) {
+    throw new Error("진행 중인 알람의 기상 여부를 먼저 알려 주세요.");
+  }
   const headers = demoSessionHeaders(sessionId());
   const loadTargetSchedules = () =>
     apiClient.GET("/api/v1/schedule-events", {
@@ -535,8 +572,18 @@ export async function generateServicePlan() {
   const event = schedules.data.items.sort((a, b) =>
     a.startsAt.localeCompare(b.startsAt),
   )[0];
-  if (!event)
-    throw new Error("내일 일정이 없어요. 캘린더에서 일정을 추가해 주세요.");
+  if (!event) {
+    await retireServicePlan();
+    store.set({
+      plan: null,
+      alarmStage: "idle",
+      alarmRuntime: emptyAlarmRuntime(),
+      lastPlannedDate: targetDate,
+      lastAutomationSlot: localDate(now),
+      message: "예정된 일정이 없어 알람을 설정하지 않았어요. 캘린더에서 일정을 추가할 수 있어요.",
+    });
+    return;
+  }
   const scheduleTypes = routines.data.alarmPreferences.scheduleTypes?.length
     ? routines.data.alarmPreferences.scheduleTypes
     : store.scheduleTypes;
@@ -571,6 +618,17 @@ export async function generateServicePlan() {
       })
     : null;
   if (healthInput) await localDataStore.put("health-inputs", healthInput);
+  const sleepHistory = store.healthConnected
+    ? createSleepHistory(now, store.sleepPattern)
+    : [];
+  const sleepBaseline = calculateSleepBaseline(sleepHistory, now);
+  await Promise.all(
+    sleepHistory.map((record) => localDataStore.put("health-inputs", record)),
+  );
+  const shorterThanBaseline =
+    healthInput?.sleepDurationMinutes !== undefined &&
+    sleepBaseline.minutes !== null &&
+    healthInput.sleepDurationMinutes < sleepBaseline.minutes - 30;
   const localRecommendation = calculateWakeRecommendation({
     completedPreparationMinutes: 0,
     deadlineAt,
@@ -586,7 +644,7 @@ export async function generateServicePlan() {
     alarmIntervalMinutes: store.alarmIntervalMinutes,
     preferredProtocolLevel: store.preferredAlarmCount,
     preferredFirstChannel: "PHONE_SOUND",
-    personalSleepBaselineMinutes: store.records.length >= 10 ? 420 : undefined,
+    personalSleepBaselineMinutes: sleepBaseline.minutes ?? undefined,
     historyProtocolAdjustment: Math.max(
       Math.min(2, failures),
       learned?.parameters.protocolAdjustment ?? 0,
@@ -616,6 +674,7 @@ export async function generateServicePlan() {
         ).getUTCHours(),
         baseWakeLeadMin: scheduleType.wakeLeadMin,
         restMinutes: healthInput?.sleepDurationMinutes ?? null,
+        usualRestMinutes: sleepBaseline.minutes,
         activityLevel:
           healthInput?.activityLevel === "usual"
             ? "moderate"
@@ -655,6 +714,7 @@ export async function generateServicePlan() {
         localRecommendation.plan.steps.map((step) => step.offsetMin),
         failures > 0 ||
           store.sleepMinutes < 360 ||
+          shorterThanBaseline ||
           event.importance !== "NORMAL" ||
           (learned?.parameters.recommendedAdvanceMinutes ?? 0) > 0 ||
           (learned?.parameters.protocolAdjustment ?? 0) > 0,
@@ -709,24 +769,8 @@ export async function generateServicePlan() {
     ...candidatePlan,
     requiresApproval: !eligibility.automatic,
   };
-  // Recalculation must retire the previous schedule before replacing it.
-  if (
-    store.plan &&
-    ["APPROVED", "EDITED", "PROPOSED"].includes(store.plan.status)
-  ) {
-    await updateWakePlanDecision(sessionId(), store.plan.id, {
-      decision: "DECLINE",
-      revision: store.plan.revision,
-    });
-    store.set({
-      plan: {
-        ...store.plan,
-        status: "DECLINED",
-        revision: store.plan.revision + 1,
-      },
-    });
-    useCurrentFlowStore.getState().setActiveWakePlan(null);
-  }
+  // Persist the replacement before retiring a working plan. A failed create
+  // must not silently turn off an already approved alarm.
   const saved = await createWakePlan(
     sessionId(),
     plan,
@@ -738,6 +782,7 @@ export async function generateServicePlan() {
       decision: "APPROVE",
       revision: saved.revision,
     });
+  await retireServicePlan();
   const reasonSummary = [
     `${scheduleType.label} 유형 · 일정 ${scheduleType.wakeLeadMin}분 전까지 기상`,
     healthInput
@@ -745,6 +790,9 @@ export async function generateServicePlan() {
       : "건강 데이터 연결 전이라 일정과 기상 기록으로 안전 알람을 계산했어요",
     ...(healthInput?.activityLevel === "high" || healthInput?.conditionLevel === "low"
       ? ["활동량과 회복 신호를 종합한 피로도가 높아 안전 단계를 강화했어요"]
+      : []),
+    ...(sleepBaseline.minutes !== null
+      ? [`최근 ${sleepBaseline.nightCount}일 수면 샘플 기준 ${sleepDurationLabel(sleepBaseline.minutes)}`]
       : []),
     failures
       ? `최근 기상 실패 ${failures}회를 반영했어요`
@@ -782,7 +830,7 @@ export async function generateServicePlan() {
       personalized?.fatigueLevel ??
       (store.sleepMinutes < 360 || failures > 1
         ? "HIGH"
-        : store.sleepMinutes < 420 || failures === 1
+        : shorterThanBaseline || failures === 1
           ? "MEDIUM"
           : "LOW"),
     aiConfidence: personalized?.confidence ?? 0.35,
@@ -798,7 +846,7 @@ export async function generateServicePlan() {
     healthSummary: healthInput
       ? {
           restMinutes: healthInput.sleepDurationMinutes ?? null,
-          usualRestMinutes: 420,
+          usualRestMinutes: sleepBaseline.minutes,
           activityLevel:
             healthInput.activityLevel === "usual"
               ? "moderate"
@@ -847,6 +895,7 @@ export async function generateServicePlan() {
   });
   store.set({
     plan: result,
+    lastPlannedDate: targetDate,
     lastAutomationSlot: localDate(now),
     alarmRuntime: emptyAlarmRuntime(
       result.id,
@@ -977,6 +1026,7 @@ async function syncAlarmEvent(
         occurredAt: queued.occurredAt,
       },
     );
+    if (useServiceStore.getState().plan?.id !== plan.id) return;
     const latest = runtimeForPlan(plan);
     useServiceStore.getState().set({
       alarmRuntime: {
@@ -1033,14 +1083,10 @@ export async function triggerNextAlarmStep(force = false) {
     },
     alarmStage: "ringing",
   });
-  try {
-    await startAlarmSound();
-  } catch {
-    store.set({
-      message:
-        "음소거 자동 재생이 차단됐어요. 알람 화면에서 재생 버튼을 눌러 주세요.",
-    });
-  }
+  // Autoplay permission can leave resume pending. It must not lock the controls.
+  void startAlarmSound().catch(() => {
+    store.set({ message: "소리 자동 재생이 차단됐어요. 알람 소리 재생 버튼을 눌러 주세요." });
+  });
   return true;
 }
 
@@ -1191,6 +1237,9 @@ export async function saveServiceOutcome(
 
 export async function advanceAutomation(preview = false) {
   const store = useServiceStore.getState();
+  if (store.alarmRuntime.currentStepOrder !== null) {
+    throw new Error("진행 중인 알람의 기상 여부를 먼저 알려 주세요.");
+  }
   const now = serviceNow();
   let date = localDate(now);
   if (Date.parse(atTime(date, store.automationTime)) <= Date.parse(now))
@@ -1238,14 +1287,74 @@ export async function advanceAutomation(preview = false) {
   await generateServicePlan();
 }
 
+function firstCalendarEvent(events: CalendarEntry[], date: string) {
+  return events.filter((event) => localDate(event.startsAt) === date)
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.clientId.localeCompare(b.clientId))[0];
+}
+
+export async function retireServicePlan() {
+  const store = useServiceStore.getState();
+  const plan = store.plan;
+  if (!plan || !["APPROVED", "EDITED", "PROPOSED"].includes(plan.status)) return;
+  const saved = await updateWakePlanDecision(sessionId(), plan.id, {
+    decision: "DECLINE", revision: plan.revision,
+  });
+  const retired = { ...plan, ...saved };
+  stopAlarmSound();
+  store.set({ plan: retired, alarmStage: "idle", alarmRuntime: emptyAlarmRuntime() });
+  useCurrentFlowStore.getState().setActiveWakePlan(null);
+  await updateLocalReportPlan(retired);
+}
+
 export async function editCalendarEvent(event: CalendarEntry) {
   const store = useServiceStore.getState();
+  const targetDate = store.plan && ["APPROVED", "EDITED", "PROPOSED"].includes(store.plan.status)
+    ? localDate(store.plan.eventAt) : addDays(localDate(serviceNow()), 1);
+  const before = firstCalendarEvent(store.events, targetDate);
+  const events = [...store.events.filter((entry) => entry.clientId !== event.clientId), event];
+  const after = firstCalendarEvent(events, targetDate);
+  const affectsPlan = JSON.stringify(before) !== JSON.stringify(after);
+  if (affectsPlan && store.alarmRuntime.currentStepOrder !== null) {
+    throw new Error("진행 중인 알람의 기상 여부를 먼저 알려 주세요.");
+  }
   await saveCalendarEvents([event]);
-  store.set({
-    events: [
-      ...store.events.filter((e) => e.clientId !== event.clientId),
-      event,
-    ],
-  });
-  await generateServicePlan();
+  store.set({ events });
+  if (!affectsPlan) return;
+  try {
+    // The previous plan no longer matches the saved calendar.
+    await retireServicePlan();
+    await generateServicePlan(targetDate);
+  } catch (error) {
+    // Stop the obsolete local schedule even if its server cancellation failed.
+    const current = useServiceStore.getState().plan;
+    if (current && ["APPROVED", "EDITED", "PROPOSED"].includes(current.status)) {
+      store.set({ plan: { ...current, status: "DECLINED" }, alarmStage: "idle", alarmRuntime: emptyAlarmRuntime() });
+      stopAlarmSound();
+      useCurrentFlowStore.getState().setActiveWakePlan(null);
+    }
+    store.set({ message: `일정은 저장했지만 알람 재계산을 완료하지 못했어요. 캘린더에서 계획을 다시 계산해 주세요.${getApiStatus(error) === 401 ? " 데모 연결이 만료됐어요." : ""}` });
+  }
+}
+
+export async function saveScheduleTypes(types: ScheduleTypeRule[]) {
+  const store = useServiceStore.getState();
+  const fallback = types.find((item) => item.isFallback);
+  if (!fallback) throw new Error("기타 유형은 반드시 필요해요.");
+  const removed = new Set(store.scheduleTypes.filter((item) => !types.some((next) => next.code === item.code)).map((item) => item.code));
+  const originalEvents = store.events.filter((event) => removed.has(event.category));
+  const changedEvents = originalEvents.map((event) => ({ ...event, category: fallback.code }));
+  if (changedEvents.length) await saveCalendarEvents(changedEvents);
+  try {
+    await saveServicePreferences({ ...store, scheduleTypes: types });
+  } catch (error) {
+    if (originalEvents.length) {
+      try { await saveCalendarEvents(originalEvents); }
+      catch {
+        store.set({ events: store.events.map((event) => removed.has(event.category) ? { ...event, category: fallback.code } : event) });
+        throw new Error("유형 설정은 저장하지 못했고 일부 일정만 기타로 이동했어요. 연결을 확인한 뒤 다시 저장해 주세요.");
+      }
+    }
+    throw error;
+  }
+  store.set({ scheduleTypes: types, events: store.events.map((event) => removed.has(event.category) ? { ...event, category: fallback.code } : event) });
 }

@@ -38,16 +38,19 @@ async function showWebAlarmNotification() {
 export function stopAlarmSound() {
   if (interval) clearInterval(interval);
   interval = null;
-  if (context) void context.close();
+  if (context) void context.close().catch(() => {});
   context = null;
 }
 
 export async function startAlarmSound() {
   stopAlarmSound();
-  void showWebAlarmNotification();
-  context = new AudioContext();
-  await context.resume();
-  const audio = context;
+  // Notifications may be unavailable even with permission (for example mobile
+  // browsers without a service worker). Sound and the in-app alarm still work.
+  void showWebAlarmNotification().catch(() => {});
+  const audio = new AudioContext();
+  context = audio;
+  await audio.resume();
+  if (context !== audio || audio.state === "closed") return;
   const chime = () => {
     for (let i = 0; i < 3; i++) {
       const oscillator = audio.createOscillator();

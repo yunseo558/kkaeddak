@@ -11,6 +11,8 @@ import { serviceNow } from "../lib/service-actions";
 import { useServiceStore } from "../model/service-store";
 import { SetupGuidanceScene } from "./home-alarm-scene";
 
+import { demoSleepBaseline, sleepDurationLabel } from "../lib/sleep-baseline";
+
 const PHASE_LABEL = {
   menstrual: "월경기",
   follicular: "난포기",
@@ -34,12 +36,13 @@ export function ServiceSleep() {
         store.records.at(-1)?.outcome === "CONFIRMED_ON_TIME",
     },
   );
+  const baseline = demoSleepBaseline(now, store.sleepPattern);
   const plan = store.plan;
   const fatigueLevel =
     plan?.fatigueLevel ??
     (store.sleepMinutes < 360
       ? "HIGH"
-      : store.sleepMinutes < 420
+      : baseline.minutes !== null && store.sleepMinutes < baseline.minutes - 30
         ? "MEDIUM"
         : "LOW");
   const fatigueScore =
@@ -147,6 +150,14 @@ export function ServiceSleep() {
                 : "선택 데이터"}
             </small>
           </article>
+        </section>
+
+        <section className="service-section" aria-label="평소 수면 기준">
+          <h2>평소 수면 기준 · {sleepDurationLabel(baseline.minutes!)}</h2>
+          <p className="service-muted">
+            최근 {baseline.nightCount}일 수면 샘플의 중앙값이에요. 데모 조작부에서
+            평소 패턴과 오늘 수면을 따로 바꿀 수 있고, 다음 계획부터 반영해요.
+          </p>
         </section>
 
         <section className="health-signal-list">
