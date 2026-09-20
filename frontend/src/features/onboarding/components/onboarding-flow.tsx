@@ -261,7 +261,7 @@ export function OnboardingFlow() {
                   }}
                 />
                 <span className="mt-2 block text-sm font-normal text-muted">
-                  이 시각에 내일 일정과 수면 기록을 확인해요.
+                  이 시각에 내일 일정과 건강 요약을 확인해요.
                 </span>
               </label>
               <label className="block font-semibold">
@@ -302,7 +302,7 @@ export function OnboardingFlow() {
           {step === 3 ? (
             <div className="space-y-5 onboarding-connections">
               <p className="text-sm leading-6 text-muted">
-                캘린더와 수면 기록을 연결해야 내일의 기상 시각을
+                캘린더와 건강 데이터를 연결해야 내일의 기상 시각을
                 계산할 수 있어요. 웹 데모에서는 샘플 데이터를 불러와요.
               </p>
               <section className="onboarding-connection-card">

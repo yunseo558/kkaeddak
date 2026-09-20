@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
@@ -26,7 +26,9 @@ import { HomeAlarmScene, SetupGuidanceScene } from "./home-alarm-scene";
 import styles from "./service-home.module.css";
 
 const subscribeHydration = () => () => {};
-let splashShownInRuntime = false;
+const SPLASH_SEEN_KEY = "kkaeddak-splash-seen";
+const readSplashSeen = () =>
+  window.localStorage.getItem(SPLASH_SEEN_KEY) === "1";
 
 export function ServiceHome() {
   const ready = useSyncExternalStore(
@@ -34,7 +36,13 @@ export function ServiceHome() {
     () => true,
     () => false,
   );
-  const [showSplash, setShowSplash] = useState(() => !splashShownInRuntime);
+  const splashSeen = useSyncExternalStore(
+    subscribeHydration,
+    readSplashSeen,
+    () => null,
+  );
+  const [splashDismissed, setSplashDismissed] = useState(false);
+  const splashTimer = useRef<number | null>(null);
   const [edit, setEdit] = useState(false);
   const [time, setTime] = useState("");
   const store = useServiceStore();
@@ -42,22 +50,41 @@ export function ServiceHome() {
   const completed = useCurrentFlowStore((s) => s.onboardingCompleted);
   const survey = useCurrentFlowStore((s) => s.onboardingDraft);
   useEffect(() => {
-    if (!showSplash) return;
-    splashShownInRuntime = true;
+    if (splashSeen !== false || splashDismissed) return;
+
+    // The first entry always leads from the brand splash to login.
+    useCurrentFlowStore.getState().setDemoAuthenticated(false);
     const reducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
-    const timer = window.setTimeout(
-      () => setShowSplash(false),
+    splashTimer.current = window.setTimeout(
+      () => {
+        window.localStorage.setItem(SPLASH_SEEN_KEY, "1");
+        setSplashDismissed(true);
+      },
       reducedMotion ? 500 : 1600,
     );
-    return () => window.clearTimeout(timer);
-  }, [showSplash]);
+    return () => {
+      if (splashTimer.current !== null) {
+        window.clearTimeout(splashTimer.current);
+      }
+    };
+  }, [splashDismissed, splashSeen]);
   const dismissSplash = () => {
-    setShowSplash(false);
+    if (splashTimer.current !== null) {
+      window.clearTimeout(splashTimer.current);
+    }
+    window.localStorage.setItem(SPLASH_SEEN_KEY, "1");
+    setSplashDismissed(true);
   };
 
-  if (!ready || showSplash)
+  if (!ready || splashSeen === null)
+    return (
+      <AppShell currentStep="소개" immersive>
+        <div aria-label="앱 준비 중" className="entry-boot" role="status" />
+      </AppShell>
+    );
+  if (!splashSeen && !splashDismissed)
     return (
       <AppShell currentStep="소개" immersive>
         <button

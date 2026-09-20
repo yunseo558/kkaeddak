@@ -17,8 +17,7 @@ test("핵심 시작 화면이 뷰포트에서 유지된다", async ({ page }) =>
   await page.reload();
   await expect(
     page.getByRole("button", { name: "스플래시 건너뛰기" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "스플래시 건너뛰기" }).click();
+  ).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "로그인 / 회원가입" }),
   ).toBeVisible();

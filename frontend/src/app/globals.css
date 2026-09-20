@@ -3020,6 +3020,97 @@ body {
   height: 42px;
 }
 
+/* Unified matte marshmallow icons */
+.entry-boot {
+  width: 100%;
+  height: 100%;
+  background: #fff9f5;
+}
+
+.clay-icon {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.header-icon-button .clay-icon {
+  width: 34px;
+  height: 34px;
+  overflow: visible;
+  fill: none;
+  stroke: none;
+}
+
+.connection-card-heading > .connection-clay-icon,
+.onboarding-connection-card > div > .connection-clay-icon {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.iphone-screen:has(.service-tabbar) .app-frame {
+  bottom: 96px;
+}
+
+.service-tabbar {
+  right: 16px;
+  bottom: 27px;
+  left: 16px;
+  height: 67px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 25px;
+  background: rgba(255, 251, 246, 0.92);
+  box-shadow:
+    0 12px 28px rgba(82, 68, 53, 0.11),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(22px) saturate(0.88);
+}
+
+.service-tabbar a {
+  display: flex;
+  min-height: 54px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 3px 0 2px;
+  border-radius: 18px;
+  color: #626858;
+  font-size: 9px;
+  line-height: 1;
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.service-tabbar a > .clay-icon {
+  width: 30px;
+  height: 30px;
+  overflow: visible;
+  fill: none;
+  stroke: none;
+}
+
+.service-tabbar a[data-active="true"] {
+  background: #f8dce5;
+  color: #8f284f;
+  box-shadow:
+    0 7px 15px rgba(176, 73, 109, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.service-tabbar a:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .service-tabbar a {
+    transition: none;
+  }
+}
+
 .history-report-link {
   color: inherit;
   text-decoration: none;
