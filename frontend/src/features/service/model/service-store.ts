@@ -38,6 +38,7 @@ export type ServicePlan = ActiveWakePlan & {
   wakeLeadMinutes: number;
   sleepMinutes: number;
   reason: string;
+  explanationSource: ScheduleClassification["source"];
 };
 type ServiceState = {
   enrolledAt: string | null;

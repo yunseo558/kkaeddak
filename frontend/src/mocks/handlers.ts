@@ -18,6 +18,8 @@ type PreparationTaskUpdate =
 type PreparationTaskResponse =
   components["schemas"]["PreparationTaskResponse"];
 type HistorySummaryResponse = components["schemas"]["HistorySummaryResponse"];
+type ExplanationCreate = components["schemas"]["ExplanationCreate"];
+type ExplanationResponse = components["schemas"]["ExplanationResponse"];
 type ProfileResponse = components["schemas"]["ProfileResponse"];
 type ProfileUpdate = components["schemas"]["ProfileUpdate"];
 type RoutineProfileResponse = components["schemas"]["RoutineProfileResponse"];
@@ -225,6 +227,16 @@ export const handlers = [
     "/api/v1/ai/schedule-classifications",
     async ({ request }) =>
       HttpResponse.json(classifyMockSchedule(await request.json())),
+  ),
+  http.post<never, ExplanationCreate, ExplanationResponse>(
+    "/api/v1/ai/explanations",
+    async ({ request }) => {
+      const body = await request.json();
+      return HttpResponse.json({
+        explanation: body.planChangeSummary,
+        source: "TEMPLATE",
+      });
+    },
   ),
   http.post<never, PreparationSuggestionCreate, PreparationSuggestionsResponse>(
     "/api/v1/preparation-suggestions",

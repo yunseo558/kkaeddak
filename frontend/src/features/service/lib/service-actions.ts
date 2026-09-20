@@ -95,6 +95,22 @@ export async function classifyScheduleTitle(
   return result.data;
 }
 
+async function explainServicePlan(reasonCodes: string[], summary: string) {
+  try {
+    const result = await apiClient.POST("/api/v1/ai/explanations", {
+      headers: demoSessionHeaders(sessionId()),
+      body: {
+        reasonCodes: reasonCodes.length ? reasonCodes : ["LIMITED_HISTORY"],
+        planChangeSummary: summary.slice(0, 300),
+      },
+    });
+    if (result.data && !result.error) return result.data;
+  } catch {
+    // Explanations are optional; plan creation must keep working offline.
+  }
+  return { explanation: summary, source: "TEMPLATE" as const };
+}
+
 async function classifyCalendarEvents(events: CalendarEntry[]) {
   const classifications: Record<string, ScheduleClassification> = {};
   const byTitle = new Map<string, ScheduleClassification>();
@@ -393,7 +409,7 @@ export async function generateServicePlan() {
       decision: "APPROVE",
       revision: saved.revision,
     });
-  const reason = [
+  const reasonSummary = [
     `${scheduleType.label} 유형 · 일정 ${scheduleType.wakeLeadMin}분 전까지 기상`,
     store.healthConnected
       ? `최근 수면 ${Math.floor(store.sleepMinutes / 60)}시간 ${store.sleepMinutes % 60}분`
@@ -410,6 +426,10 @@ export async function generateServicePlan() {
         ]
       : []),
   ].join(". ");
+  const explanation = await explainServicePlan(
+    plan.reasonCodes,
+    reasonSummary,
+  );
   const result: ServicePlan = {
     ...plan,
     id: saved.id,
@@ -420,7 +440,8 @@ export async function generateServicePlan() {
     scheduleTypeLabel: scheduleType.label,
     wakeLeadMinutes: scheduleType.wakeLeadMin,
     sleepMinutes: store.sleepMinutes,
-    reason,
+    reason: explanation.explanation,
+    explanationSource: explanation.source,
   };
   store.set({ plan: result, lastAutomationSlot: localDate(now) });
   useCurrentFlowStore.getState().setWakeResult(null);

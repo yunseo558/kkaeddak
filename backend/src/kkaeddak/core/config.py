@@ -4,7 +4,7 @@ from functools import lru_cache
 from typing import Literal, Self
 from urllib.parse import urlsplit
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Environment = Literal["local", "test", "staging", "production"]
@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     database_echo: bool = False
     database_pool_size: int = Field(default=5, ge=1, le=20)
     cors_allowed_origins: list[str] = Field(default_factory=list)
+    openai_api_key: SecretStr | None = Field(default=None, repr=False)
+    openai_model: str | None = Field(default=None, min_length=1, max_length=100)
+    openai_timeout_seconds: float = Field(default=10.0, ge=1.0, le=30.0)
 
     @field_validator("app_name")
     @classmethod
@@ -90,6 +93,8 @@ class Settings(BaseSettings):
             not origin.startswith("https://") for origin in self.cors_allowed_origins
         ):
             raise ValueError("production CORS origins must use https")
+        if bool(self.openai_api_key) != bool(self.openai_model):
+            raise ValueError("openai_api_key and openai_model must be configured together")
         return self
 
 

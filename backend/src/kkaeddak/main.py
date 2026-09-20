@@ -14,6 +14,7 @@ from kkaeddak.db.session import create_database_engine, create_session_factory
 from kkaeddak.middleware.privacy_fields import PrivacyFieldMiddleware
 from kkaeddak.middleware.request_id import RequestIdMiddleware
 from kkaeddak.services.ai import AiProvider
+from kkaeddak.services.openai_provider import OpenAIResponsesProvider
 
 
 def create_app(
@@ -42,7 +43,15 @@ def create_app(
         lifespan=lifespan,
     )
     app.state.settings = resolved_settings
-    app.state.ai_provider = ai_provider
+    configured_ai_provider = ai_provider
+    if configured_ai_provider is None and resolved_settings.openai_api_key is not None:
+        assert resolved_settings.openai_model is not None
+        configured_ai_provider = OpenAIResponsesProvider(
+            api_key=resolved_settings.openai_api_key,
+            model_name=resolved_settings.openai_model,
+            timeout_seconds=resolved_settings.openai_timeout_seconds,
+        )
+    app.state.ai_provider = configured_ai_provider
     app.add_middleware(PrivacyFieldMiddleware)
     app.add_middleware(RequestIdMiddleware)
     if resolved_settings.cors_allowed_origins:

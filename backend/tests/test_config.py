@@ -15,6 +15,8 @@ def test_settings_have_safe_defaults() -> None:
     assert settings.api_v1_prefix == "/api/v1"
     assert settings.log_level == "INFO"
     assert settings.cors_allowed_origins == []
+    assert settings.openai_api_key is None
+    assert settings.openai_model is None
 
 
 @pytest.mark.parametrize("prefix", ["api/v1", "/api/v1/"])
@@ -42,6 +44,22 @@ def test_environment_variables_use_project_prefix(monkeypatch: pytest.MonkeyPatc
 
     assert settings.environment == "test"
     assert settings.log_level == "WARNING"
+
+
+def test_openai_settings_require_key_and_model_together() -> None:
+    with pytest.raises(ValidationError, match="must be configured together"):
+        Settings(openai_api_key="test-secret", _env_file=None)
+    with pytest.raises(ValidationError, match="must be configured together"):
+        Settings(openai_model="test-model", _env_file=None)
+
+    settings = Settings(
+        openai_api_key="test-secret",
+        openai_model="test-model",
+        _env_file=None,
+    )
+    assert settings.openai_api_key is not None
+    assert settings.openai_api_key.get_secret_value() == "test-secret"
+    assert "test-secret" not in repr(settings)
 
 
 @pytest.mark.parametrize(

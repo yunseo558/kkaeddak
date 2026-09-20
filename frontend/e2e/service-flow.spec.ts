@@ -72,11 +72,11 @@ test("AI 일정 유형과 조기 자동화 설정을 실제 서비스 흐름으�
   await page.getByRole("button", { name: "다음 달" }).click();
   await page.getByRole("button", { name: /30일, 일정 1개/ }).click();
   await expect(page.getByText("AI 챔피언십 최종 발표")).toBeVisible();
-  await expect(page.getByText(/시험·면접 · AI 분류/).first()).toBeVisible();
+  await expect(page.getByText(/시험·면접 · 기본 분류/).first()).toBeVisible();
   await page.locator(".calendar-add-button").click();
   await page.getByLabel("일정 이름").fill("PT");
   await page.getByLabel("날짜").click();
-  await expect(page.getByText("AI 분류 완료 · 운동")).toBeVisible();
+  await expect(page.getByText("기본 분류 완료 · 운동")).toBeVisible();
   await expect(page.getByLabel("일정 유형")).toHaveValue("EXERCISE");
   await expect(page.getByRole("button", { name: "AI로 유형 다시 분류" })).toHaveCount(0);
   await page.getByRole("button", { name: "닫기" }).click();
