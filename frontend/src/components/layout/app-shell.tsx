@@ -132,12 +132,16 @@ export function AppShell({
           <div className="iphone-home-indicator" aria-hidden="true" />
           {authenticated && pathname !== "/onboarding" && !immersive && (
             <nav className="service-tabbar" aria-label="주 메뉴">
-              {homeScene ? homeTabs.map((tab) => (
-                <Link key={tab.href} href={tab.href} data-active={pathname === tab.href} aria-current={pathname === tab.href ? "page" : undefined}>
+              {homeScene ? homeTabs.map((tab) => {
+                const active =
+                  pathname === tab.href ||
+                  (tab.href !== "/" && pathname.startsWith(`${tab.href}/`));
+                return (
+                <Link key={tab.href} href={tab.href} data-active={active} aria-current={active ? "page" : undefined}>
                   <ClayIcon name={tab.icon} size={30} />
                   <span>{tab.label}</span>
                 </Link>
-              )) : <>
+              );}) : <>
               <Link data-active={pathname === "/sleep"} href="/sleep">
                 <ClayIcon name="health" size={30} />
                 <span>건강</span>

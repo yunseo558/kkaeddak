@@ -52,6 +52,13 @@ describe("applyWakeLearning", () => {
       protocolAdjustment: 1,
       recommendedAdvanceMinutes: 5,
     });
+    expect(learned).toMatchObject({
+      previousAdvanceMinutes: 0,
+      nextAdvanceMinutes: 5,
+      previousProtocolAdjustment: 0,
+      nextProtocolAdjustment: 1,
+      reasonCodes: ["RECENT_WAKE_FAILURE"],
+    });
     expect(await localDataStore.getAll("wake-events")).toEqual([
       expect.objectContaining({
         eventType: "OUTCOME_RECORDED",

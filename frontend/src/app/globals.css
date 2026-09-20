@@ -3019,3 +3019,214 @@ body {
   width: 42px;
   height: 42px;
 }
+
+.history-report-link {
+  color: inherit;
+  text-decoration: none;
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+.history-report-link:active {
+  transform: scale(0.985);
+}
+
+.history-row-chevron {
+  flex: 0 0 auto !important;
+  color: #9aa18f;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.history-load-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(161, 121, 62, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 247, 229, 0.82);
+  color: #685840;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.history-load-notice .action-ghost {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 7px 11px;
+}
+
+.history-skeleton {
+  display: grid;
+  gap: 12px;
+}
+
+.history-skeleton span {
+  min-height: 82px;
+  border-radius: 22px;
+  background: linear-gradient(100deg, #f5eee5 20%, #fffaf3 42%, #f5eee5 64%);
+  background-size: 220% 100%;
+  animation: history-skeleton-wave 1.5s ease-in-out infinite;
+}
+
+@keyframes history-skeleton-wave {
+  to { background-position-x: -220%; }
+}
+
+.history-detail {
+  gap: 14px;
+}
+
+.history-detail .settings-detail-header {
+  margin-bottom: 4px;
+}
+
+.history-outcome-hero h2,
+.history-report-card h2,
+.history-legacy-card h2 {
+  margin: 4px 0 8px;
+  font-size: 18px;
+  line-height: 1.42;
+  letter-spacing: -0.035em;
+}
+
+.history-report-card {
+  display: grid;
+  gap: 12px;
+  overflow: hidden;
+  padding: 20px;
+  border-radius: 24px;
+  border-color: rgba(91, 87, 70, 0.09) !important;
+  background: rgba(255, 252, 246, 0.9) !important;
+  box-shadow: var(--kkaeddak-shadow) !important;
+  backdrop-filter: blur(18px) saturate(0.88);
+}
+
+.history-report-card > p:not(.service-kicker) {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.history-fact-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin: 0;
+  border-radius: 16px;
+  background: rgba(114, 104, 83, 0.09);
+}
+
+.history-fact-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.history-fact-grid div {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-height: 68px;
+  padding: 12px;
+  background: rgba(255, 251, 244, 0.94);
+}
+
+.history-fact-grid dt {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+.history-fact-grid dd {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.history-timeline {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-timeline li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 11px;
+  min-height: 64px;
+}
+
+.history-timeline li:not(:last-child)::after {
+  position: absolute;
+  top: 34px;
+  bottom: 0;
+  left: 16px;
+  width: 2px;
+  background: #e2e9c9;
+  content: "";
+}
+
+.history-timeline li > span {
+  z-index: 1;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(108, 125, 55, 0.13);
+  border-radius: 12px;
+  background: #c9e77b;
+  color: #425621;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 6px 12px rgba(92, 104, 48, 0.12);
+}
+
+.history-timeline li > div {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 5px 0 13px;
+}
+
+.history-timeline strong {
+  font-size: 13px;
+}
+
+.history-timeline small {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.history-learning-card {
+  border-color: rgba(121, 143, 58, 0.14) !important;
+  background: #f2f8dc !important;
+}
+
+@media (hover: hover) {
+  .history-report-link:hover {
+    background: rgba(247, 250, 236, 0.72);
+  }
+}
+
+@media (max-width: 410px) {
+  .history-fact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .history-fact-grid div:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .history-report-link {
+    transition: none;
+  }
+  .history-skeleton span {
+    animation: none;
+  }
+}

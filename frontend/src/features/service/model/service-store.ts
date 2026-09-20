@@ -10,6 +10,7 @@ export type CalendarEntry = components["schemas"]["ScheduleEventInput"];
 export type ScheduleTypeRule = components["schemas"]["ScheduleTypeRule"];
 export type ScheduleClassification =
   components["schemas"]["ScheduleClassificationResponse"];
+export type AlarmEventType = components["schemas"]["AlarmEventType"];
 export const DEFAULT_SCHEDULE_TYPES: ScheduleTypeRule[] = [
   { code: "CLASS", label: "수업", wakeLeadMin: 60, isFallback: false },
   { code: "WORK", label: "출근·업무", wakeLeadMin: 90, isFallback: false },
@@ -30,7 +31,7 @@ export const DEFAULT_SCHEDULE_TYPES: ScheduleTypeRule[] = [
 ];
 export type ServicePlan = ActiveWakePlan & {
   revision: number;
-  status: string;
+  status: components["schemas"]["PlanStatus"];
   automatic: boolean;
   eventTitle: string;
   eventAt: string;
@@ -42,6 +43,22 @@ export type ServicePlan = ActiveWakePlan & {
   fatigueScore: number;
   fatigueLevel: "LOW" | "MEDIUM" | "HIGH";
   aiConfidence: number;
+};
+export type AlarmRuntimeEvent = {
+  key: string;
+  planId: string;
+  stepOrder: number;
+  eventType: AlarmEventType;
+  occurredAt: string;
+  synced: boolean;
+};
+export type AlarmRuntimeState = {
+  planId: string | null;
+  currentStepOrder: number | null;
+  completedStepOrders: number[];
+  awaitingConfirmationStepOrder: number | null;
+  remainingStepOrders: number[];
+  events: AlarmRuntimeEvent[];
 };
 type ServiceState = {
   enrolledAt: string | null;
@@ -60,7 +77,7 @@ type ServiceState = {
   plan: ServicePlan | null;
   sleepMinutes: number;
   lastAutomationSlot: string | null;
-  lastTriggeredAlarmPlanId: string | null;
+  alarmRuntime: AlarmRuntimeState;
   preview: boolean;
   alarmStage: "idle" | "ringing" | "confirm";
   message: string | null;
@@ -85,7 +102,14 @@ const initial = {
   plan: null,
   sleepMinutes: 420,
   lastAutomationSlot: null,
-  lastTriggeredAlarmPlanId: null,
+  alarmRuntime: {
+    planId: null,
+    currentStepOrder: null,
+    completedStepOrders: [],
+    awaitingConfirmationStepOrder: null,
+    remainingStepOrders: [],
+    events: [],
+  },
   preview: false,
   alarmStage: "idle",
   message: null,
@@ -117,7 +141,7 @@ export const useServiceStore = create<ServiceState>()(
         plan,
         sleepMinutes,
         lastAutomationSlot,
-        lastTriggeredAlarmPlanId,
+        alarmRuntime,
         preview,
       }) => ({
         enrolledAt,
@@ -136,7 +160,7 @@ export const useServiceStore = create<ServiceState>()(
         plan,
         sleepMinutes,
         lastAutomationSlot,
-        lastTriggeredAlarmPlanId,
+        alarmRuntime,
         preview,
       }),
     },
