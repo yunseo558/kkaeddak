@@ -455,17 +455,41 @@ export function ServiceHome() {
         {plan && (
           <section className="service-section home-reason-card">
             <div className="service-row">
-              <h2>이렇게 정했어요</h2>
+              <h2>
+                {plan.explanationSource === "MODEL"
+                  ? "AI가 이렇게 정했어요"
+                  : "기본 분석으로 정했어요"}
+              </h2>
               <span className="home-ai-badge">
-                {plan.explanationSource === "MODEL" ? "AI 분석" : "기본 분석"}
+                {plan.explanationSource === "MODEL" ? "AI 개인화" : "안전 폴백"}
               </span>
             </div>
             <p className="service-muted">{plan.reason}</p>
             <div className="home-signal-grid" aria-label="기상 계획 판단 기준">
               <div><span>일정</span><strong>{plan.scheduleTypeLabel}</strong></div>
-              <div><span>수면</span><strong>{Math.floor(plan.sleepMinutes / 60)}시간 {plan.sleepMinutes % 60}분</strong></div>
-              <div><span>준비</span><strong>{plan.wakeLeadMinutes}분</strong></div>
+              <div>
+                <span>AI 피로도</span>
+                <strong>
+                  {plan.fatigueLevel === "HIGH"
+                    ? "높음"
+                    : plan.fatigueLevel === "MEDIUM"
+                      ? "보통"
+                      : "낮음"}{" "}
+                  {plan.fatigueScore ?? 0}
+                </strong>
+              </div>
+              <div>
+                <span>AI 신뢰도</span>
+                <strong>{Math.round((plan.aiConfidence ?? 0) * 100)}%</strong>
+              </div>
             </div>
+            <p className="service-footnote">
+              {plan.explanationSource === "MODEL"
+                ? `AI가 피로도와 최근 기상 반응을 분석해 ${clockTime(plan.firstAlarmAt)}부터 ${plan.steps.length}개의 알람을 배치했어요.`
+                : survey.aiPersonalizationConsent
+                  ? "AI 연결에 실패해 이번 계획은 로컬 안전 기준으로 계산했어요."
+                  : "AI 분석 동의가 꺼져 있어 이번 계획은 로컬 안전 기준으로 계산했어요."}
+            </p>
             {!approved && plan.status === "PROPOSED" && (
               <p className="service-footnote">
                 {survey.automationMode === "automatic"

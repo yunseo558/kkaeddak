@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     database_echo: bool = False
     database_pool_size: int = Field(default=5, ge=1, le=20)
     cors_allowed_origins: list[str] = Field(default_factory=list)
+    gemini_api_key: SecretStr | None = Field(default=None, repr=False)
+    gemini_model: str = Field(default="gemini-2.5-flash-lite", min_length=1, max_length=100)
+    gemini_timeout_seconds: float = Field(default=10.0, ge=1.0, le=30.0)
     openai_api_key: SecretStr | None = Field(default=None, repr=False)
     openai_model: str | None = Field(default=None, min_length=1, max_length=100)
     openai_timeout_seconds: float = Field(default=10.0, ge=1.0, le=30.0)

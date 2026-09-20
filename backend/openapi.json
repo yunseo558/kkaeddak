@@ -455,6 +455,233 @@
         "title": "LocationMode",
         "type": "string"
       },
+      "PersonalizedWakePlanCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "activityLevel": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "moderate",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Activitylevel"
+          },
+          "baseWakeLeadMin": {
+            "maximum": 240.0,
+            "minimum": 15.0,
+            "title": "Basewakeleadmin",
+            "type": "integer"
+          },
+          "category": {
+            "examples": [
+              "PACK_BAG"
+            ],
+            "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
+            "title": "Category",
+            "type": "string"
+          },
+          "conditionLevel": {
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "normal",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conditionlevel"
+          },
+          "eventHour": {
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Eventhour",
+            "type": "integer"
+          },
+          "externalAiConsent": {
+            "const": true,
+            "title": "Externalaiconsent",
+            "type": "boolean"
+          },
+          "importance": {
+            "$ref": "#/components/schemas/Importance"
+          },
+          "keepSafetyAlarm": {
+            "title": "Keepsafetyalarm",
+            "type": "boolean"
+          },
+          "learningDays": {
+            "maximum": 365.0,
+            "minimum": 0.0,
+            "title": "Learningdays",
+            "type": "integer"
+          },
+          "preferredAlarmCount": {
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Preferredalarmcount",
+            "type": "integer"
+          },
+          "preferredIntervalMin": {
+            "maximum": 30.0,
+            "minimum": 3.0,
+            "title": "Preferredintervalmin",
+            "type": "integer"
+          },
+          "recentAverageAlarmSteps": {
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Recentaveragealarmsteps",
+            "type": "number"
+          },
+          "recentLateCount": {
+            "maximum": 14.0,
+            "minimum": 0.0,
+            "title": "Recentlatecount",
+            "type": "integer"
+          },
+          "recentMissedCount": {
+            "maximum": 14.0,
+            "minimum": 0.0,
+            "title": "Recentmissedcount",
+            "type": "integer"
+          },
+          "recentOnTimeCount": {
+            "maximum": 14.0,
+            "minimum": 0.0,
+            "title": "Recentontimecount",
+            "type": "integer"
+          },
+          "restMinutes": {
+            "anyOf": [
+              {
+                "maximum": 960.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restminutes"
+          },
+          "usualRestMinutes": {
+            "anyOf": [
+              {
+                "maximum": 720.0,
+                "minimum": 180.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usualrestminutes"
+          }
+        },
+        "required": [
+          "category",
+          "externalAiConsent",
+          "importance",
+          "eventHour",
+          "baseWakeLeadMin",
+          "recentOnTimeCount",
+          "recentLateCount",
+          "recentMissedCount",
+          "recentAverageAlarmSteps",
+          "learningDays",
+          "preferredAlarmCount",
+          "preferredIntervalMin",
+          "keepSafetyAlarm"
+        ],
+        "title": "PersonalizedWakePlanCreate",
+        "type": "object"
+      },
+      "PersonalizedWakePlanResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "alarmOffsetsMin": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Alarmoffsetsmin",
+            "type": "array"
+          },
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "explanation": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Explanation",
+            "type": "string"
+          },
+          "fatigueLevel": {
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ],
+            "title": "Fatiguelevel",
+            "type": "string"
+          },
+          "fatigueScore": {
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Fatiguescore",
+            "type": "integer"
+          },
+          "reasonCodes": {
+            "items": {
+              "examples": [
+                "PACK_BAG"
+              ],
+              "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Reasoncodes",
+            "type": "array"
+          },
+          "requiresReview": {
+            "title": "Requiresreview",
+            "type": "boolean"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ExplanationSource"
+          }
+        },
+        "required": [
+          "fatigueScore",
+          "fatigueLevel",
+          "alarmOffsetsMin",
+          "reasonCodes",
+          "explanation",
+          "confidence",
+          "requiresReview",
+          "source"
+        ],
+        "title": "PersonalizedWakePlanResponse",
+        "type": "object"
+      },
       "PlanDecision": {
         "enum": [
           "APPROVE",
@@ -1911,6 +2138,162 @@
           }
         },
         "summary": "Classify a schedule title into one of the user's categories",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/wake-plan-recommendations": {
+      "post": {
+        "operationId": "personalize_wake_plan_api_v1_ai_wake_plan_recommendations_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Demo-Session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-Session"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonalizedWakePlanCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalizedWakePlanResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Consent or permission required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Revision or resource conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Disallowed privacy field"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Temporary dependency failure"
+          }
+        },
+        "summary": "Personalize fatigue and alarm timing from aggregate behavior signals",
         "tags": [
           "ai"
         ]

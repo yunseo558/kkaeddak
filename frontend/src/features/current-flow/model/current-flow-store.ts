@@ -28,6 +28,7 @@ export type OnboardingDraft = {
   preferredAlarmCount: number;
   keepSafetyAlarm: boolean;
   automationMode: AutomationMode;
+  aiPersonalizationConsent: boolean;
   outcomeSync: boolean;
 };
 
@@ -37,6 +38,7 @@ const initialDraft: OnboardingDraft = {
   preferredAlarmCount: 2,
   keepSafetyAlarm: true,
   automationMode: "suggest",
+  aiPersonalizationConsent: false,
   outcomeSync: false,
 };
 
@@ -85,19 +87,17 @@ export const useCurrentFlowStore = create<CurrentFlowState>()(
     }),
     {
       name: "kkaeddak-current-flow",
-      version: 1,
+      version: 2,
       migrate: (persistedState, version) => {
         const state = persistedState as CurrentFlowState;
-        if (version < 1) {
-          return {
-            ...state,
-            onboardingDraft: {
-              ...state.onboardingDraft,
-              automationMode: "suggest" as const,
-            },
-          };
-        }
-        return state;
+        return {
+          ...state,
+          onboardingDraft: {
+            ...state.onboardingDraft,
+            ...(version < 1 ? { automationMode: "suggest" as const } : {}),
+            ...(version < 2 ? { aiPersonalizationConsent: false } : {}),
+          },
+        };
       },
       storage: createJSONStorage(() => window.localStorage),
       partialize: ({

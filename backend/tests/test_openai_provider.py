@@ -12,6 +12,7 @@ from kkaeddak.domain.enums import LocationMode
 from kkaeddak.main import create_app
 from kkaeddak.services.ai import (
     ExplanationAiRequest,
+    PersonalizedWakePlanAiRequest,
     PreparationAiRequest,
     PreparationCandidate,
     ScheduleCategoryCandidate,
@@ -132,6 +133,51 @@ async def test_provider_explains_and_selects_only_candidate_tasks() -> None:
     assert suggestions == {"suggestions": [{"code": "PACK_BAG", "label": "가방 미리 챙기기"}]}
     suggestion_schema = transport.calls[1]["body"]["text"]["format"]["schema"]
     assert suggestion_schema["properties"]["suggestions"]["maxItems"] == 1
+
+
+@pytest.mark.anyio
+async def test_provider_requests_a_structured_personalized_wake_plan() -> None:
+    expected = {
+        "fatigue_score": 61,
+        "fatigue_level": "MEDIUM",
+        "alarm_offsets_min": [0, 10, 20],
+        "reason_codes": ["SHORTER_REST_THAN_BASELINE"],
+        "explanation": "수면이 평소보다 짧아 첫 알람을 20분 앞당겼어요.",
+        "confidence": 0.86,
+        "requires_review": True,
+    }
+    transport = RecordingTransport(_response(expected))
+    provider = _provider(transport)
+
+    result = await provider.personalize_wake_plan(
+        PersonalizedWakePlanAiRequest(
+            external_ai_consent=True,
+            category="CLASS",
+            importance="NORMAL",
+            event_hour=11,
+            base_wake_lead_min=60,
+            rest_minutes=360,
+            usual_rest_minutes=420,
+            activity_level="moderate",
+            condition_level="normal",
+            recent_on_time_count=3,
+            recent_late_count=1,
+            recent_missed_count=0,
+            recent_average_alarm_steps=2,
+            learning_days=8,
+            preferred_alarm_count=2,
+            preferred_interval_min=10,
+            keep_safety_alarm=True,
+        )
+    )
+
+    assert result == expected
+    schema = transport.calls[0]["body"]["text"]["format"]["schema"]
+    assert schema["properties"]["fatigue_level"]["enum"] == [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+    ]
 
 
 @pytest.mark.anyio

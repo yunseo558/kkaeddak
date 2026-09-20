@@ -6,6 +6,8 @@ from kkaeddak.api.dependencies import CurrentSession, DatabaseSession
 from kkaeddak.schemas.ai import (
     ExplanationCreate,
     ExplanationResponse,
+    PersonalizedWakePlanCreate,
+    PersonalizedWakePlanResponse,
     ScheduleClassificationCreate,
     ScheduleClassificationResponse,
 )
@@ -13,6 +15,7 @@ from kkaeddak.services.ai import (
     AiProvider,
     AiService,
     ExplanationAiRequest,
+    PersonalizedWakePlanAiRequest,
     ScheduleCategoryCandidate,
     ScheduleClassificationAiRequest,
 )
@@ -73,3 +76,22 @@ async def classify_schedule(
         confidence=result.confidence,
         source=source,
     )
+
+
+@router.post(
+    "/ai/wake-plan-recommendations",
+    response_model=PersonalizedWakePlanResponse,
+    tags=["ai"],
+    summary="Personalize fatigue and alarm timing from aggregate behavior signals",
+)
+async def personalize_wake_plan(
+    payload: PersonalizedWakePlanCreate,
+    current: CurrentSession,
+    database: DatabaseSession,
+    request: Request,
+) -> PersonalizedWakePlanResponse:
+    provider: AiProvider | None = request.app.state.ai_provider
+    result, source = await AiService(database, provider).personalize_wake_plan(
+        PersonalizedWakePlanAiRequest.model_validate(payload.model_dump())
+    )
+    return PersonalizedWakePlanResponse(**result.model_dump(), source=source)

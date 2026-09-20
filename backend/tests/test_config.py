@@ -15,6 +15,8 @@ def test_settings_have_safe_defaults() -> None:
     assert settings.api_v1_prefix == "/api/v1"
     assert settings.log_level == "INFO"
     assert settings.cors_allowed_origins == []
+    assert settings.gemini_api_key is None
+    assert settings.gemini_model == "gemini-2.5-flash-lite"
     assert settings.openai_api_key is None
     assert settings.openai_model is None
 

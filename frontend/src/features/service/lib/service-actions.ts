@@ -111,6 +111,39 @@ async function explainServicePlan(reasonCodes: string[], summary: string) {
   return { explanation: summary, source: "TEMPLATE" as const };
 }
 
+async function personalizeWakePlan(input: {
+  externalAiConsent: true;
+  category: string;
+  importance: "NORMAL" | "IMPORTANT" | "CRITICAL";
+  eventHour: number;
+  baseWakeLeadMin: number;
+  restMinutes: number | null;
+  activityLevel: "low" | "moderate" | "high" | null;
+  conditionLevel: "low" | "normal" | "high" | null;
+  recentOnTimeCount: number;
+  recentLateCount: number;
+  recentMissedCount: number;
+  recentAverageAlarmSteps: number;
+  learningDays: number;
+  preferredAlarmCount: number;
+  preferredIntervalMin: number;
+  keepSafetyAlarm: boolean;
+}) {
+  const result = await apiClient.POST(
+    "/api/v1/ai/wake-plan-recommendations",
+    {
+      headers: demoSessionHeaders(sessionId()),
+      body: {
+        ...input,
+        usualRestMinutes: 420,
+      },
+    },
+  );
+  if (!result.data || result.error)
+    throw new Error("AI 개인화 계획을 계산하지 못했어요.");
+  return result.data;
+}
+
 async function classifyCalendarEvents(events: CalendarEntry[]) {
   const classifications: Record<string, ScheduleClassification> = {};
   const byTitle = new Map<string, ScheduleClassification>();
@@ -327,6 +360,9 @@ export async function generateServicePlan() {
   const recent = [...store.records]
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(-5);
+  const personalizationHistory = [...store.records]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-14);
   const failures = recent.filter(
     (r) => r.outcome === "UNCONFIRMED" || r.outcome === "CONFIRMED_LATE",
   ).length;
@@ -343,7 +379,7 @@ export async function generateServicePlan() {
       })
     : null;
   if (healthInput) await localDataStore.put("health-inputs", healthInput);
-  const recommendation = calculateWakeRecommendation({
+  const localRecommendation = calculateWakeRecommendation({
     completedPreparationMinutes: 0,
     deadlineAt,
     importance: event.importance,
@@ -367,6 +403,98 @@ export async function generateServicePlan() {
       learned?.parameters.recommendedAdvanceMinutes ?? 0,
     healthInput,
   });
+  const elapsedLearningDays = store.enrolledAt
+    ? Math.max(
+        0,
+        Math.floor(
+          (Date.parse(`${localDate(now)}T00:00:00Z`) -
+            Date.parse(`${localDate(store.enrolledAt)}T00:00:00Z`)) /
+            86400_000,
+        ),
+      )
+    : 0;
+  let personalized: Awaited<ReturnType<typeof personalizeWakePlan>> | null =
+    null;
+  if (survey.aiPersonalizationConsent === true) {
+    const explicitConsent: true = survey.aiPersonalizationConsent;
+    try {
+      personalized = await personalizeWakePlan({
+        externalAiConsent: explicitConsent,
+        category: scheduleType.code,
+        importance: event.importance,
+        eventHour: new Date(
+          Date.parse(event.startsAt) + 9 * 3600_000,
+        ).getUTCHours(),
+        baseWakeLeadMin: scheduleType.wakeLeadMin,
+        restMinutes: healthInput?.sleepDurationMinutes ?? null,
+        activityLevel:
+          healthInput?.activityLevel === "usual"
+            ? "moderate"
+            : (healthInput?.activityLevel ?? null),
+        conditionLevel:
+          healthInput?.conditionLevel === "usual"
+            ? "normal"
+            : (healthInput?.conditionLevel ?? null),
+        recentOnTimeCount: personalizationHistory.filter(
+          (record) => record.outcome === "CONFIRMED_ON_TIME",
+        ).length,
+        recentLateCount: personalizationHistory.filter(
+          (record) => record.outcome === "CONFIRMED_LATE",
+        ).length,
+        recentMissedCount: personalizationHistory.filter(
+          (record) => record.outcome === "UNCONFIRMED",
+        ).length,
+        recentAverageAlarmSteps: personalizationHistory.length
+          ? personalizationHistory.reduce(
+              (total, record) =>
+                total + (record.alarmStepsUsed ?? store.preferredAlarmCount),
+              0,
+            ) / personalizationHistory.length
+          : store.preferredAlarmCount,
+        learningDays: elapsedLearningDays,
+        preferredAlarmCount: store.preferredAlarmCount,
+        preferredIntervalMin: store.alarmIntervalMinutes,
+        keepSafetyAlarm: store.keepSafetyAlarm,
+      });
+    } catch {
+      // Provider/network failures must not prevent the scheduled alarm.
+    }
+  }
+  const personalizedOffsets = personalized?.alarmOffsetsMin;
+  const lastPersonalizedOffset = personalizedOffsets?.at(-1) ?? 0;
+  const candidatePlan = personalized
+    ? {
+        localDate: localDate(deadlineAt),
+        timezone: "Asia/Seoul",
+        deadlineAt,
+        firstAlarmAt: new Date(
+          Date.parse(deadlineAt) - lastPersonalizedOffset * 60000,
+        ).toISOString(),
+        finalAlarmAt: deadlineAt,
+        importance: event.importance,
+        protocolLevel: Math.min(4, personalized.alarmOffsetsMin.length),
+        steps: personalized.alarmOffsetsMin.map((offsetMin, index) => ({
+          order: index + 1,
+          offsetMin,
+          channel:
+            store.keepSafetyAlarm &&
+            index === personalized.alarmOffsetsMin.length - 1 &&
+            personalized.alarmOffsetsMin.length > 1
+              ? "FINAL_SAFETY"
+              : "PHONE_SOUND",
+        })),
+        reasonCodes: personalized.reasonCodes,
+        requiresApproval: personalized.requiresReview,
+        modelVersion:
+          personalized.source === "MODEL"
+            ? "external-ai-personalized-v1"
+            : "safe-fallback-personalized-v1",
+      }
+    : localRecommendation.plan;
+  const earlyOverrideCanAcceptModelUncertainty =
+    store.earlyAutomationEnabled &&
+    event.importance === "NORMAL" &&
+    personalized?.fatigueLevel !== "HIGH";
   const eligibility = automationEligibility({
     enrolledAt: store.enrolledAt ?? now,
     now,
@@ -374,10 +502,12 @@ export async function generateServicePlan() {
     earlyOverride: store.earlyAutomationEnabled,
     records: store.records,
     importance: event.importance,
-    requiresApproval: recommendation.plan.requiresApproval,
+    requiresApproval:
+      candidatePlan.requiresApproval &&
+      !earlyOverrideCanAcceptModelUncertainty,
   });
   const plan = {
-    ...recommendation.plan,
+    ...candidatePlan,
     requiresApproval: !eligibility.automatic,
   };
   // Recalculation must retire the previous schedule before replacing it.
@@ -426,10 +556,15 @@ export async function generateServicePlan() {
         ]
       : []),
   ].join(". ");
-  const explanation = await explainServicePlan(
-    plan.reasonCodes,
-    reasonSummary,
-  );
+  const explanation = personalized
+    ? {
+        explanation: `${personalized.explanation} ${reasonSummary}`.slice(
+          0,
+          500,
+        ),
+        source: personalized.source,
+      }
+    : await explainServicePlan(plan.reasonCodes, reasonSummary);
   const result: ServicePlan = {
     ...plan,
     id: saved.id,
@@ -442,6 +577,16 @@ export async function generateServicePlan() {
     sleepMinutes: store.sleepMinutes,
     reason: explanation.explanation,
     explanationSource: explanation.source,
+    fatigueScore:
+      personalized?.fatigueScore ?? Math.min(100, 30 + failures * 20),
+    fatigueLevel:
+      personalized?.fatigueLevel ??
+      (store.sleepMinutes < 360 || failures > 1
+        ? "HIGH"
+        : store.sleepMinutes < 420 || failures === 1
+          ? "MEDIUM"
+          : "LOW"),
+    aiConfidence: personalized?.confidence ?? 0.35,
   };
   store.set({ plan: result, lastAutomationSlot: localDate(now) });
   useCurrentFlowStore.getState().setWakeResult(null);
@@ -520,6 +665,7 @@ export async function saveServiceOutcome(success: boolean) {
     date: plan.localDate,
     outcome: result.outcome,
     source: "observed" as const,
+    alarmStepsUsed: result.alarmStepsUsed,
   };
   store.set({
     records: [
@@ -551,6 +697,7 @@ export async function advanceAutomation(preview = false) {
           date: recordDate,
           outcome: "CONFIRMED_ON_TIME",
           source: "preview",
+          alarmStepsUsed: 1,
         });
     }
     store.set({ records, preview: true, sleepMinutes: 435 });

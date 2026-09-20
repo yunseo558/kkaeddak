@@ -4,14 +4,14 @@ import hashlib
 import logging
 from collections.abc import Sequence
 from time import monotonic
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from kkaeddak.db.models import AiExecution
 from kkaeddak.db.repositories import AiExecutionRepository
-from kkaeddak.domain.enums import ExplanationSource, LocationMode
+from kkaeddak.domain.enums import ExplanationSource, Importance, LocationMode
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +81,76 @@ class ScheduleClassificationAiResponse(StrictModel):
     confidence: float = Field(ge=0, le=1)
 
 
+FatigueLevel = Literal["LOW", "MEDIUM", "HIGH"]
+ActivityLevel = Literal["low", "moderate", "high"]
+ConditionLevel = Literal["low", "normal", "high"]
+
+WAKE_PLAN_REASON_CODES = frozenset(
+    {
+        "SHORTER_REST_THAN_BASELINE",
+        "RECENT_WAKE_FAILURE",
+        "IMPORTANT_EVENT",
+        "EARLY_SCHEDULE",
+        "HIGH_ACTIVITY",
+        "LOW_CONDITION",
+        "LIMITED_HISTORY",
+        "STABLE_WAKE_PATTERN",
+        "USER_ALARM_PREFERENCE",
+    }
+)
+
+
+class PersonalizedWakePlanAiRequest(StrictModel):
+    """Aggregated signals only; raw health samples and calendar titles stay local."""
+
+    category: str = Field(pattern=r"^[A-Z][A-Z0-9_]{1,63}$")
+    external_ai_consent: Literal[True]
+    importance: Importance
+    event_hour: int = Field(ge=0, le=23)
+    base_wake_lead_min: int = Field(ge=15, le=240)
+    rest_minutes: int | None = Field(default=None, ge=0, le=960)
+    usual_rest_minutes: int | None = Field(default=None, ge=180, le=720)
+    activity_level: ActivityLevel | None = None
+    condition_level: ConditionLevel | None = None
+    recent_on_time_count: int = Field(ge=0, le=14)
+    recent_late_count: int = Field(ge=0, le=14)
+    recent_missed_count: int = Field(ge=0, le=14)
+    recent_average_alarm_steps: float = Field(ge=0, le=5)
+    learning_days: int = Field(ge=0, le=365)
+    preferred_alarm_count: int = Field(ge=1, le=5)
+    preferred_interval_min: int = Field(ge=3, le=30)
+    keep_safety_alarm: bool
+
+
+class PersonalizedWakePlanAiResponse(StrictModel):
+    fatigue_score: int = Field(ge=0, le=100)
+    fatigue_level: FatigueLevel
+    alarm_offsets_min: list[int] = Field(min_length=1, max_length=5)
+    reason_codes: list[str] = Field(min_length=1, max_length=8)
+    explanation: str = Field(min_length=1, max_length=500)
+    confidence: float = Field(ge=0, le=1)
+    requires_review: bool
+
+    @field_validator("alarm_offsets_min")
+    @classmethod
+    def validate_alarm_offsets(cls, value: list[int]) -> list[int]:
+        if value[0] != 0 or value != sorted(set(value)) or value[-1] > 90:
+            raise ValueError("alarm offsets must be unique, sorted, start at 0, and end by 90")
+        return value
+
+    @field_validator("reason_codes")
+    @classmethod
+    def validate_reason_codes(cls, value: list[str]) -> list[str]:
+        if len(value) != len(set(value)) or not set(value) <= WAKE_PLAN_REASON_CODES:
+            raise ValueError("wake-plan reason codes must be unique and allow-listed")
+        return value
+
+    @field_validator("explanation")
+    @classmethod
+    def validate_safe_explanation(cls, value: str) -> str:
+        return _validate_display_text(value)
+
+
 class AiProvider(Protocol):
     """Vendor-neutral provider that receives only privacy-limited structured inputs."""
 
@@ -91,6 +161,8 @@ class AiProvider(Protocol):
     async def explain(self, payload: ExplanationAiRequest) -> Any: ...
 
     async def classify_schedule(self, payload: ScheduleClassificationAiRequest) -> Any: ...
+
+    async def personalize_wake_plan(self, payload: PersonalizedWakePlanAiRequest) -> Any: ...
 
 
 def _validate_display_text(value: str) -> str:
@@ -173,6 +245,78 @@ def schedule_classification_template(
     return ScheduleClassificationAiResponse(
         category_code=fallback.code,
         confidence=0.35,
+    )
+
+
+def personalized_wake_plan_template(
+    payload: PersonalizedWakePlanAiRequest,
+) -> PersonalizedWakePlanAiResponse:
+    """Safe, explainable fallback when the external model is unavailable."""
+
+    history_total = (
+        payload.recent_on_time_count + payload.recent_late_count + payload.recent_missed_count
+    )
+    score = 20
+    reasons: list[str] = []
+    if payload.rest_minutes is not None and payload.usual_rest_minutes is not None:
+        shortfall = payload.usual_rest_minutes - payload.rest_minutes
+        if shortfall >= 30:
+            score += min(35, 10 + shortfall // 10)
+            reasons.append("SHORTER_REST_THAN_BASELINE")
+    else:
+        score += 10
+        reasons.append("LIMITED_HISTORY")
+    if payload.recent_late_count or payload.recent_missed_count:
+        score += min(25, payload.recent_late_count * 5 + payload.recent_missed_count * 10)
+        reasons.append("RECENT_WAKE_FAILURE")
+    elif history_total >= 4:
+        score = max(10, score - 10)
+        reasons.append("STABLE_WAKE_PATTERN")
+    elif "LIMITED_HISTORY" not in reasons:
+        reasons.append("LIMITED_HISTORY")
+    if payload.activity_level == "high":
+        score += 10
+        reasons.append("HIGH_ACTIVITY")
+    if payload.condition_level == "low":
+        score += 15
+        reasons.append("LOW_CONDITION")
+    if payload.importance is not Importance.NORMAL:
+        score += 10
+        reasons.append("IMPORTANT_EVENT")
+    if payload.event_hour <= 8:
+        score += 5
+        reasons.append("EARLY_SCHEDULE")
+
+    score = max(0, min(100, score))
+    level: FatigueLevel = "LOW" if score < 35 else "MEDIUM" if score < 65 else "HIGH"
+    failure_count = payload.recent_late_count + payload.recent_missed_count
+    alarm_count = min(
+        5,
+        max(
+            payload.preferred_alarm_count,
+            3 if level == "HIGH" or failure_count >= 2 else 2 if level == "MEDIUM" else 1,
+            2 if payload.keep_safety_alarm else 1,
+        ),
+    )
+    interval = payload.preferred_interval_min
+    offsets = [interval * index for index in range(alarm_count)]
+    if offsets[-1] > 90:
+        interval = max(3, 90 // max(1, alarm_count - 1))
+        offsets = [interval * index for index in range(alarm_count)]
+    reasons.append("USER_ALARM_PREFERENCE")
+    reason_text = {
+        "LOW": "최근 기상 흐름이 안정적이라 필요한 알람만 배치했어요.",
+        "MEDIUM": "수면과 최근 기상 기록을 반영해 예비 알람을 함께 배치했어요.",
+        "HIGH": "피로 신호와 최근 기상 실패를 반영해 더 일찍, 여러 번 울리도록 했어요.",
+    }[level]
+    return PersonalizedWakePlanAiResponse(
+        fatigue_score=score,
+        fatigue_level=level,
+        alarm_offsets_min=offsets,
+        reason_codes=list(dict.fromkeys(reasons)),
+        explanation=reason_text,
+        confidence=0.45 if history_total < 4 else 0.68,
+        requires_review=history_total < 10 or level == "HIGH",
     )
 
 
@@ -320,3 +464,37 @@ class AiService:
             status="FALLBACK",
         )
         return schedule_classification_template(payload), ExplanationSource.TEMPLATE
+
+    async def personalize_wake_plan(
+        self,
+        payload: PersonalizedWakePlanAiRequest,
+    ) -> tuple[PersonalizedWakePlanAiResponse, ExplanationSource]:
+        started_at = monotonic()
+        planner = getattr(self.provider, "personalize_wake_plan", None)
+        if planner is not None:
+            try:
+                raw = await planner(payload)
+                result = PersonalizedWakePlanAiResponse.model_validate(raw)
+            except Exception:
+                pass
+            else:
+                await self._record(
+                    feature="WAKE_PLAN_PERSONALIZATION",
+                    payload=payload,
+                    started_at=started_at,
+                    status="MODEL",
+                )
+                return result, ExplanationSource.MODEL
+
+        if self.provider is not None:
+            logger.warning(
+                "AI provider unavailable; personalized wake-plan fallback used",
+                extra={"feature": "WAKE_PLAN_PERSONALIZATION"},
+            )
+        await self._record(
+            feature="WAKE_PLAN_PERSONALIZATION",
+            payload=payload,
+            started_at=started_at,
+            status="FALLBACK",
+        )
+        return personalized_wake_plan_template(payload), ExplanationSource.TEMPLATE
