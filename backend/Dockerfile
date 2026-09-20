@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir .
 
 COPY alembic.ini ./alembic.ini
 COPY alembic ./alembic
+COPY scripts/start-render.sh ./start-render.sh
 
 EXPOSE 8000
 

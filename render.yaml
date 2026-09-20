@@ -10,8 +10,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     # Free web services cannot run a separate pre-deploy command.
-    dockerCommand: >-
-      sh -c 'alembic upgrade head && exec uvicorn kkaeddak.main:app --host 0.0.0.0 --port ${PORT:-10000}'
+    dockerCommand: sh /app/start-render.sh
     healthCheckPath: /api/v1/health
     autoDeployTrigger: commit
     envVars:
