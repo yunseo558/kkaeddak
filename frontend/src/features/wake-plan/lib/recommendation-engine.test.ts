@@ -99,10 +99,14 @@ describe("calculateWakeRecommendation", () => {
     const result = calculateWakeRecommendation({
       ...baseInput,
       healthInput: createScenarioHealthInput("regular-class"),
+      historyAdvanceMinutes: 10,
       historyProtocolAdjustment: 1,
     });
 
     expect(result.plan.protocolLevel).toBe(2);
+    expect(result.plan.firstAlarmAt).toBe("2026-09-18T22:40:00.000Z");
+    expect(result.plan.steps.at(-1)?.offsetMin).toBe(20);
     expect(result.plan.reasonCodes).toContain("RECENT_FIRST_ALARM_FAILURE");
+    expect(result.plan.reasonCodes).toContain("LEARNED_EARLIER_START");
   });
 });

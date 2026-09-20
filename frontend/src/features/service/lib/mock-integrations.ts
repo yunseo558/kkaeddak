@@ -54,33 +54,33 @@ export function createMockCalendar(today: string): CalendarEntry[] {
       importance: "IMPORTANT",
     },
   };
-  const weekly: Partial<Record<number, { title: string; time: string }>> = {
+  const weekly: Record<number, { title: string; time: string }> = {
+    0: { title: "한강 아침 러닝", time: "09:00" },
     1: { title: "AI 응용 전공 수업", time: "11:00" },
     2: { title: "팀 프로젝트 회의", time: "10:00" },
     3: { title: "자료구조 전공 수업", time: "11:00" },
     4: { title: "아침 PT", time: "08:00" },
     5: { title: "디자인 교양 수업", time: "13:00" },
+    6: { title: "친구와 점심 약속", time: "11:30" },
   };
   const events: CalendarEntry[] = [];
   let date = addDays(today, 1);
   while (date <= endDate) {
     const selected =
       special[date] ?? weekly[new Date(`${date}T12:00:00Z`).getUTCDay()];
-    if (selected) {
-      const startsAt = atTime(date, selected.time);
-      events.push({
-        clientId:
-          date === "2026-09-21"
-            ? "seed-regular-class"
-            : `mock-calendar-${date}`,
-        startsAt,
-        endsAt: new Date(Date.parse(startsAt) + 90 * 60000).toISOString(),
-        category: "OTHER",
-        importance: selected.importance ?? "NORMAL",
-        locationMode: "ONSITE",
-        displayTitle: selected.title,
-      });
-    }
+    const startsAt = atTime(date, selected.time);
+    events.push({
+      clientId:
+        date === "2026-09-21"
+          ? "seed-regular-class"
+          : `mock-calendar-${date}`,
+      startsAt,
+      endsAt: new Date(Date.parse(startsAt) + 90 * 60000).toISOString(),
+      category: "OTHER",
+      importance: selected.importance ?? "NORMAL",
+      locationMode: "ONSITE",
+      displayTitle: selected.title,
+    });
     date = addDays(date, 1);
   }
   return events;
