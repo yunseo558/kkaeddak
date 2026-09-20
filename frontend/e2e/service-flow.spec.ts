@@ -213,11 +213,6 @@ test("short sleep stays approval-based; learned routine applies automatically an
   page,
 }) => {
   await setup(page);
-  await page.getByRole("link", { name: "마이", exact: true }).click();
-  await page.getByRole("link", { name: /자동화 설정/ }).click();
-  await page.getByRole("radio", { name: "자동 적용" }).check();
-  await page.getByRole("button", { name: "설정 저장" }).click();
-  await page.getByRole("link", { name: "홈", exact: true }).click();
   await page.getByLabel("건강 샘플", { exact: true }).selectOption("300");
   await page.getByRole("button", { name: /다음 자동화 시각으로/ }).click();
   await expect(
@@ -226,7 +221,9 @@ test("short sleep stays approval-based; learned routine applies automatically an
   await expect
     .poll(() => page.locator(".alarm-times > div").count())
     .toBeGreaterThanOrEqual(3);
-  await page.getByRole("button", { name: "14일 학습 후 확인" }).click();
+  await page
+    .getByRole("button", { name: "14일 학습 후 자동 적용 확인" })
+    .click();
   await expect(
     page.getByText("자동으로 반영했어요", { exact: true }),
   ).toBeVisible();
@@ -260,9 +257,24 @@ test("short sleep stays approval-based; learned routine applies automatically an
   ).toBeVisible();
   await page.getByRole("link", { name: "홈", exact: true }).click();
   await page.getByRole("button", { name: "시간 변경" }).click();
+  await expect(page.getByLabel("첫 알람 시각", { exact: true })).toHaveAttribute(
+    "max",
+    "09:50",
+  );
+  await page.getByLabel("첫 알람 시각", { exact: true }).fill("10:51");
+  await expect(
+    page.getByText(
+      "일정 준비 시간을 지키려면 첫 알람은 09:50까지로 정해 주세요.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "변경 저장" })).toBeDisabled();
   await page.getByLabel("첫 알람 시각", { exact: true }).fill("09:20");
   await page.getByRole("button", { name: "변경 저장" }).click();
   await expect(page.locator(".service-clock")).toHaveText("09:20");
+  await expect(page.locator(".alarm-times strong")).toHaveText([
+    "09:20",
+    "09:30",
+  ]);
   await page.getByRole("button", { name: "알람 취소" }).click();
   await expect(page.getByText("알람 취소됨", { exact: true })).toBeVisible();
   await expect(
