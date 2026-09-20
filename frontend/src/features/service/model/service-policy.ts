@@ -28,6 +28,60 @@ export const clockTime = (iso: string) =>
     hour12: false,
   });
 
+const MAX_ALARM_EDIT_ADVANCE_MINUTES = 240;
+
+type EditableAlarmPlan = {
+  deadlineAt: string;
+  steps: Array<{ offsetMin: number }>;
+};
+
+export function alarmEditWindow(plan: EditableAlarmPlan) {
+  const deadlineMs = Date.parse(plan.deadlineAt);
+  const finalOffsetMin = Math.max(
+    0,
+    ...plan.steps.map((step) => step.offsetMin),
+  );
+  return {
+    earliestFirstAlarmAt: new Date(
+      deadlineMs - MAX_ALARM_EDIT_ADVANCE_MINUTES * 60_000,
+    ).toISOString(),
+    latestFirstAlarmAt: new Date(
+      deadlineMs - finalOffsetMin * 60_000,
+    ).toISOString(),
+    finalOffsetMin,
+  };
+}
+
+export function alarmEditValidationMessage(
+  plan: EditableAlarmPlan,
+  firstAlarmAt: string,
+) {
+  const firstAlarmMs = Date.parse(firstAlarmAt);
+  if (!Number.isFinite(firstAlarmMs)) return "첫 알람 시각을 선택해 주세요.";
+
+  const window = alarmEditWindow(plan);
+  if (firstAlarmMs < Date.parse(window.earliestFirstAlarmAt))
+    return `첫 알람은 ${clockTime(window.earliestFirstAlarmAt)} 이후로 정해 주세요.`;
+  if (firstAlarmMs > Date.parse(window.latestFirstAlarmAt))
+    return `일정 준비 시간을 지키려면 첫 알람은 ${clockTime(window.latestFirstAlarmAt)}까지로 정해 주세요.`;
+  return null;
+}
+
+export function shiftAlarmSchedule(
+  plan: EditableAlarmPlan,
+  firstAlarmAt: string,
+) {
+  const validationMessage = alarmEditValidationMessage(plan, firstAlarmAt);
+  if (validationMessage) throw new Error(validationMessage);
+  const { finalOffsetMin } = alarmEditWindow(plan);
+  return {
+    firstAlarmAt,
+    finalAlarmAt: new Date(
+      Date.parse(firstAlarmAt) + finalOffsetMin * 60_000,
+    ).toISOString(),
+  };
+}
+
 export function mergeAlarmOffsetsWithSafety(
   modelOffsets: number[],
   localSafetyOffsets: number[],

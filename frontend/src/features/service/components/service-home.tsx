@@ -8,6 +8,8 @@ import { BrandLogo } from "@/components/brand/brand-logo";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 import { useServiceStore } from "../model/service-store";
 import {
+  alarmEditValidationMessage,
+  alarmEditWindow,
   atTime,
   automationEligibility,
   clockTime,
@@ -196,6 +198,12 @@ export function ServiceHome() {
     requiresApproval: false,
   });
   const approved = plan && ["APPROVED", "EDITED"].includes(plan.status);
+  const editWindow = plan ? alarmEditWindow(plan) : null;
+  const editedFirstAlarmAt = plan && time ? atTime(plan.localDate, time) : null;
+  const editValidationMessage =
+    plan && editedFirstAlarmAt
+      ? alarmEditValidationMessage(plan, editedFirstAlarmAt)
+      : null;
   const activeStepOrder =
     store.alarmRuntime?.currentStepOrder ??
     store.alarmRuntime?.awaitingConfirmationStepOrder ??
@@ -373,13 +381,52 @@ export function ServiceHome() {
                 <label>
                   첫 알람 시각
                   <input
+                    aria-label="첫 알람 시각"
+                    aria-describedby={
+                      editValidationMessage
+                        ? "alarm-edit-guidance alarm-edit-error"
+                        : "alarm-edit-guidance"
+                    }
+                    aria-invalid={editValidationMessage ? true : undefined}
+                    max={
+                      editWindow
+                        ? clockTime(editWindow.latestFirstAlarmAt)
+                        : undefined
+                    }
+                    min={
+                      editWindow
+                        ? clockTime(editWindow.earliestFirstAlarmAt)
+                        : undefined
+                    }
                     type="time"
                     required
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
                   />
+                  {editWindow && (
+                    <span
+                      className={styles.editGuidance}
+                      id="alarm-edit-guidance"
+                    >
+                      {plan.steps.length}개 알람이 간격을 유지해 함께 이동해요.
+                      선택 가능 {clockTime(editWindow.earliestFirstAlarmAt)}–
+                      {clockTime(editWindow.latestFirstAlarmAt)}
+                    </span>
+                  )}
                 </label>
-                <button className="service-secondary" disabled={store.busy}>
+                {editValidationMessage && (
+                  <p
+                    className={styles.editError}
+                    id="alarm-edit-error"
+                    role="alert"
+                  >
+                    {editValidationMessage}
+                  </p>
+                )}
+                <button
+                  className="service-secondary"
+                  disabled={store.busy || !!editValidationMessage || !time}
+                >
                   변경 저장
                 </button>
               </form>

@@ -39,10 +39,12 @@ import {
 } from "../model/service-store";
 import {
   addDays,
+  alarmEditValidationMessage,
   atTime,
   automationEligibility,
   localDate,
   mergeAlarmOffsetsWithSafety,
+  shiftAlarmSchedule,
 } from "../model/service-policy";
 import { startAlarmSound, stopAlarmSound } from "./alarm-audio";
 import {
@@ -871,25 +873,13 @@ export async function decideServicePlan(
   const store = useServiceStore.getState();
   const plan = store.plan;
   if (!plan) return;
-  const finalAlarmAt =
-    firstAlarmAt && plan.steps.length === 1 ? firstAlarmAt : plan.finalAlarmAt;
-  const changes = firstAlarmAt ? { firstAlarmAt, finalAlarmAt } : undefined;
-  if (
-    firstAlarmAt &&
-    (Date.parse(firstAlarmAt) > Date.parse(plan.finalAlarmAt) ||
-      Date.parse(firstAlarmAt) < Date.parse(plan.finalAlarmAt) - 240 * 60000)
-  )
-    throw new Error("첫 알람은 최종 알람 이전 4시간 이내로 정해 주세요.");
-  if (
-    firstAlarmAt &&
-    plan.steps.length > 2 &&
-    Date.parse(firstAlarmAt) +
-      plan.steps[plan.steps.length - 2].offsetMin * 60000 >=
-      Date.parse(plan.finalAlarmAt)
-  )
-    throw new Error(
-      "예비 알람이 최종 알람보다 먼저 울리도록 첫 알람을 조금 앞당겨 주세요.",
-    );
+  const validationMessage = firstAlarmAt
+    ? alarmEditValidationMessage(plan, firstAlarmAt)
+    : null;
+  if (validationMessage) throw new Error(validationMessage);
+  const changes = firstAlarmAt
+    ? shiftAlarmSchedule(plan, firstAlarmAt)
+    : undefined;
   const saved = await updateWakePlanDecision(sessionId(), plan.id, {
     decision,
     revision: plan.revision,
@@ -898,9 +888,20 @@ export async function decideServicePlan(
   const updated = {
     ...plan,
     ...saved,
-    ...(firstAlarmAt ? { firstAlarmAt, finalAlarmAt } : {}),
+    ...changes,
   };
-  store.set({ plan: updated });
+  store.set({
+    plan: updated,
+    ...(firstAlarmAt
+      ? {
+          alarmRuntime: emptyAlarmRuntime(
+            plan.id,
+            plan.steps.map((step) => step.order),
+          ),
+          alarmStage: "idle" as const,
+        }
+      : {}),
+  });
   await updateLocalReportPlan(updated);
   useCurrentFlowStore
     .getState()
@@ -1195,6 +1196,20 @@ export async function advanceAutomation(preview = false) {
   if (Date.parse(atTime(date, store.automationTime)) <= Date.parse(now))
     date = addDays(date, 1);
   if (preview) {
+    const flow = useCurrentFlowStore.getState();
+    const previousDraft = flow.onboardingDraft;
+    if (previousDraft.automationMode !== "automatic") {
+      flow.setOnboardingDraft({
+        ...previousDraft,
+        automationMode: "automatic",
+      });
+      try {
+        await saveServiceProfile();
+      } catch (error) {
+        flow.setOnboardingDraft(previousDraft);
+        throw error;
+      }
+    }
     date = addDays(localDate(store.enrolledAt ?? now), 14);
     if (date < localDate(now)) date = addDays(localDate(now), 1);
     const records = [...store.records];
@@ -1208,7 +1223,12 @@ export async function advanceAutomation(preview = false) {
           alarmStepsUsed: 1,
         });
     }
-    store.set({ records, preview: true, sleepMinutes: 435 });
+    store.set({
+      records,
+      preview: true,
+      sleepMinutes: 435,
+      earlyAutomationEnabled: false,
+    });
   }
   store.set({
     virtualNow: atTime(date, store.automationTime),

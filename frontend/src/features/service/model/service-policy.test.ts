@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   automationEligibility,
   addDays,
+  alarmEditValidationMessage,
+  alarmEditWindow,
   mergeAlarmOffsetsWithSafety,
+  shiftAlarmSchedule,
   type DailyOutcome,
 } from "./service-policy";
 
@@ -74,6 +77,34 @@ describe("automation readiness", () => {
         })),
       }).automatic,
     ).toBe(false);
+  });
+});
+
+describe("alarm time editing", () => {
+  const plan = {
+    deadlineAt: "2026-09-21T01:00:00.000Z",
+    steps: [
+      { offsetMin: 0 },
+      { offsetMin: 10 },
+    ],
+  };
+
+  it("moves the complete alarm sequence while preserving its intervals", () => {
+    expect(shiftAlarmSchedule(plan, "2026-09-21T00:20:00.000Z")).toEqual({
+      firstAlarmAt: "2026-09-21T00:20:00.000Z",
+      finalAlarmAt: "2026-09-21T00:30:00.000Z",
+    });
+  });
+
+  it("exposes the selectable window and blocks a final alarm past the deadline", () => {
+    expect(alarmEditWindow(plan)).toMatchObject({
+      earliestFirstAlarmAt: "2026-09-20T21:00:00.000Z",
+      latestFirstAlarmAt: "2026-09-21T00:50:00.000Z",
+      finalOffsetMin: 10,
+    });
+    expect(
+      alarmEditValidationMessage(plan, "2026-09-21T00:51:00.000Z"),
+    ).toContain("첫 알람은 09:50까지");
   });
 });
 

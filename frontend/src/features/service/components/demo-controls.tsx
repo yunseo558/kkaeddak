@@ -65,7 +65,7 @@ export function DemoControls() {
           })
         }
       >
-        14일 학습 후 확인
+        14일 학습 후 자동 적용 확인
       </button>
       <label>
         건강 샘플
