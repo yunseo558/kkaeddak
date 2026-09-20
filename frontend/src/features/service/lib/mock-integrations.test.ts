@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createMockCalendar,
   createHealthKitMockSnapshot,
   normalizeHealthKitSnapshot,
 } from "./mock-integrations";
@@ -52,5 +53,15 @@ describe("HealthKit demo adapter", () => {
       conditionLevel: "low",
       recentFirstAlarmSucceeded: false,
     });
+  });
+});
+
+
+describe("demo calendar identity", () => {
+  it.each(["2026-09-20", "2026-09-25", "2026-10-01"])("replaces the server seed when starting on %s", (today) => {
+    const events = createMockCalendar(today);
+    expect(events[0].clientId).toBe("seed-regular-class");
+    expect(events.filter((event) => event.clientId === "seed-regular-class")).toHaveLength(1);
+    expect(new Set(events.map((event) => event.clientId)).size).toBe(events.length);
   });
 });

@@ -12,6 +12,9 @@ import {
   type LocalStorageMode,
 } from "@/lib/storage/local-data";
 
+import { serviceAction } from "@/features/service/lib/service-actions";
+import { useServiceStore } from "@/features/service/model/service-store";
+
 import { resetLocalData } from "../lib/reset-local-data";
 import { updateOutcomeSyncConsent } from "../api/privacy-api";
 
@@ -21,7 +24,8 @@ export function PrivacySettings() {
   const draft = useCurrentFlowStore((state) => state.onboardingDraft);
   const setDraft = useCurrentFlowStore((state) => state.setOnboardingDraft);
   const mode = useDemoSessionStore((state) => state.mode);
-  const sessionId = useDemoSessionStore((state) => state.sessionId);
+  const busy = useServiceStore((state) => state.busy);
+  const [outcomeSync, setOutcomeSync] = useState(draft.outcomeSync);
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -29,10 +33,16 @@ export function PrivacySettings() {
     useState<LocalStorageMode>("persistent");
   const consentMutation = useMutation({
     mutationFn: async () => {
-      if (mode !== "server" || !sessionId) {
-        return null;
-      }
-      return updateOutcomeSyncConsent(sessionId, draft.outcomeSync);
+      const save = async () => {
+        const session = useDemoSessionStore.getState();
+        if (session.mode === "server" && session.sessionId) {
+          await updateOutcomeSyncConsent(session.sessionId, outcomeSync);
+        }
+        setDraft({ ...useCurrentFlowStore.getState().onboardingDraft, outcomeSync });
+      };
+      if (mode === "server") {
+        if (!await serviceAction(save)) throw new Error("동의 설정 저장 실패");
+      } else await save();
     },
   });
 
@@ -60,8 +70,8 @@ export function PrivacySettings() {
         <header>
           <h1 className="display-title text-3xl font-bold tracking-tight">내 데이터 관리</h1>
           <p className="mt-3 leading-7 text-muted">
-            건강 입력, 개인 모델, 기상 이벤트 원본은 서버가 아니라 이 브라우저에만
-            보관합니다.
+            Apple 건강 원본과 개인 모델 전체는 이 브라우저에 보관합니다.
+            기상 리포트를 위해 알람 단계별 이벤트·시각과 학습 조정값은 서버에도 저장합니다.
           </p>
         </header>
 
@@ -91,23 +101,24 @@ export function PrivacySettings() {
           <h2 className="text-lg font-bold">선택적 결과 동기화</h2>
           <label className="choice-card mt-4 flex min-h-11 items-start gap-3 rounded-[var(--radius-control)] p-4">
             <input
-              checked={draft.outcomeSync}
+              checked={outcomeSync}
               className="mt-1"
               onChange={(event) =>
-                setDraft({ ...draft, outcomeSync: event.target.checked })
+                { setOutcomeSync(event.target.checked); consentMutation.reset(); }
               }
               type="checkbox"
             />
             <span>
               <strong className="block">집계 결과 서버 동기화 허용</strong>
               <span className="text-sm text-muted">
-                건강 원본과 개인 모델은 이 설정과 관계없이 전송하지 않습니다.
+                정시 기상 여부·알람 횟수 등 집계 결과의 동기화에 적용합니다.
+                위의 AI 분석 요약과 리포트용 이벤트 저장은 이 설정과 별개입니다.
               </span>
             </span>
           </label>
           <button
             className="action-primary mt-4 min-h-11 px-5 py-3 disabled:opacity-60"
-            disabled={consentMutation.isPending}
+            disabled={consentMutation.isPending || busy}
             onClick={() => consentMutation.mutate()}
             type="button"
           >
@@ -122,7 +133,7 @@ export function PrivacySettings() {
           ) : null}
           {consentMutation.isError ? (
             <p aria-live="polite" className="mt-3 text-sm text-danger">
-              서버 설정을 저장하지 못했습니다. 로컬 설정은 유지됩니다.
+              서버 설정을 저장하지 못했습니다. 이전 동의 설정을 유지합니다.
             </p>
           ) : null}
         </section>

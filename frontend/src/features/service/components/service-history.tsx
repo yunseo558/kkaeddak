@@ -60,7 +60,7 @@ export function ServiceHistory() {
       serverUnavailable = true;
     }
 
-    const merged = new Map<string, HistoryReportListItem>();
+    const merged = new Map<string, HistoryReportListItem & { source?: "observed" | "preview" }>();
     for (const report of localReports) {
       if (report.localDate < from || report.localDate > now) continue;
       merged.set(report.localDate, localReportListItem(report));
@@ -78,7 +78,8 @@ export function ServiceHistory() {
       if (merged.has(record.date)) continue;
       merged.set(record.date, {
         localDate: record.date,
-        planId: `legacy:${record.date}`,
+        planId: `${record.source}:${record.date}`,
+        source: record.source,
         status: "COMPLETED",
         eventTitle: null,
         firstAlarmAt: `${record.date}T00:00:00.000Z`,
@@ -99,7 +100,7 @@ export function ServiceHistory() {
   const historyQuery = useQuery({
     queryKey: [
       "wake-history-reports",
-      store.records.map((record) => `${record.date}:${record.outcome}`).join(","),
+      store.records.map((record) => `${record.date}:${record.outcome}:${record.source}`).join(","),
     ],
     queryFn: loadReports,
     enabled: completed && store.calendarConnected,
@@ -108,6 +109,7 @@ export function ServiceHistory() {
   const loading = historyQuery.isPending;
   const error = Boolean(historyQuery.data?.serverUnavailable);
 
+  const previewCount = reports.filter((report) => report.source === "preview").length;
   const successes = reports.filter(
     (report) => report.outcome === "CONFIRMED_ON_TIME",
   ).length;
@@ -143,6 +145,9 @@ export function ServiceHistory() {
           <p className="service-muted">
             날짜를 누르면 알람을 정한 이유와 다음 계획의 변화를 볼 수 있어요.
           </p>
+          {previewCount > 0 && (
+            <p className="service-footnote">학습 체험용 샘플 {previewCount}일이 포함되어 있어요.</p>
+          )}
         </section>
 
         {error && (
@@ -171,7 +176,7 @@ export function ServiceHistory() {
                   <strong>{outcomeCopy(report.outcome)}</strong>
                   <small>
                     {report.eventTitle ?? report.localDate}
-                    {!report.reportReady ? " · 이전 기록" : ""}
+                    {report.source === "preview" ? " · 학습 체험용 샘플" : !report.reportReady ? " · 이전 기록" : ""}
                   </small>
                 </span>
                 <span className="history-row-chevron" aria-hidden="true">›</span>
