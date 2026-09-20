@@ -1,7 +1,7 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { ClayIcon } from "@/components/brand/clay-icon";
 import { AppShell } from "@/components/layout/app-shell";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 import { automationEligibility } from "../model/service-policy";
@@ -16,8 +16,26 @@ export type SettingsIconName =
   | "profile"
   | "privacy";
 
+const SETTINGS_ICON_SRC: Record<SettingsIconName, string> = {
+  automation: "/brand/settings/automation.png",
+  category: "/brand/settings/category.png",
+  alarm: "/brand/settings/alarm.png",
+  connection: "/brand/settings/connection.png",
+  profile: "/brand/settings/profile.png",
+  privacy: "/brand/settings/privacy.png",
+};
+
 export function SettingsIcon({ name }: { name: SettingsIconName }) {
-  return <ClayIcon className="settings-clay-icon" name={name} size={46} />;
+  return (
+    <Image
+      alt=""
+      className="settings-clay-icon"
+      draggable={false}
+      height={56}
+      src={SETTINGS_ICON_SRC[name]}
+      width={56}
+    />
+  );
 }
 
 const MENU = [
@@ -42,7 +60,17 @@ export function ServiceSettings() {
     <AppShell currentStep="결과">
       <div className="service-home settings-screen">
         <section className="mypage-profile" aria-labelledby="mypage-name">
-          <div className="mypage-avatar" aria-hidden="true"><svg viewBox="0 0 48 48"><circle cx="24" cy="18" r="9" /><path d="M8 43c1.8-10 7.2-15 16-15s14.2 5 16 15" /></svg></div>
+          <div className="mypage-avatar" aria-hidden="true">
+            <Image
+              alt=""
+              className="mypage-avatar-image"
+              height={112}
+              priority
+              sizes="112px"
+              src="/brand/kkaeddak-profile-writing.png"
+              width={112}
+            />
+          </div>
           <h1 id="mypage-name">깨딱이</h1>
           <p>기상 루틴 학습 {Math.max(1, progress.elapsedDays + 1)}일차</p>
         </section>
