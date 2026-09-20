@@ -1,6 +1,6 @@
 """Preparation, wake-plan decision, and aggregate outcome routes."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from statistics import fmean
 from typing import Annotated
 from uuid import UUID
@@ -9,16 +9,36 @@ from fastapi import APIRouter, Path, Query, Request, status
 
 from kkaeddak.api.dependencies import CurrentSession, DatabaseSession, IdempotencyKey
 from kkaeddak.core.errors import AppError
-from kkaeddak.db.models import PreparationTask, WakeOutcomeSummary, WakePlan, WakePlanStep
+from kkaeddak.db.models import (
+    PreparationTask,
+    WakeAlarmEvent,
+    WakeOutcomeSummary,
+    WakePlan,
+    WakePlanReport,
+    WakePlanStep,
+)
 from kkaeddak.db.repositories import (
     PreparationTaskRepository,
     ScheduleEventRepository,
     UserProfileRepository,
+    WakeAlarmEventRepository,
     WakeOutcomeRepository,
+    WakePlanReportRepository,
     WakePlanRepository,
 )
 from kkaeddak.domain.enums import PlanDecision, PlanStatus, PrepStatus, WakeOutcome
-from kkaeddak.schemas.history import HistorySummaryResponse
+from kkaeddak.schemas.history import (
+    HistoryReportDetail,
+    HistoryReportListItem,
+    HistoryReportsResponse,
+    HistorySummaryResponse,
+    WakeAlarmEventCreate,
+    WakeAlarmEventResponse,
+    WakeAlarmTimelineStep,
+    WakeLearningEffect,
+    WakeOutcomeReport,
+    WakePlanReportContext,
+)
 from kkaeddak.schemas.preparation import (
     PreparationSuggestion,
     PreparationSuggestionCreate,
@@ -82,6 +102,73 @@ def _plan_detail(plan: WakePlan) -> WakePlanDetail:
         status=plan.status,
         revision=plan.revision,
     )
+
+
+def _alarm_event_response(event: WakeAlarmEvent) -> WakeAlarmEventResponse:
+    return WakeAlarmEventResponse(
+        id=event.id,
+        step_order=event.step_order,
+        event_type=event.event_type,
+        occurred_at=_as_utc(event.occurred_at),
+    )
+
+
+def _stored_report_context(plan: WakePlan) -> WakePlanReportContext | None:
+    if plan.report is None or plan.report.decision_context is None:
+        return None
+    return WakePlanReportContext.model_validate(plan.report.decision_context)
+
+
+def _stored_learning_effect(plan: WakePlan) -> WakeLearningEffect | None:
+    if plan.report is None or plan.report.learning_effect is None:
+        return None
+    return WakeLearningEffect.model_validate(plan.report.learning_effect)
+
+
+def _history_detail(plan: WakePlan) -> HistoryReportDetail:
+    events_by_step: dict[int, list[WakeAlarmEventResponse]] = {}
+    for event in sorted(plan.alarm_events, key=lambda item: _as_utc(item.occurred_at)):
+        events_by_step.setdefault(event.step_order, []).append(_alarm_event_response(event))
+
+    timeline = [
+        WakeAlarmTimelineStep(
+            order=step.step_order,
+            scheduled_at=_as_utc(plan.first_alarm_at) + timedelta(minutes=step.offset_min),
+            channel=step.channel,
+            events=events_by_step.get(step.step_order, []),
+        )
+        for step in sorted(plan.steps, key=lambda item: item.step_order)
+    ]
+    outcome = None
+    if plan.outcome is not None:
+        outcome = WakeOutcomeReport(
+            outcome=plan.outcome.outcome,
+            confirmed_at=(
+                _as_utc(plan.outcome.confirmed_at)
+                if plan.outcome.confirmed_at is not None
+                else None
+            ),
+            alarm_steps_used=plan.outcome.alarm_steps_used,
+            on_time=plan.outcome.on_time,
+            user_correction=plan.outcome.user_correction,
+        )
+    return HistoryReportDetail(
+        local_date=plan.local_date,
+        plan=_plan_detail(plan),
+        decision_context=_stored_report_context(plan),
+        alarm_timeline=timeline,
+        outcome=outcome,
+        learning_effect=_stored_learning_effect(plan),
+    )
+
+
+def _validate_history_range(from_date: date, to_date: date) -> None:
+    if from_date > to_date:
+        raise AppError(
+            status_code=400,
+            code="INVALID_DATE_RANGE",
+            message="The 'from' date must not be later than 'to'.",
+        )
 
 
 def _plan_matches_payload(plan: WakePlan, payload: WakePlanCreate) -> bool:
@@ -347,6 +434,135 @@ async def update_wake_plan_decision(
     return WakePlanDecisionResponse(status=plan.status, revision=plan.revision)
 
 
+@router.put(
+    "/wake-plans/{plan_id}/report-context",
+    response_model=WakePlanReportContext,
+    tags=["history"],
+    summary="Store the privacy-limited decision context for a wake plan",
+)
+async def upsert_wake_plan_report_context(
+    plan_id: Annotated[UUID, Path()],
+    payload: WakePlanReportContext,
+    current: CurrentSession,
+    database: DatabaseSession,
+) -> WakePlanReportContext:
+    plan = await WakePlanRepository(database).get_for_owner(plan_id, current.owner_id)
+    if plan is None:
+        raise AppError(
+            status_code=404,
+            code="WAKE_PLAN_NOT_FOUND",
+            message="The wake plan was not found.",
+        )
+
+    repository = WakePlanReportRepository(database)
+    report = await repository.get_by_plan_id(plan.id)
+    decision_context = payload.model_dump(mode="json", by_alias=True)
+    if report is None:
+        await repository.add(
+            WakePlanReport(
+                plan_id=plan.id,
+                decision_context=decision_context,
+                learning_effect=None,
+            )
+        )
+    else:
+        report.decision_context = decision_context
+        report.updated_at = datetime.now(UTC)
+        await database.flush()
+    return payload
+
+
+@router.put(
+    "/wake-plans/{plan_id}/learning-effect",
+    response_model=WakeLearningEffect,
+    tags=["history"],
+    summary="Store how a wake result changes the next recommendation",
+)
+async def upsert_wake_learning_effect(
+    plan_id: Annotated[UUID, Path()],
+    payload: WakeLearningEffect,
+    current: CurrentSession,
+    database: DatabaseSession,
+) -> WakeLearningEffect:
+    plan = await WakePlanRepository(database).get_for_owner(plan_id, current.owner_id)
+    if plan is None:
+        raise AppError(
+            status_code=404,
+            code="WAKE_PLAN_NOT_FOUND",
+            message="The wake plan was not found.",
+        )
+
+    repository = WakePlanReportRepository(database)
+    report = await repository.get_by_plan_id(plan.id)
+    learning_effect = payload.model_dump(mode="json", by_alias=True)
+    if report is None:
+        await repository.add(
+            WakePlanReport(
+                plan_id=plan.id,
+                decision_context=None,
+                learning_effect=learning_effect,
+            )
+        )
+    else:
+        report.learning_effect = learning_effect
+        report.updated_at = datetime.now(UTC)
+        await database.flush()
+    return payload
+
+
+@router.post(
+    "/wake-plans/{plan_id}/alarm-events",
+    response_model=WakeAlarmEventResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["wake-plan"],
+    summary="Record one idempotent alarm-step lifecycle event",
+)
+async def create_wake_alarm_event(
+    plan_id: Annotated[UUID, Path()],
+    payload: WakeAlarmEventCreate,
+    current: CurrentSession,
+    database: DatabaseSession,
+) -> WakeAlarmEventResponse:
+    plan = await WakePlanRepository(database).get_for_owner(plan_id, current.owner_id)
+    if plan is None:
+        raise AppError(
+            status_code=404,
+            code="WAKE_PLAN_NOT_FOUND",
+            message="The wake plan was not found.",
+        )
+    if not any(step.step_order == payload.step_order for step in plan.steps):
+        raise AppError(
+            status_code=400,
+            code="ALARM_STEP_NOT_FOUND",
+            message="The alarm step does not belong to this wake plan.",
+        )
+
+    repository = WakeAlarmEventRepository(database)
+    existing = await repository.get_by_natural_key(
+        plan.id,
+        payload.step_order,
+        payload.event_type,
+    )
+    if existing is not None:
+        if _as_utc(existing.occurred_at) != payload.occurred_at:
+            raise AppError(
+                status_code=409,
+                code="ALARM_EVENT_CONFLICT",
+                message="The alarm event was already recorded at another time.",
+            )
+        return _alarm_event_response(existing)
+
+    event = await repository.add(
+        WakeAlarmEvent(
+            plan_id=plan.id,
+            step_order=payload.step_order,
+            event_type=payload.event_type,
+            occurred_at=payload.occurred_at,
+        )
+    )
+    return _alarm_event_response(event)
+
+
 def _outcome_matches(existing: WakeOutcomeSummary, payload: WakeOutcomeCreate) -> bool:
     confirmed_at = _as_utc(existing.confirmed_at) if existing.confirmed_at is not None else None
     return (
@@ -428,12 +644,7 @@ async def get_history_summary(
     current: CurrentSession,
     database: DatabaseSession,
 ) -> HistorySummaryResponse:
-    if from_date > to_date:
-        raise AppError(
-            status_code=400,
-            code="INVALID_DATE_RANGE",
-            message="The 'from' date must not be later than 'to'.",
-        )
+    _validate_history_range(from_date, to_date)
     outcomes = await WakeOutcomeRepository(database).list_between(
         current.owner_id,
         from_date,
@@ -452,3 +663,61 @@ async def get_history_summary(
             fmean(item.alarm_steps_used for item in outcomes) if outcomes else None
         ),
     )
+
+
+@router.get(
+    "/history/reports",
+    response_model=HistoryReportsResponse,
+    tags=["history"],
+    summary="List the latest explainable wake report for each date",
+)
+async def list_history_reports(
+    from_date: Annotated[date, Query(alias="from")],
+    to_date: Annotated[date, Query(alias="to")],
+    current: CurrentSession,
+    database: DatabaseSession,
+) -> HistoryReportsResponse:
+    _validate_history_range(from_date, to_date)
+    plans = await WakePlanRepository(database).list_latest_between(
+        current.owner_id,
+        from_date,
+        to_date,
+    )
+    items: list[HistoryReportListItem] = []
+    for plan in plans:
+        context = _stored_report_context(plan)
+        items.append(
+            HistoryReportListItem(
+                local_date=plan.local_date,
+                plan_id=plan.id,
+                status=plan.status,
+                event_title=context.schedule.title if context is not None else None,
+                first_alarm_at=_as_utc(plan.first_alarm_at),
+                final_alarm_at=_as_utc(plan.final_alarm_at),
+                alarm_count=len(plan.steps),
+                outcome=plan.outcome.outcome if plan.outcome is not None else None,
+                report_ready=context is not None,
+            )
+        )
+    return HistoryReportsResponse(from_date=from_date, to_date=to_date, items=items)
+
+
+@router.get(
+    "/history/reports/{localDate}",
+    response_model=HistoryReportDetail,
+    tags=["history"],
+    summary="Get the detailed decision, alarm timeline, outcome, and learning report",
+)
+async def get_history_report(
+    local_date: Annotated[date, Path(alias="localDate")],
+    current: CurrentSession,
+    database: DatabaseSession,
+) -> HistoryReportDetail:
+    plan = await WakePlanRepository(database).get_latest(current.owner_id, local_date)
+    if plan is None:
+        raise AppError(
+            status_code=404,
+            code="HISTORY_REPORT_NOT_FOUND",
+            message="The wake history report was not found.",
+        )
+    return _history_detail(plan)

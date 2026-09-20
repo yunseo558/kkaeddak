@@ -106,6 +106,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/history/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the latest explainable wake report for each date */
+        get: operations["list_history_reports_api_v1_history_reports_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/history/reports/{localDate}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the detailed decision, alarm timeline, outcome, and learning report */
+        get: operations["get_history_report_api_v1_history_reports__localDate__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/history/summary": {
         parameters: {
             query?: never;
@@ -295,6 +329,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/wake-plans/{plan_id}/alarm-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record one idempotent alarm-step lifecycle event */
+        post: operations["create_wake_alarm_event_api_v1_wake_plans__plan_id__alarm_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/wake-plans/{plan_id}/decision": {
         parameters: {
             query?: never;
@@ -312,10 +363,49 @@ export interface paths {
         patch: operations["update_wake_plan_decision_api_v1_wake_plans__plan_id__decision_patch"];
         trace?: never;
     };
+    "/api/v1/wake-plans/{plan_id}/learning-effect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Store how a wake result changes the next recommendation */
+        put: operations["upsert_wake_learning_effect_api_v1_wake_plans__plan_id__learning_effect_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/wake-plans/{plan_id}/report-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Store the privacy-limited decision context for a wake plan */
+        put: operations["upsert_wake_plan_report_context_api_v1_wake_plans__plan_id__report_context_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AlarmEventType
+         * @enum {string}
+         */
+        AlarmEventType: "RANG" | "DISMISSED" | "CONFIRMED_AWAKE" | "MISSED" | "CANCELLED";
         /** AlarmPreferences */
         AlarmPreferences: {
             /**
@@ -487,6 +577,66 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "degraded";
+        };
+        /** HistoryReportDetail */
+        HistoryReportDetail: {
+            /** Alarmtimeline */
+            alarmTimeline: components["schemas"]["WakeAlarmTimelineStep"][];
+            decisionContext?: components["schemas"]["WakePlanReportContext"] | null;
+            learningEffect?: components["schemas"]["WakeLearningEffect"] | null;
+            /**
+             * Localdate
+             * Format: date
+             */
+            localDate: string;
+            outcome?: components["schemas"]["WakeOutcomeReport"] | null;
+            plan: components["schemas"]["WakePlanDetail"];
+        };
+        /** HistoryReportListItem */
+        HistoryReportListItem: {
+            /** Alarmcount */
+            alarmCount: number;
+            /** Eventtitle */
+            eventTitle?: string | null;
+            /**
+             * Finalalarmat
+             * Format: date-time
+             */
+            finalAlarmAt: string;
+            /**
+             * Firstalarmat
+             * Format: date-time
+             */
+            firstAlarmAt: string;
+            /**
+             * Localdate
+             * Format: date
+             */
+            localDate: string;
+            outcome?: components["schemas"]["WakeOutcome"] | null;
+            /**
+             * Planid
+             * Format: uuid
+             */
+            planId: string;
+            /** Reportready */
+            reportReady: boolean;
+            status: components["schemas"]["PlanStatus"];
+        };
+        /** HistoryReportsResponse */
+        HistoryReportsResponse: {
+            /**
+             * Fromdate
+             * Format: date
+             */
+            fromDate: string;
+            /** Items */
+            items: components["schemas"]["HistoryReportListItem"][];
+            /**
+             * Todate
+             * Format: date
+             */
+            toDate: string;
         };
         /** HistorySummaryResponse */
         HistorySummaryResponse: {
@@ -720,6 +870,82 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** ReportAlarmPreferences */
+        ReportAlarmPreferences: {
+            /** Keepsafetyalarm */
+            keepSafetyAlarm: boolean;
+            /** Preferredalarmcount */
+            preferredAlarmCount: number;
+            /** Preferredintervalmin */
+            preferredIntervalMin: number;
+        };
+        /**
+         * ReportHealthSummary
+         * @description Aggregate-only health signals; raw HealthKit samples are never accepted.
+         */
+        ReportHealthSummary: {
+            /** Activitylevel */
+            activityLevel?: ("low" | "moderate" | "high") | null;
+            /** Conditionlevel */
+            conditionLevel?: ("low" | "normal" | "high") | null;
+            /** Restminutes */
+            restMinutes?: number | null;
+            /** Usualrestminutes */
+            usualRestMinutes?: number | null;
+        };
+        /** ReportHistorySignals */
+        ReportHistorySignals: {
+            /** Learningdays */
+            learningDays: number;
+            /** Protocoladjustment */
+            protocolAdjustment: number;
+            /** Recentaveragealarmsteps */
+            recentAverageAlarmSteps: number;
+            /** Recentlatecount */
+            recentLateCount: number;
+            /** Recentmissedcount */
+            recentMissedCount: number;
+            /** Recentontimecount */
+            recentOnTimeCount: number;
+            /** Recommendedadvanceminutes */
+            recommendedAdvanceMinutes: number;
+        };
+        /** ReportPersonalizationSnapshot */
+        ReportPersonalizationSnapshot: {
+            /** Automatic */
+            automatic: boolean;
+            /** Confidence */
+            confidence: number;
+            /** Explanation */
+            explanation: string;
+            /**
+             * Fatiguelevel
+             * @enum {string}
+             */
+            fatigueLevel: "LOW" | "MEDIUM" | "HIGH";
+            /** Fatiguescore */
+            fatigueScore: number;
+            source: components["schemas"]["ExplanationSource"];
+        };
+        /** ReportScheduleSnapshot */
+        ReportScheduleSnapshot: {
+            /**
+             * Categorycode
+             * @example PACK_BAG
+             */
+            categoryCode: string;
+            /** Categorylabel */
+            categoryLabel: string;
+            /**
+             * Startsat
+             * Format: date-time
+             */
+            startsAt: string;
+            /** Title */
+            title: string;
+            /** Wakeleadmin */
+            wakeLeadMin: number;
+        };
         /** RoutineProfileResponse */
         RoutineProfileResponse: {
             alarmPreferences: components["schemas"]["AlarmPreferences"];
@@ -918,6 +1144,67 @@ export interface components {
             /** Wakeleadmin */
             wakeLeadMin: number;
         };
+        /** WakeAlarmEventCreate */
+        WakeAlarmEventCreate: {
+            eventType: components["schemas"]["AlarmEventType"];
+            /**
+             * Occurredat
+             * Format: date-time
+             */
+            occurredAt: string;
+            /** Steporder */
+            stepOrder: number;
+        };
+        /** WakeAlarmEventResponse */
+        WakeAlarmEventResponse: {
+            eventType: components["schemas"]["AlarmEventType"];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Occurredat
+             * Format: date-time
+             */
+            occurredAt: string;
+            /** Steporder */
+            stepOrder: number;
+        };
+        /** WakeAlarmTimelineStep */
+        WakeAlarmTimelineStep: {
+            /**
+             * Channel
+             * @example PACK_BAG
+             */
+            channel: string;
+            /** Events */
+            events: components["schemas"]["WakeAlarmEventResponse"][];
+            /** Order */
+            order: number;
+            /**
+             * Scheduledat
+             * Format: date-time
+             */
+            scheduledAt: string;
+        };
+        /** WakeLearningEffect */
+        WakeLearningEffect: {
+            /** Nextadvanceminutes */
+            nextAdvanceMinutes: number;
+            /** Nextprotocoladjustment */
+            nextProtocolAdjustment: number;
+            /** Policyversion */
+            policyVersion: string;
+            /** Previousadvanceminutes */
+            previousAdvanceMinutes: number;
+            /** Previousprotocoladjustment */
+            previousProtocolAdjustment: number;
+            /** Reasoncodes */
+            reasonCodes: string[];
+            /** Recommendation */
+            recommendation: string;
+        };
         /**
          * WakeOutcome
          * @enum {string}
@@ -937,6 +1224,18 @@ export interface components {
              * Format: uuid
              */
             planId: string;
+            /** Usercorrection */
+            userCorrection: boolean;
+        };
+        /** WakeOutcomeReport */
+        WakeOutcomeReport: {
+            /** Alarmstepsused */
+            alarmStepsUsed: number;
+            /** Confirmedat */
+            confirmedAt?: string | null;
+            /** Ontime */
+            onTime?: boolean | null;
+            outcome: components["schemas"]["WakeOutcome"];
             /** Usercorrection */
             userCorrection: boolean;
         };
@@ -1045,6 +1344,16 @@ export interface components {
              * @example Asia/Seoul
              */
             timezone: string;
+        };
+        /** WakePlanReportContext */
+        WakePlanReportContext: {
+            alarmPreferences: components["schemas"]["ReportAlarmPreferences"];
+            healthSummary?: components["schemas"]["ReportHealthSummary"] | null;
+            historySignals: components["schemas"]["ReportHistorySignals"];
+            personalization: components["schemas"]["ReportPersonalizationSnapshot"];
+            /** Policyversion */
+            policyVersion: string;
+            schedule: components["schemas"]["ReportScheduleSnapshot"];
         };
         /** WakePlanResponse */
         WakePlanResponse: {
@@ -1619,6 +1928,219 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid or expired session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or permission required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Revision or resource conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Disallowed privacy field */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Temporary dependency failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    list_history_reports_api_v1_history_reports_get: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: {
+                "X-Demo-Session"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryReportsResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid or expired session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or permission required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Revision or resource conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Disallowed privacy field */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Temporary dependency failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    get_history_report_api_v1_history_reports__localDate__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-Session"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                localDate: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HistoryReportDetail"];
                 };
             };
             /** @description Invalid request */
@@ -3098,6 +3620,116 @@ export interface operations {
             };
         };
     };
+    create_wake_alarm_event_api_v1_wake_plans__plan_id__alarm_events_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-Session"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WakeAlarmEventCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WakeAlarmEventResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid or expired session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or permission required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Revision or resource conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Disallowed privacy field */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Temporary dependency failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     update_wake_plan_decision_api_v1_wake_plans__plan_id__decision_patch: {
         parameters: {
             query?: never;
@@ -3123,6 +3755,226 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WakePlanDecisionResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid or expired session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or permission required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Revision or resource conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Disallowed privacy field */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Temporary dependency failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    upsert_wake_learning_effect_api_v1_wake_plans__plan_id__learning_effect_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-Session"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WakeLearningEffect"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WakeLearningEffect"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid or expired session */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Consent or permission required */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Resource not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Revision or resource conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Disallowed privacy field */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Temporary dependency failure */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    upsert_wake_plan_report_context_api_v1_wake_plans__plan_id__report_context_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Demo-Session"?: string | null;
+                authorization?: string | null;
+            };
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WakePlanReportContext"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WakePlanReportContext"];
                 };
             };
             /** @description Invalid request */

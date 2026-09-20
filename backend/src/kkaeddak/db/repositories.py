@@ -16,10 +16,13 @@ from kkaeddak.db.models import (
     RoutineProfile,
     ScheduleEvent,
     UserProfile,
+    WakeAlarmEvent,
     WakeOutcomeSummary,
     WakePlan,
+    WakePlanReport,
     WakePlanStep,
 )
+from kkaeddak.domain.enums import AlarmEventType
 
 
 class Repository[ModelT: Base]:
@@ -75,6 +78,12 @@ class DemoSessionRepository(Repository[DemoSession]):
         )
         await self.session.execute(
             delete(WakeOutcomeSummary).where(WakeOutcomeSummary.plan_id.in_(plan_ids))
+        )
+        await self.session.execute(
+            delete(WakeAlarmEvent).where(WakeAlarmEvent.plan_id.in_(plan_ids))
+        )
+        await self.session.execute(
+            delete(WakePlanReport).where(WakePlanReport.plan_id.in_(plan_ids))
         )
         await self.session.execute(delete(WakePlanStep).where(WakePlanStep.plan_id.in_(plan_ids)))
         await self.session.execute(delete(WakePlan).where(WakePlan.owner_id.in_(expired_ids)))
@@ -191,7 +200,12 @@ class WakePlanRepository(Repository[WakePlan]):
     async def get_for_owner(self, plan_id: UUID, owner_id: UUID) -> WakePlan | None:
         statement = (
             select(WakePlan)
-            .options(selectinload(WakePlan.steps))
+            .options(
+                selectinload(WakePlan.steps),
+                selectinload(WakePlan.outcome),
+                selectinload(WakePlan.report),
+                selectinload(WakePlan.alarm_events),
+            )
             .where(WakePlan.id == plan_id, WakePlan.owner_id == owner_id)
         )
         return await self.first(statement)
@@ -199,7 +213,12 @@ class WakePlanRepository(Repository[WakePlan]):
     async def get_latest(self, owner_id: UUID, local_date: date) -> WakePlan | None:
         statement = (
             select(WakePlan)
-            .options(selectinload(WakePlan.steps))
+            .options(
+                selectinload(WakePlan.steps),
+                selectinload(WakePlan.outcome),
+                selectinload(WakePlan.report),
+                selectinload(WakePlan.alarm_events),
+            )
             .where(WakePlan.owner_id == owner_id, WakePlan.local_date == local_date)
             .order_by(WakePlan.revision.desc(), WakePlan.created_at.desc(), WakePlan.id.desc())
         )
@@ -213,6 +232,62 @@ class WakePlanRepository(Repository[WakePlan]):
                 WakePlan.owner_id == owner_id,
                 WakePlan.idempotency_key == idempotency_key,
             )
+        )
+        return await self.first(statement)
+
+    async def list_latest_between(
+        self,
+        owner_id: UUID,
+        from_date: date,
+        to_date: date,
+    ) -> list[WakePlan]:
+        statement = (
+            select(WakePlan)
+            .options(
+                selectinload(WakePlan.steps),
+                selectinload(WakePlan.outcome),
+                selectinload(WakePlan.report),
+                selectinload(WakePlan.alarm_events),
+            )
+            .where(
+                WakePlan.owner_id == owner_id,
+                WakePlan.local_date >= from_date,
+                WakePlan.local_date <= to_date,
+            )
+            .order_by(
+                WakePlan.local_date.desc(),
+                WakePlan.revision.desc(),
+                WakePlan.created_at.desc(),
+                WakePlan.id.desc(),
+            )
+        )
+        plans = list(await self.session.scalars(statement))
+        latest: dict[date, WakePlan] = {}
+        for plan in plans:
+            latest.setdefault(plan.local_date, plan)
+        return list(latest.values())
+
+
+class WakePlanReportRepository(Repository[WakePlanReport]):
+    model_type = WakePlanReport
+
+    async def get_by_plan_id(self, plan_id: UUID) -> WakePlanReport | None:
+        return await self.get(plan_id)
+
+
+class WakeAlarmEventRepository(Repository[WakeAlarmEvent]):
+    model_type = WakeAlarmEvent
+
+    async def get_by_natural_key(
+        self,
+        plan_id: UUID,
+        step_order: int,
+        event_type: AlarmEventType,
+    ) -> WakeAlarmEvent | None:
+        statement = select(WakeAlarmEvent).where(
+            WakeAlarmEvent.plan_id == plan_id,
+            WakeAlarmEvent.step_order == step_order,
+            WakeAlarmEvent.event_type == event_type,
         )
         return await self.first(statement)
 

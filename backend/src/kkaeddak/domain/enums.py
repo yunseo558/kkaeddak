@@ -65,3 +65,11 @@ class PlanDecision(StrEnum):
 class ExplanationSource(StrEnum):
     TEMPLATE = "TEMPLATE"
     MODEL = "MODEL"
+
+
+class AlarmEventType(StrEnum):
+    RANG = "RANG"
+    DISMISSED = "DISMISSED"
+    CONFIRMED_AWAKE = "CONFIRMED_AWAKE"
+    MISSED = "MISSED"
+    CANCELLED = "CANCELLED"

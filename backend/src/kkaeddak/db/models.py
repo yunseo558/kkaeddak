@@ -24,6 +24,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from kkaeddak.db.base import Base, CreatedAtMixin, UpdatedAtMixin, UUIDPrimaryKeyMixin
 from kkaeddak.domain.enums import (
+    AlarmEventType,
     AutomationMode,
     Importance,
     LocationMode,
@@ -192,6 +193,15 @@ class WakePlan(UUIDPrimaryKeyMixin, CreatedAtMixin, UpdatedAtMixin, Base):
     outcome: Mapped["WakeOutcomeSummary | None"] = relationship(
         back_populates="plan", cascade="all, delete-orphan", passive_deletes=True
     )
+    report: Mapped["WakePlanReport | None"] = relationship(
+        back_populates="plan", cascade="all, delete-orphan", passive_deletes=True
+    )
+    alarm_events: Mapped[list["WakeAlarmEvent"]] = relationship(
+        back_populates="plan",
+        cascade="all, delete-orphan",
+        order_by="WakeAlarmEvent.occurred_at",
+        passive_deletes=True,
+    )
 
 
 class WakePlanStep(Base):
@@ -231,6 +241,51 @@ class WakeOutcomeSummary(CreatedAtMixin, Base):
     consent_version: Mapped[str] = mapped_column(String(64), nullable=False)
 
     plan: Mapped[WakePlan] = relationship(back_populates="outcome")
+
+
+class WakePlanReport(CreatedAtMixin, UpdatedAtMixin, Base):
+    """Privacy-limited decision and learning snapshots for one wake plan."""
+
+    __tablename__ = "wake_plan_reports"
+
+    plan_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("wake_plans.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    decision_context: Mapped[dict[str, Any] | None] = mapped_column(JSON_DOCUMENT)
+    learning_effect: Mapped[dict[str, Any] | None] = mapped_column(JSON_DOCUMENT)
+
+    plan: Mapped[WakePlan] = relationship(back_populates="report")
+
+
+class WakeAlarmEvent(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
+    """Append-only evidence of what happened at each alarm step."""
+
+    __tablename__ = "wake_alarm_events"
+    __table_args__ = (
+        UniqueConstraint(
+            "plan_id",
+            "step_order",
+            "event_type",
+            name="uq_wake_alarm_events_plan_step_type",
+        ),
+        CheckConstraint("step_order BETWEEN 1 AND 5", name="step_order_range"),
+        Index("ix_wake_alarm_events_plan_occurred", "plan_id", "occurred_at"),
+    )
+
+    plan_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("wake_plans.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    step_order: Mapped[int] = mapped_column(Integer, nullable=False)
+    event_type: Mapped[AlarmEventType] = mapped_column(
+        enum_column(AlarmEventType, "alarm_event_type"), nullable=False
+    )
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    plan: Mapped[WakePlan] = relationship(back_populates="alarm_events")
 
 
 class ConsentRecord(UUIDPrimaryKeyMixin, Base):

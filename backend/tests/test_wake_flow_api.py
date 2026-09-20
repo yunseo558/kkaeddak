@@ -80,6 +80,47 @@ def _wake_plan_payload(
     }
 
 
+def _report_context_payload() -> dict[str, object]:
+    return {
+        "schedule": {
+            "title": "오전 시험",
+            "startsAt": "2026-09-20T01:00:00Z",
+            "categoryCode": "IMPORTANT",
+            "categoryLabel": "시험·면접",
+            "wakeLeadMin": 120,
+        },
+        "healthSummary": {
+            "restMinutes": 340,
+            "usualRestMinutes": 420,
+            "activityLevel": "high",
+            "conditionLevel": "low",
+        },
+        "historySignals": {
+            "recentOnTimeCount": 2,
+            "recentLateCount": 1,
+            "recentMissedCount": 1,
+            "recentAverageAlarmSteps": 2.5,
+            "learningDays": 6,
+            "recommendedAdvanceMinutes": 10,
+            "protocolAdjustment": 1,
+        },
+        "alarmPreferences": {
+            "preferredAlarmCount": 2,
+            "preferredIntervalMin": 10,
+            "keepSafetyAlarm": True,
+        },
+        "personalization": {
+            "fatigueScore": 72,
+            "fatigueLevel": "HIGH",
+            "confidence": 0.91,
+            "explanation": "수면과 최근 기상 실패를 반영해 안전 단계를 강화했어요.",
+            "source": "MODEL",
+            "automatic": False,
+        },
+        "policyVersion": "wake-policy-1",
+    }
+
+
 async def _create_plan(
     client: AsyncClient,
     session_id: str,
@@ -365,6 +406,230 @@ async def test_wake_plan_is_not_visible_to_another_session(api_client: AsyncClie
 
     assert hidden.status_code == 404
     assert hidden.json()["error"]["code"] == "WAKE_PLAN_NOT_FOUND"
+
+
+@pytest.mark.anyio
+async def test_detailed_history_report_preserves_decision_timeline_and_learning(
+    api_client: AsyncClient,
+) -> None:
+    session_id = await _create_demo(api_client, scenario_id="empty")
+    headers = _headers(session_id)
+    plan = await _create_plan(api_client, session_id)
+    plan_id = plan["id"]
+
+    initial_detail = await api_client.get(
+        "/api/v1/history/reports/2026-09-20",
+        headers=headers,
+    )
+
+    report_context = await api_client.put(
+        f"/api/v1/wake-plans/{plan_id}/report-context",
+        headers=headers,
+        json=_report_context_payload(),
+    )
+    updated_context_payload = _report_context_payload()
+    updated_context_payload["policyVersion"] = "wake-policy-2"
+    updated_report_context = await api_client.put(
+        f"/api/v1/wake-plans/{plan_id}/report-context",
+        headers=headers,
+        json=updated_context_payload,
+    )
+    rang = await api_client.post(
+        f"/api/v1/wake-plans/{plan_id}/alarm-events",
+        headers=headers,
+        json={
+            "stepOrder": 1,
+            "eventType": "RANG",
+            "occurredAt": "2026-09-19T23:25:00Z",
+        },
+    )
+    rang_replay = await api_client.post(
+        f"/api/v1/wake-plans/{plan_id}/alarm-events",
+        headers=headers,
+        json={
+            "stepOrder": 1,
+            "eventType": "RANG",
+            "occurredAt": "2026-09-19T23:25:00Z",
+        },
+    )
+    rang_conflict = await api_client.post(
+        f"/api/v1/wake-plans/{plan_id}/alarm-events",
+        headers=headers,
+        json={
+            "stepOrder": 1,
+            "eventType": "RANG",
+            "occurredAt": "2026-09-19T23:25:30Z",
+        },
+    )
+    dismissed = await api_client.post(
+        f"/api/v1/wake-plans/{plan_id}/alarm-events",
+        headers=headers,
+        json={
+            "stepOrder": 1,
+            "eventType": "DISMISSED",
+            "occurredAt": "2026-09-19T23:26:00Z",
+        },
+    )
+    invalid_step = await api_client.post(
+        f"/api/v1/wake-plans/{plan_id}/alarm-events",
+        headers=headers,
+        json={
+            "stepOrder": 3,
+            "eventType": "RANG",
+            "occurredAt": "2026-09-19T23:35:00Z",
+        },
+    )
+    learning = await api_client.put(
+        f"/api/v1/wake-plans/{plan_id}/learning-effect",
+        headers=headers,
+        json={
+            "previousAdvanceMinutes": 0,
+            "nextAdvanceMinutes": 10,
+            "previousProtocolAdjustment": 0,
+            "nextProtocolAdjustment": 1,
+            "recommendation": "다음 첫 알람을 10분 앞당기고 안전 단계를 강화합니다.",
+            "reasonCodes": ["RECENT_WAKE_FAILURE"],
+            "policyVersion": "wake-learning-1",
+        },
+    )
+    updated_learning = await api_client.put(
+        f"/api/v1/wake-plans/{plan_id}/learning-effect",
+        headers=headers,
+        json={
+            "previousAdvanceMinutes": 0,
+            "nextAdvanceMinutes": 10,
+            "previousProtocolAdjustment": 0,
+            "nextProtocolAdjustment": 1,
+            "recommendation": "다음 첫 알람을 10분 앞당기고 안전 단계를 강화합니다.",
+            "reasonCodes": ["RECENT_WAKE_FAILURE"],
+            "policyVersion": "wake-learning-2",
+        },
+    )
+
+    opted_in = await api_client.put(
+        "/api/v1/profile",
+        headers=headers,
+        json={
+            "timezone": "Asia/Seoul",
+            "locale": "ko-KR",
+            "automationMode": "RECOMMEND_ONLY",
+            "allowImportantEventDetection": True,
+            "allowAggregateOutcomeSync": True,
+            "revision": 1,
+        },
+    )
+    outcome = await api_client.post(
+        "/api/v1/wake-outcomes",
+        headers=_headers(session_id, "report-outcome-1"),
+        json={
+            "planId": plan_id,
+            "outcome": "CONFIRMED_LATE",
+            "confirmedAt": "2026-09-19T23:34:00Z",
+            "alarmStepsUsed": 2,
+            "userCorrection": False,
+            "consentVersion": "outcome-sync-1",
+        },
+    )
+    reports = await api_client.get(
+        "/api/v1/history/reports",
+        headers=headers,
+        params={"from": "2026-09-20", "to": "2026-09-20"},
+    )
+    detail = await api_client.get(
+        "/api/v1/history/reports/2026-09-20",
+        headers=headers,
+    )
+
+    assert initial_detail.status_code == 200
+    assert initial_detail.json()["decisionContext"] is None
+    assert initial_detail.json()["outcome"] is None
+    assert initial_detail.json()["learningEffect"] is None
+    assert report_context.status_code == updated_report_context.status_code == 200
+    assert report_context.json()["personalization"]["source"] == "MODEL"
+    assert updated_report_context.json()["policyVersion"] == "wake-policy-2"
+    assert rang.status_code == rang_replay.status_code == dismissed.status_code == 201
+    assert rang.json()["id"] == rang_replay.json()["id"]
+    assert rang_conflict.status_code == 409
+    assert rang_conflict.json()["error"]["code"] == "ALARM_EVENT_CONFLICT"
+    assert invalid_step.status_code == 400
+    assert invalid_step.json()["error"]["code"] == "ALARM_STEP_NOT_FOUND"
+    assert learning.status_code == updated_learning.status_code == opted_in.status_code == 200
+    assert outcome.status_code == 202
+    assert reports.status_code == 200
+    assert reports.json()["items"] == [
+        {
+            "localDate": "2026-09-20",
+            "planId": plan_id,
+            "status": "PROPOSED",
+            "eventTitle": "오전 시험",
+            "firstAlarmAt": "2026-09-19T23:25:00Z",
+            "finalAlarmAt": "2026-09-19T23:35:00Z",
+            "alarmCount": 2,
+            "outcome": "CONFIRMED_LATE",
+            "reportReady": True,
+        }
+    ]
+    body = detail.json()
+    assert detail.status_code == 200
+    assert body["decisionContext"]["healthSummary"] == {
+        "restMinutes": 340,
+        "usualRestMinutes": 420,
+        "activityLevel": "high",
+        "conditionLevel": "low",
+    }
+    assert body["alarmTimeline"][0]["scheduledAt"] == "2026-09-19T23:25:00Z"
+    assert [event["eventType"] for event in body["alarmTimeline"][0]["events"]] == [
+        "RANG",
+        "DISMISSED",
+    ]
+    assert body["alarmTimeline"][1]["scheduledAt"] == "2026-09-19T23:33:00Z"
+    assert body["outcome"]["outcome"] == "CONFIRMED_LATE"
+    assert body["learningEffect"]["nextAdvanceMinutes"] == 10
+
+
+@pytest.mark.anyio
+async def test_history_report_write_is_scoped_to_session(api_client: AsyncClient) -> None:
+    first_session = await _create_demo(api_client, scenario_id="empty")
+    second_session = await _create_demo(api_client, scenario_id="empty")
+    plan = await _create_plan(api_client, first_session)
+
+    hidden = await api_client.put(
+        f"/api/v1/wake-plans/{plan['id']}/report-context",
+        headers=_headers(second_session),
+        json=_report_context_payload(),
+    )
+    hidden_learning = await api_client.put(
+        f"/api/v1/wake-plans/{plan['id']}/learning-effect",
+        headers=_headers(second_session),
+        json={
+            "previousAdvanceMinutes": 0,
+            "nextAdvanceMinutes": 10,
+            "previousProtocolAdjustment": 0,
+            "nextProtocolAdjustment": 1,
+            "recommendation": "다음 알람을 조정합니다.",
+            "reasonCodes": ["RECENT_WAKE_FAILURE"],
+            "policyVersion": "wake-learning-1",
+        },
+    )
+    hidden_alarm_event = await api_client.post(
+        f"/api/v1/wake-plans/{plan['id']}/alarm-events",
+        headers=_headers(second_session),
+        json={
+            "stepOrder": 1,
+            "eventType": "RANG",
+            "occurredAt": "2026-09-19T23:25:00Z",
+        },
+    )
+    missing_report = await api_client.get(
+        "/api/v1/history/reports/2026-09-22",
+        headers=_headers(first_session),
+    )
+
+    assert hidden.status_code == 404
+    assert hidden.json()["error"]["code"] == "WAKE_PLAN_NOT_FOUND"
+    assert hidden_learning.status_code == hidden_alarm_event.status_code == 404
+    assert missing_report.status_code == 404
+    assert missing_report.json()["error"]["code"] == "HISTORY_REPORT_NOT_FOUND"
 
 
 @pytest.mark.anyio
