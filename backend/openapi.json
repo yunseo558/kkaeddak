@@ -510,11 +510,6 @@
             "title": "Eventhour",
             "type": "integer"
           },
-          "externalAiConsent": {
-            "const": true,
-            "title": "Externalaiconsent",
-            "type": "boolean"
-          },
           "importance": {
             "$ref": "#/components/schemas/Importance"
           },
@@ -593,7 +588,6 @@
         },
         "required": [
           "category",
-          "externalAiConsent",
           "importance",
           "eventHour",
           "baseWakeLeadMin",
@@ -1177,6 +1171,90 @@
           "label"
         ],
         "title": "ScheduleCategoryCandidate",
+        "type": "object"
+      },
+      "ScheduleClassificationBatchCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleCategoryCandidate"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Categories",
+            "type": "array"
+          },
+          "titles": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Titles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "titles",
+          "categories"
+        ],
+        "title": "ScheduleClassificationBatchCreate",
+        "type": "object"
+      },
+      "ScheduleClassificationBatchItem": {
+        "additionalProperties": false,
+        "properties": {
+          "categoryCode": {
+            "examples": [
+              "PACK_BAG"
+            ],
+            "pattern": "^[A-Z][A-Z0-9_]{1,63}$",
+            "title": "Categorycode",
+            "type": "string"
+          },
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ExplanationSource"
+          },
+          "title": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "categoryCode",
+          "confidence",
+          "source"
+        ],
+        "title": "ScheduleClassificationBatchItem",
+        "type": "object"
+      },
+      "ScheduleClassificationBatchResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScheduleClassificationBatchItem"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ScheduleClassificationBatchResponse",
         "type": "object"
       },
       "ScheduleClassificationCreate": {
@@ -2138,6 +2216,162 @@
           }
         },
         "summary": "Classify a schedule title into one of the user's categories",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/schedule-classifications:batch": {
+      "post": {
+        "operationId": "classify_schedules_api_v1_ai_schedule_classifications_batch_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Demo-Session",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Demo-Session"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleClassificationBatchCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleClassificationBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Consent or permission required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Revision or resource conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Disallowed privacy field"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal server error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Temporary dependency failure"
+          }
+        },
+        "summary": "Classify multiple schedule titles in one model interaction",
         "tags": [
           "ai"
         ]

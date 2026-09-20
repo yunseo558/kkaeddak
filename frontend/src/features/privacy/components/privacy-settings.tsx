@@ -76,28 +76,15 @@ export function PrivacySettings() {
 
         <section className="glass-card rounded-[var(--radius-card)] p-5 sm:p-6">
           <h2 className="text-lg font-bold">AI 개인화 분석</h2>
-          <label className="choice-card mt-4 flex min-h-11 items-start gap-3 rounded-[var(--radius-control)] p-4">
-            <input
-              checked={draft.aiPersonalizationConsent}
-              className="mt-1"
-              onChange={(event) =>
-                setDraft({
-                  ...draft,
-                  aiPersonalizationConsent: event.target.checked,
-                })
-              }
-              type="checkbox"
-            />
-            <span>
-              <strong className="block">Gemini 개인화 분석 허용</strong>
-              <span className="text-sm leading-6 text-muted">
-                일정 분류 시 일정 이름·사용자 유형 이름을, 기상 계획 시
-                수면 시간·활동·컨디션·최근 기상 결과의 요약값을 보냅니다.
-                일정 메모·위치와 Apple 건강 원본은 전송하지 않습니다.
-                끄면 로컬 기본 분석을 사용합니다.
-              </span>
+          <div className="choice-card mt-4 rounded-[var(--radius-control)] p-4">
+            <strong className="block">Gemini 개인화 분석 사용 중</strong>
+            <span className="text-sm leading-6 text-muted">
+              깨딱은 일정 분류와 기상 개인화를 핵심 기능으로 사용해요.
+              일정 이름·사용자 유형 이름과 수면·활동·컨디션·기상 결과
+              요약값만 전송하며 일정 메모·위치와 Apple 건강 원본은
+              전송하지 않아요.
             </span>
-          </label>
+          </div>
         </section>
 
         <section className="glass-card rounded-[var(--radius-card)] p-5 sm:p-6">

@@ -8,21 +8,18 @@ import { BrandLogo } from "@/components/brand/brand-logo";
 import { useCurrentFlowStore } from "@/features/current-flow/model/current-flow-store";
 import { useServiceStore } from "../model/service-store";
 import {
-  addDays,
   atTime,
   automationEligibility,
   clockTime,
-  localDate,
 } from "../model/service-policy";
 import {
   decideServicePlan,
-  ensureMockCalendarCoverage,
   generateServicePlan,
   saveServiceOutcome,
   serviceAction,
   serviceNow,
 } from "../lib/service-actions";
-import { startAlarmSound, stopAlarmSound } from "../lib/alarm-audio";
+import { stopAlarmSound } from "../lib/alarm-audio";
 
 const subscribeHydration = () => () => {};
 let splashShownInRuntime = false;
@@ -52,60 +49,6 @@ export function ServiceHome() {
     );
     return () => window.clearTimeout(timer);
   }, [showSplash]);
-  useEffect(
-    () => () => {
-      stopAlarmSound();
-      if (useServiceStore.getState().alarmStage === "ringing")
-        useServiceStore.getState().set({ alarmStage: "confirm" });
-    },
-    [],
-  );
-  useEffect(() => {
-    if (!store.calendarConnected) return;
-    const tick = () => {
-      const state = useServiceStore.getState();
-      const now = serviceNow();
-      if (
-        !state.busy &&
-        state.alarmStage === "idle" &&
-        state.plan &&
-        ["APPROVED", "EDITED"].includes(state.plan.status) &&
-        Date.parse(now) >= Date.parse(state.plan.firstAlarmAt) &&
-        Date.parse(now) < Date.parse(state.plan.firstAlarmAt) + 30_000
-      ) {
-        state.set({ alarmStage: "ringing" });
-        void startAlarmSound().catch(() =>
-          state.set({
-            message:
-              "소리 재생을 허용하려면 옆의 알람 지금 울리기를 눌러 주세요.",
-          }),
-        );
-      }
-      if (
-        !state.busy &&
-        state.alarmStage === "idle" &&
-        clockTime(now) >= state.automationTime &&
-        state.lastAutomationSlot !== localDate(now)
-      ) {
-        // Mark attempts too, so a failed server request cannot create a retry storm.
-        state.set({ lastAutomationSlot: localDate(now) });
-        void serviceAction(generateServicePlan);
-      }
-    };
-    const timer = setInterval(tick, 30_000);
-    return () => clearInterval(timer);
-  }, [store.calendarConnected]);
-  useEffect(() => {
-    if (!store.calendarConnected) return;
-    void serviceAction(async () => {
-      await ensureMockCalendarCoverage();
-      const targetDate = addDays(localDate(serviceNow()), 1);
-      if (useServiceStore.getState().plan?.localDate !== targetDate) {
-        await generateServicePlan();
-      }
-    });
-  }, [store.calendarConnected, store.plan?.localDate, store.virtualNow]);
-
   const dismissSplash = () => {
     setShowSplash(false);
   };
@@ -486,9 +429,7 @@ export function ServiceHome() {
             <p className="service-footnote">
               {plan.explanationSource === "MODEL"
                 ? `AI가 피로도와 최근 기상 반응을 분석해 ${clockTime(plan.firstAlarmAt)}부터 ${plan.steps.length}개의 알람을 배치했어요.`
-                : survey.aiPersonalizationConsent
-                  ? "AI 연결에 실패해 이번 계획은 로컬 안전 기준으로 계산했어요."
-                  : "AI 분석 동의가 꺼져 있어 이번 계획은 로컬 안전 기준으로 계산했어요."}
+                : "AI 연결에 실패해 이번 계획은 로컬 안전 기준으로 계산했어요."}
             </p>
             {!approved && plan.status === "PROPOSED" && (
               <p className="service-footnote">

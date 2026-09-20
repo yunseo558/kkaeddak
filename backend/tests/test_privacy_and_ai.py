@@ -23,6 +23,7 @@ from kkaeddak.services.ai import (
     PersonalizedWakePlanAiRequest,
     PreparationAiRequest,
     ScheduleClassificationAiRequest,
+    ScheduleClassificationBatchAiRequest,
 )
 
 
@@ -33,6 +34,7 @@ class SuccessfulProvider:
         self.preparation_request: PreparationAiRequest | None = None
         self.explanation_request: ExplanationAiRequest | None = None
         self.classification_request: ScheduleClassificationAiRequest | None = None
+        self.batch_classification_request: ScheduleClassificationBatchAiRequest | None = None
         self.personalization_request: PersonalizedWakePlanAiRequest | None = None
 
     async def suggest_preparation(self, payload: PreparationAiRequest) -> Any:
@@ -51,6 +53,19 @@ class SuccessfulProvider:
     async def classify_schedule(self, payload: ScheduleClassificationAiRequest) -> Any:
         self.classification_request = payload
         return {"category_code": "IMPORTANT", "confidence": 0.97}
+
+    async def classify_schedules(self, payload: ScheduleClassificationBatchAiRequest) -> Any:
+        self.batch_classification_request = payload
+        return {
+            "items": [
+                {
+                    "title": title,
+                    "category_code": "IMPORTANT" if "면접" in title else "CLASS",
+                    "confidence": 0.95,
+                }
+                for title in payload.titles
+            ]
+        }
 
     async def personalize_wake_plan(self, payload: PersonalizedWakePlanAiRequest) -> Any:
         self.personalization_request = payload
@@ -155,7 +170,6 @@ def _classification_payload(title: str) -> dict[str, object]:
 
 def _personalization_payload() -> dict[str, object]:
     return {
-        "externalAiConsent": True,
         "category": "CLASS",
         "importance": "NORMAL",
         "eventHour": 11,
@@ -245,7 +259,42 @@ async def test_schedule_classification_uses_configured_model_provider(tmp_path: 
 
 
 @pytest.mark.anyio
-async def test_personalization_uses_consented_aggregates_and_model_output(
+async def test_batch_schedule_classification_uses_one_model_request(tmp_path: Path) -> None:
+    provider = SuccessfulProvider()
+    payload = _classification_payload("수업")
+    payload["titles"] = ["자료구조 수업", "카카오 면접"]
+    payload.pop("title")
+    async with _api_harness(tmp_path, provider) as (client, _):
+        session_id = await _create_demo(client)
+        response = await client.post(
+            "/api/v1/ai/schedule-classifications:batch",
+            headers=_headers(session_id),
+            json=payload,
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [
+            {
+                "title": "자료구조 수업",
+                "categoryCode": "CLASS",
+                "confidence": 0.95,
+                "source": "MODEL",
+            },
+            {
+                "title": "카카오 면접",
+                "categoryCode": "IMPORTANT",
+                "confidence": 0.95,
+                "source": "MODEL",
+            },
+        ]
+    }
+    assert provider.batch_classification_request is not None
+    assert provider.batch_classification_request.titles == ["자료구조 수업", "카카오 면접"]
+
+
+@pytest.mark.anyio
+async def test_personalization_uses_aggregates_and_model_output(
     tmp_path: Path,
 ) -> None:
     provider = SuccessfulProvider()
@@ -270,22 +319,6 @@ async def test_personalization_uses_consented_aggregates_and_model_output(
     }
     assert provider.personalization_request is not None
     assert provider.personalization_request.rest_minutes == 330
-    assert provider.personalization_request.external_ai_consent is True
-
-
-@pytest.mark.anyio
-async def test_personalization_requires_explicit_external_ai_consent(tmp_path: Path) -> None:
-    payload = _personalization_payload()
-    payload.pop("externalAiConsent")
-    async with _api_harness(tmp_path, SuccessfulProvider()) as (client, _):
-        session_id = await _create_demo(client)
-        response = await client.post(
-            "/api/v1/ai/wake-plan-recommendations",
-            headers=_headers(session_id),
-            json=payload,
-        )
-
-    assert response.status_code == 400
 
 
 @pytest.mark.anyio
@@ -302,7 +335,7 @@ async def test_personalization_has_safe_fallback_without_provider(tmp_path: Path
     body = response.json()
     assert body["source"] == "TEMPLATE"
     assert body["fatigueLevel"] == "HIGH"
-    assert 2 <= len(body["alarmOffsetsMin"]) <= 5
+    assert 2 <= len(body["alarmOffsetsMin"]) <= 4
     assert body["alarmOffsetsMin"][0] == 0
 
 

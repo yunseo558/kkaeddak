@@ -44,6 +44,7 @@ export function stopAlarmSound() {
 
 export async function startAlarmSound() {
   stopAlarmSound();
+  void showWebAlarmNotification();
   context = new AudioContext();
   await context.resume();
   const audio = context;
@@ -63,5 +64,4 @@ export async function startAlarmSound() {
   };
   chime();
   interval = setInterval(chime, 1600);
-  void showWebAlarmNotification();
 }

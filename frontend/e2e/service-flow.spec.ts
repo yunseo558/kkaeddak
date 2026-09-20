@@ -15,9 +15,6 @@ async function setup(page: Page) {
   await page.getByRole("button", { name: "캘린더 연결하기" }).click();
   await expect(page.getByText("연동 완료")).toHaveCount(2);
   await page.getByRole("button", { name: "다음", exact: true }).click();
-  await page
-    .getByRole("checkbox", { name: /AI 개인화 분석 동의/ })
-    .check();
   await page.getByRole("button", { name: "설정 완료" }).click();
   await expect(page).toHaveURL(/\/$/, { timeout: 30_000 });
   await expect(
@@ -126,6 +123,36 @@ test("AI 일정 유형과 조기 자동화 설정을 실제 서비스 흐름으�
     page.getByText("Human-in-the-loop 방식으로 사용 중이에요."),
   ).toBeVisible();
   await page.getByRole("button", { name: /다음 자동화 시각으로/ }).click();
+  await expect(page.getByRole("button", { name: "이 계획 승인" })).toBeVisible();
+});
+
+test("24시간 데모 세션이 만료되면 일정과 설정을 자동 복구한다", async ({
+  page,
+}) => {
+  await setup(page);
+  const previousSessionId = await page.evaluate(() => {
+    const key = "kkaeddak-demo-session";
+    const persisted = JSON.parse(window.localStorage.getItem(key) ?? "{}");
+    const sessionId = persisted.state.sessionId as string;
+    persisted.state.expiresAt = "2000-01-01T00:00:00.000Z";
+    window.localStorage.setItem(key, JSON.stringify(persisted));
+    return sessionId;
+  });
+
+  await page.reload();
+  await page.getByRole("button", { name: "스플래시 건너뛰기" }).click();
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const persisted = JSON.parse(
+            window.localStorage.getItem("kkaeddak-demo-session") ?? "{}",
+          );
+          return persisted.state?.sessionId as string | undefined;
+        }),
+      { timeout: 30_000 },
+    )
+    .not.toBe(previousSessionId);
   await expect(page.getByRole("button", { name: "이 계획 승인" })).toBeVisible();
 });
 

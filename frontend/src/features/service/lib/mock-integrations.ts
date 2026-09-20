@@ -2,8 +2,166 @@ import type { HealthInputRecord } from "@/lib/storage/local-data";
 import type { CalendarEntry } from "../model/service-store";
 import { addDays, atTime } from "../model/service-policy";
 
-// Both the iOS HealthKit adapter and the web demo adapter normalize their input
-// to this contract. The planner never needs to know which adapter supplied it.
+export type HealthKitSleepValue =
+  | "HKCategoryValueSleepAnalysisInBed"
+  | "HKCategoryValueSleepAnalysisAwake"
+  | "HKCategoryValueSleepAnalysisAsleepCore"
+  | "HKCategoryValueSleepAnalysisAsleepDeep"
+  | "HKCategoryValueSleepAnalysisAsleepREM";
+
+type HealthKitSourceRevision = {
+  source: { name: string; bundleIdentifier: string };
+  version: string;
+  productType: string;
+};
+
+export type HealthKitCategorySample = {
+  uuid: string;
+  sampleType: "HKCategorySample";
+  typeIdentifier: "HKCategoryTypeIdentifierSleepAnalysis";
+  startDate: string;
+  endDate: string;
+  value: HealthKitSleepValue;
+  sourceRevision: HealthKitSourceRevision;
+};
+
+export type HealthKitQuantitySample = {
+  uuid: string;
+  sampleType: "HKQuantitySample";
+  typeIdentifier:
+    | "HKQuantityTypeIdentifierStepCount"
+    | "HKQuantityTypeIdentifierActiveEnergyBurned"
+    | "HKQuantityTypeIdentifierAppleExerciseTime";
+  startDate: string;
+  endDate: string;
+  quantity: { unit: "count" | "kcal" | "min"; value: number };
+  sourceRevision: HealthKitSourceRevision;
+};
+
+export type HealthKitSnapshot = {
+  categorySamples: HealthKitCategorySample[];
+  quantitySamples: HealthKitQuantitySample[];
+};
+
+const demoSourceRevision: HealthKitSourceRevision = {
+  source: {
+    name: "Apple Watch",
+    bundleIdentifier: "com.apple.health",
+  },
+  version: "11.0",
+  productType: "Watch7,4",
+};
+
+export function createHealthKitMockSnapshot(input: {
+  now: string;
+  sleepMinutes: number;
+}): HealthKitSnapshot {
+  const end = Date.parse(input.now) - 30 * 60_000;
+  const awakeMinutes = Math.max(8, Math.round(input.sleepMinutes * 0.04));
+  const stages: Array<[HealthKitSleepValue, number]> = [
+    ["HKCategoryValueSleepAnalysisAsleepCore", Math.round(input.sleepMinutes * 0.52)],
+    ["HKCategoryValueSleepAnalysisAsleepDeep", Math.round(input.sleepMinutes * 0.2)],
+    ["HKCategoryValueSleepAnalysisAsleepREM", Math.round(input.sleepMinutes * 0.28)],
+    ["HKCategoryValueSleepAnalysisAwake", awakeMinutes],
+  ];
+  let cursor = end - (input.sleepMinutes + awakeMinutes) * 60_000;
+  const categorySamples = stages.map(([value, minutes], index) => {
+    const startDate = new Date(cursor).toISOString();
+    cursor += minutes * 60_000;
+    return {
+      uuid: `healthkit-sleep-${index + 1}`,
+      sampleType: "HKCategorySample" as const,
+      typeIdentifier: "HKCategoryTypeIdentifierSleepAnalysis" as const,
+      startDate,
+      endDate: new Date(cursor).toISOString(),
+      value,
+      sourceRevision: demoSourceRevision,
+    };
+  });
+  const dayStart = new Date(end - 12 * 3600_000).toISOString();
+  const dayEnd = new Date(end).toISOString();
+  const quantitySamples: HealthKitQuantitySample[] = [
+    {
+      uuid: "healthkit-steps-1",
+      sampleType: "HKQuantitySample",
+      typeIdentifier: "HKQuantityTypeIdentifierStepCount",
+      startDate: dayStart,
+      endDate: dayEnd,
+      quantity: { unit: "count", value: input.sleepMinutes < 360 ? 12_480 : 7_320 },
+      sourceRevision: demoSourceRevision,
+    },
+    {
+      uuid: "healthkit-energy-1",
+      sampleType: "HKQuantitySample",
+      typeIdentifier: "HKQuantityTypeIdentifierActiveEnergyBurned",
+      startDate: dayStart,
+      endDate: dayEnd,
+      quantity: { unit: "kcal", value: input.sleepMinutes < 360 ? 690 : 410 },
+      sourceRevision: demoSourceRevision,
+    },
+    {
+      uuid: "healthkit-exercise-1",
+      sampleType: "HKQuantitySample",
+      typeIdentifier: "HKQuantityTypeIdentifierAppleExerciseTime",
+      startDate: dayStart,
+      endDate: dayEnd,
+      quantity: { unit: "min", value: input.sleepMinutes < 360 ? 64 : 28 },
+      sourceRevision: demoSourceRevision,
+    },
+  ];
+  return { categorySamples, quantitySamples };
+}
+
+export function normalizeHealthKitSnapshot(
+  snapshot: HealthKitSnapshot,
+  input: { now: string; recentFirstAlarmSucceeded: boolean },
+): HealthInputRecord {
+  const sleepValues = new Set<HealthKitSleepValue>([
+    "HKCategoryValueSleepAnalysisAsleepCore",
+    "HKCategoryValueSleepAnalysisAsleepDeep",
+    "HKCategoryValueSleepAnalysisAsleepREM",
+  ]);
+  const sleepDurationMinutes = Math.round(
+    snapshot.categorySamples
+      .filter((sample) => sleepValues.has(sample.value))
+      .reduce(
+        (total, sample) =>
+          total + (Date.parse(sample.endDate) - Date.parse(sample.startDate)) / 60_000,
+        0,
+      ),
+  );
+  const quantity = (identifier: HealthKitQuantitySample["typeIdentifier"]) =>
+    snapshot.quantitySamples
+      .filter((sample) => sample.typeIdentifier === identifier)
+      .reduce((total, sample) => total + sample.quantity.value, 0);
+  const steps = quantity("HKQuantityTypeIdentifierStepCount");
+  const exercise = quantity("HKQuantityTypeIdentifierAppleExerciseTime");
+  const activeEnergy = quantity("HKQuantityTypeIdentifierActiveEnergyBurned");
+  const activityLevel =
+    steps >= 10_000 || exercise >= 60 || activeEnergy >= 600
+      ? "high"
+      : steps < 3_000 && exercise < 15
+        ? "low"
+        : "usual";
+  return {
+    id: "service-health",
+    source: "sample",
+    sleepDurationMinutes,
+    activityLevel,
+    conditionLevel:
+      sleepDurationMinutes < 360
+        ? "low"
+        : sleepDurationMinutes >= 450
+          ? "high"
+          : "usual",
+    recentFirstAlarmSucceeded: input.recentFirstAlarmSucceeded,
+    updatedAt: input.now,
+  };
+}
+
+// The iOS bridge and this web demo both terminate at HealthInputRecord. The
+// web path deliberately begins with a serializable projection of HKSample so
+// the same normalization boundary can be exercised without HealthKit on web.
 export interface HealthDataSource {
   readonly sourceKind: "HEALTHKIT" | "HEALTHKIT_SAMPLE";
   read(input: {
@@ -15,15 +173,10 @@ export interface HealthDataSource {
 export const healthKitDemoSource: HealthDataSource = {
   sourceKind: "HEALTHKIT_SAMPLE",
   async read({ now, minutes, recentFirstAlarmSucceeded }) {
-    return {
-      id: "service-health",
-      source: "sample",
-      sleepDurationMinutes: minutes,
-      activityLevel: minutes < 360 ? "high" : "usual",
-      conditionLevel: minutes < 360 ? "low" : "usual",
-      recentFirstAlarmSucceeded,
-      updatedAt: now,
-    };
+    return normalizeHealthKitSnapshot(
+      createHealthKitMockSnapshot({ now, sleepMinutes: minutes }),
+      { now, recentFirstAlarmSucceeded },
+    );
   },
 };
 
