@@ -22,6 +22,9 @@ async function startScenario(page: Page, scenario: (typeof scenarios)[number]) {
   await page.getByRole("button", { name: "캘린더 연결하기" }).click();
   await page.getByRole("button", { name: "다음", exact: true }).click();
   await expect(page.getByRole("heading", { name: "개인정보" })).toBeVisible();
+  await page
+    .getByRole("checkbox", { name: /AI 개인화 분석 동의/ })
+    .check();
   const completeButton = page.getByRole("button", { name: "설정 완료" });
   await completeButton.press("Enter");
   await expect(page).toHaveURL(/\/$/);

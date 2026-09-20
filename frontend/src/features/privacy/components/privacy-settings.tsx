@@ -75,6 +75,31 @@ export function PrivacySettings() {
         </section>
 
         <section className="glass-card rounded-[var(--radius-card)] p-5 sm:p-6">
+          <h2 className="text-lg font-bold">AI 개인화 분석</h2>
+          <label className="choice-card mt-4 flex min-h-11 items-start gap-3 rounded-[var(--radius-control)] p-4">
+            <input
+              checked={draft.aiPersonalizationConsent}
+              className="mt-1"
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  aiPersonalizationConsent: event.target.checked,
+                })
+              }
+              type="checkbox"
+            />
+            <span>
+              <strong className="block">Gemini 개인화 분석 허용</strong>
+              <span className="text-sm leading-6 text-muted">
+                수면 시간, 활동·컨디션 수준, 최근 기상 결과의 요약값만 보내며
+                일정 제목과 건강 원본은 전송하지 않습니다. 끄면 로컬 기본 분석을
+                사용합니다.
+              </span>
+            </span>
+          </label>
+        </section>
+
+        <section className="glass-card rounded-[var(--radius-card)] p-5 sm:p-6">
           <h2 className="text-lg font-bold">선택적 결과 동기화</h2>
           <label className="choice-card mt-4 flex min-h-11 items-start gap-3 rounded-[var(--radius-control)] p-4">
             <input

@@ -10,6 +10,7 @@ export type DailyOutcome = {
   date: string;
   outcome: components["schemas"]["WakeOutcome"];
   source: "observed" | "preview";
+  alarmStepsUsed?: number;
 };
 export const localDate = (iso: string) =>
   new Date(new Date(iso).getTime() + 9 * 3600_000).toISOString().slice(0, 10);

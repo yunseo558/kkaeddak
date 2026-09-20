@@ -26,15 +26,28 @@ cp .env.example .env
 
 모든 JSON 요청은 중첩된 금지 건강·센서 필드까지 검사하며 발견 시 `422 PRIVACY_FIELD_NOT_ALLOWED`를 반환합니다. 서버 AI에는 정규화된 일정 정보, 루틴 코드, 제한된 추천 이유만 전달할 수 있습니다. AI 공급자는 `create_app(ai_provider=...)`으로 주입하며, 미설정·타임아웃·스키마 검증 실패 시 준비 작업과 추천 이유를 규칙 템플릿으로 반환합니다. AI 실행 로그에는 요청 본문이나 응답 전문 대신 기능, 상태, 지연시간과 허용 입력의 해시만 저장합니다.
 
-OpenAI Provider는 둘 다 설정된 경우에만 활성화됩니다. 실제 값은 저장소에 커밋하지 않습니다.
+Gemini Provider는 API 키가 설정된 경우 활성화됩니다. 실제 값은 저장소에
+커밋하지 않습니다. 모델 기본값은 `gemini-2.5-flash-lite`입니다.
+
+- `KKAEDDAK_GEMINI_API_KEY`
+- `KKAEDDAK_GEMINI_MODEL` (선택)
+- `KKAEDDAK_GEMINI_TIMEOUT_SECONDS` (선택, 기본 10초)
+
+개인화 요청은 명시적 AI 분석 동의가 필수이며, 일정 제목과 건강·센서 원본은
+전송하지 않습니다. 외부 AI에는 수면 분, 활동·컨디션 등급, 최근 기상
+성공·지각·미확인 횟수 등 요약값만 보냅니다. Gemini는 피로도, 첫 알람
+시작 시각, 알람 개수·간격과 판단 근거를 JSON Schema 구조화 출력으로
+반환합니다. 서버는 최대 5개·90분 범위와 14일 승인 정책을 따로 검증합니다.
+
+OpenAI Provider도 둘 다 설정된 경우에만 활성화됩니다. Gemini와 OpenAI가
+모두 설정되면 Gemini를 우선합니다.
 
 - `KKAEDDAK_OPENAI_API_KEY`
 - `KKAEDDAK_OPENAI_MODEL`
 - `KKAEDDAK_OPENAI_TIMEOUT_SECONDS` (선택, 기본 10초)
 
-미설정 시에는 기존 규칙 기반 fallback을 그대로 사용합니다. OpenAI에는
-건강 원본 대신 일정 제목·허용 카테고리·이유 코드만 전달하며 Responses API
-구조화 출력과 `store: false`를 사용합니다.
+미설정 시에는 규칙 기반 fallback을 사용합니다. 두 Provider 모두
+`store: false`와 구조화 출력을 사용합니다.
 
 ## 검증
 

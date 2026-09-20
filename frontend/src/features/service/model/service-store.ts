@@ -39,6 +39,9 @@ export type ServicePlan = ActiveWakePlan & {
   sleepMinutes: number;
   reason: string;
   explanationSource: ScheduleClassification["source"];
+  fatigueScore: number;
+  fatigueLevel: "LOW" | "MEDIUM" | "HIGH";
+  aiConfidence: number;
 };
 type ServiceState = {
   enrolledAt: string | null;

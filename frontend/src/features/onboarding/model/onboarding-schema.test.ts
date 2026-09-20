@@ -8,6 +8,7 @@ const validInput = {
   preferredAlarmCount: 2,
   keepSafetyAlarm: true,
   automationMode: "automatic" as const,
+  aiPersonalizationConsent: true,
   outcomeSync: false,
 };
 
@@ -22,6 +23,15 @@ describe("onboardingSchema", () => {
         ...validInput,
         usualWakeTime: "25:00",
         preferredAlarmCount: 4,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("requires explicit AI personalization consent", () => {
+    expect(
+      onboardingSchema.safeParse({
+        ...validInput,
+        aiPersonalizationConsent: false,
       }).success,
     ).toBe(false);
   });

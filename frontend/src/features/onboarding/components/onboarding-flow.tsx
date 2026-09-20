@@ -30,7 +30,7 @@ const STEP_FIELDS: Array<Array<keyof OnboardingValues>> = [
   [],
   ["preferredAlarmCount", "keepSafetyAlarm"],
   [],
-  ["outcomeSync"],
+  ["aiPersonalizationConsent", "outcomeSync"],
 ];
 
 const inputClassName = "field-control mt-2 min-h-12 w-full px-4 py-3";
@@ -319,9 +319,8 @@ export function OnboardingFlow() {
               </p>
 
               <div className="accent-panel p-5 text-sm leading-6">
-                <strong className="block">로컬 처리 원칙</strong>
-                수면·활동·컨디션과 개인 모델은 이 브라우저 안에서만 처리합니다.
-                현재 저장 방식은
+                <strong className="block">개인정보 처리 원칙</strong>
+                원본 건강·센서 데이터는 이 브라우저 안에만 보관합니다. 현재 저장 방식은
                 <span className="font-semibold">
                   {storageMode === "persistent"
                     ? " 브라우저 로컬 저장"
@@ -334,12 +333,33 @@ export function OnboardingFlow() {
                 <input
                   className="mt-1"
                   type="checkbox"
+                  {...register("aiPersonalizationConsent")}
+                />
+                <span>
+                  <strong className="block">AI 개인화 분석 동의 (필수)</strong>
+                  <span className="text-sm leading-6 text-muted">
+                    피로도와 알람 계획을 계산하기 위해 수면 시간, 활동·컨디션 수준,
+                    최근 기상 성공·실패 횟수처럼 요약된 값만 Google Gemini로
+                    전송합니다. 일정 제목과 건강 원본은 보내지 않습니다.
+                  </span>
+                  {errors.aiPersonalizationConsent ? (
+                    <span className="mt-1 block text-sm text-danger">
+                      {errors.aiPersonalizationConsent.message}
+                    </span>
+                  ) : null}
+                </span>
+              </label>
+
+              <label className="choice-card flex items-start gap-3 rounded-[var(--radius-control)] p-4">
+                <input
+                  className="mt-1"
+                  type="checkbox"
                   {...register("outcomeSync")}
                 />
                 <span>
                   <strong className="block">집계 결과 서버 동기화 동의</strong>
                   <span className="text-sm text-muted">
-                    선택 사항이며 건강 원본은 동의해도 전송하지 않습니다.
+                    선택 사항이며 기상 결과 요약을 깨딱 서버에 저장합니다.
                   </span>
                 </span>
               </label>

@@ -20,6 +20,7 @@ from kkaeddak.middleware.privacy_fields import find_forbidden_fields
 from kkaeddak.services.ai import (
     AiProvider,
     ExplanationAiRequest,
+    PersonalizedWakePlanAiRequest,
     PreparationAiRequest,
     ScheduleClassificationAiRequest,
 )
@@ -32,6 +33,7 @@ class SuccessfulProvider:
         self.preparation_request: PreparationAiRequest | None = None
         self.explanation_request: ExplanationAiRequest | None = None
         self.classification_request: ScheduleClassificationAiRequest | None = None
+        self.personalization_request: PersonalizedWakePlanAiRequest | None = None
 
     async def suggest_preparation(self, payload: PreparationAiRequest) -> Any:
         self.preparation_request = payload
@@ -49,6 +51,18 @@ class SuccessfulProvider:
     async def classify_schedule(self, payload: ScheduleClassificationAiRequest) -> Any:
         self.classification_request = payload
         return {"category_code": "IMPORTANT", "confidence": 0.97}
+
+    async def personalize_wake_plan(self, payload: PersonalizedWakePlanAiRequest) -> Any:
+        self.personalization_request = payload
+        return {
+            "fatigue_score": 72,
+            "fatigue_level": "HIGH",
+            "alarm_offsets_min": [0, 10, 25],
+            "reason_codes": ["SHORTER_REST_THAN_BASELINE", "RECENT_WAKE_FAILURE"],
+            "explanation": "수면 부족과 최근 실패를 반영해 25분 일찍 시작해요.",
+            "confidence": 0.91,
+            "requires_review": True,
+        }
 
 
 class TimeoutProvider:
@@ -139,6 +153,28 @@ def _classification_payload(title: str) -> dict[str, object]:
     }
 
 
+def _personalization_payload() -> dict[str, object]:
+    return {
+        "externalAiConsent": True,
+        "category": "CLASS",
+        "importance": "NORMAL",
+        "eventHour": 11,
+        "baseWakeLeadMin": 60,
+        "restMinutes": 330,
+        "usualRestMinutes": 420,
+        "activityLevel": "high",
+        "conditionLevel": "low",
+        "recentOnTimeCount": 2,
+        "recentLateCount": 1,
+        "recentMissedCount": 1,
+        "recentAverageAlarmSteps": 2.5,
+        "learningDays": 6,
+        "preferredAlarmCount": 2,
+        "preferredIntervalMin": 10,
+        "keepSafetyAlarm": True,
+    }
+
+
 def _preparation_payload(event_id: str) -> dict[str, object]:
     return {
         "eventId": event_id,
@@ -206,6 +242,68 @@ async def test_schedule_classification_uses_configured_model_provider(tmp_path: 
     }
     assert provider.classification_request is not None
     assert provider.classification_request.title == "카카오 인턴 1차 인터뷰"
+
+
+@pytest.mark.anyio
+async def test_personalization_uses_consented_aggregates_and_model_output(
+    tmp_path: Path,
+) -> None:
+    provider = SuccessfulProvider()
+    async with _api_harness(tmp_path, provider) as (client, _):
+        session_id = await _create_demo(client)
+        response = await client.post(
+            "/api/v1/ai/wake-plan-recommendations",
+            headers=_headers(session_id),
+            json=_personalization_payload(),
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "fatigueScore": 72,
+        "fatigueLevel": "HIGH",
+        "alarmOffsetsMin": [0, 10, 25],
+        "reasonCodes": ["SHORTER_REST_THAN_BASELINE", "RECENT_WAKE_FAILURE"],
+        "explanation": "수면 부족과 최근 실패를 반영해 25분 일찍 시작해요.",
+        "confidence": 0.91,
+        "requiresReview": True,
+        "source": "MODEL",
+    }
+    assert provider.personalization_request is not None
+    assert provider.personalization_request.rest_minutes == 330
+    assert provider.personalization_request.external_ai_consent is True
+
+
+@pytest.mark.anyio
+async def test_personalization_requires_explicit_external_ai_consent(tmp_path: Path) -> None:
+    payload = _personalization_payload()
+    payload.pop("externalAiConsent")
+    async with _api_harness(tmp_path, SuccessfulProvider()) as (client, _):
+        session_id = await _create_demo(client)
+        response = await client.post(
+            "/api/v1/ai/wake-plan-recommendations",
+            headers=_headers(session_id),
+            json=payload,
+        )
+
+    assert response.status_code == 400
+
+
+@pytest.mark.anyio
+async def test_personalization_has_safe_fallback_without_provider(tmp_path: Path) -> None:
+    async with _api_harness(tmp_path) as (client, _):
+        session_id = await _create_demo(client)
+        response = await client.post(
+            "/api/v1/ai/wake-plan-recommendations",
+            headers=_headers(session_id),
+            json=_personalization_payload(),
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["source"] == "TEMPLATE"
+    assert body["fatigueLevel"] == "HIGH"
+    assert 2 <= len(body["alarmOffsetsMin"]) <= 5
+    assert body["alarmOffsetsMin"][0] == 0
 
 
 @pytest.mark.anyio

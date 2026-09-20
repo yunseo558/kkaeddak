@@ -49,6 +49,9 @@ describe("OnboardingFlow", () => {
       screen.getByRole("heading", { name: "개인정보" }),
     ).toBeInTheDocument();
 
+    await user.click(
+      screen.getByRole("checkbox", { name: /AI 개인화 분석 동의/ }),
+    );
     await user.click(screen.getByRole("button", { name: "설정 완료" }));
 
     expect(useCurrentFlowStore.getState().demoAuthenticated).toBe(true);

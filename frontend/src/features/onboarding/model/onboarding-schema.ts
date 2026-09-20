@@ -8,6 +8,9 @@ export const onboardingSchema = z.object({
   preferredAlarmCount: z.number().int().min(1).max(3),
   keepSafetyAlarm: z.boolean(),
   automationMode: z.enum(["suggest", "automatic"]),
+  aiPersonalizationConsent: z
+    .boolean()
+    .refine((value) => value, "AI 개인화 분석 동의가 필요해요."),
   outcomeSync: z.boolean(),
 });
 

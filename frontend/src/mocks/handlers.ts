@@ -28,6 +28,10 @@ type ScheduleClassificationCreate =
   components["schemas"]["ScheduleClassificationCreate"];
 type ScheduleClassificationResponse =
   components["schemas"]["ScheduleClassificationResponse"];
+type PersonalizedWakePlanCreate =
+  components["schemas"]["PersonalizedWakePlanCreate"];
+type PersonalizedWakePlanResponse =
+  components["schemas"]["PersonalizedWakePlanResponse"];
 type ScheduleEventsBatchCreate =
   components["schemas"]["ScheduleEventsBatchCreate"];
 type ScheduleEventsBatchResponse =
@@ -235,6 +239,54 @@ export const handlers = [
       return HttpResponse.json({
         explanation: body.planChangeSummary,
         source: "TEMPLATE",
+      });
+    },
+  ),
+  http.post<never, PersonalizedWakePlanCreate, PersonalizedWakePlanResponse>(
+    "/api/v1/ai/wake-plan-recommendations",
+    async ({ request }) => {
+      const body = await request.json();
+      const shortfall = Math.max(
+        0,
+        (body.usualRestMinutes ?? 420) - (body.restMinutes ?? 420),
+      );
+      const failures = body.recentLateCount + body.recentMissedCount;
+      const fatigueScore = Math.min(
+        100,
+        24 + Math.round(shortfall / 3) + failures * 14,
+      );
+      const fatigueLevel =
+        fatigueScore >= 65 ? "HIGH" : fatigueScore >= 35 ? "MEDIUM" : "LOW";
+      const alarmCount = Math.min(
+        4,
+        Math.max(
+          body.preferredAlarmCount,
+          fatigueLevel === "HIGH" ? 3 : fatigueLevel === "MEDIUM" ? 2 : 1,
+        ),
+      );
+      return HttpResponse.json({
+        fatigueScore,
+        fatigueLevel,
+        alarmOffsetsMin: Array.from(
+          { length: alarmCount },
+          (_, index) => index * body.preferredIntervalMin,
+        ),
+        reasonCodes: [
+          shortfall > 30
+            ? "SHORTER_REST_THAN_BASELINE"
+            : "STABLE_WAKE_PATTERN",
+          failures ? "RECENT_WAKE_FAILURE" : "USER_ALARM_PREFERENCE",
+        ],
+        explanation:
+          fatigueLevel === "HIGH"
+            ? "수면 부족과 최근 기상 반응을 반영해 첫 알람을 앞당겼어요."
+            : "최근 수면과 기상 반응에 맞춰 필요한 알람만 배치했어요.",
+        confidence: body.learningDays >= 14 ? 0.88 : 0.72,
+        requiresReview:
+          body.learningDays < 14 ||
+          fatigueLevel === "HIGH" ||
+          body.importance !== "NORMAL",
+        source: "MODEL",
       });
     },
   ),

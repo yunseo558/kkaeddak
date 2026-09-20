@@ -14,6 +14,7 @@ from kkaeddak.db.session import create_database_engine, create_session_factory
 from kkaeddak.middleware.privacy_fields import PrivacyFieldMiddleware
 from kkaeddak.middleware.request_id import RequestIdMiddleware
 from kkaeddak.services.ai import AiProvider
+from kkaeddak.services.gemini_provider import GeminiInteractionsProvider
 from kkaeddak.services.openai_provider import OpenAIResponsesProvider
 
 
@@ -44,7 +45,13 @@ def create_app(
     )
     app.state.settings = resolved_settings
     configured_ai_provider = ai_provider
-    if configured_ai_provider is None and resolved_settings.openai_api_key is not None:
+    if configured_ai_provider is None and resolved_settings.gemini_api_key is not None:
+        configured_ai_provider = GeminiInteractionsProvider(
+            api_key=resolved_settings.gemini_api_key,
+            model_name=resolved_settings.gemini_model,
+            timeout_seconds=resolved_settings.gemini_timeout_seconds,
+        )
+    elif configured_ai_provider is None and resolved_settings.openai_api_key is not None:
         assert resolved_settings.openai_model is not None
         configured_ai_provider = OpenAIResponsesProvider(
             api_key=resolved_settings.openai_api_key,

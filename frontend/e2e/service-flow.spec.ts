@@ -15,6 +15,9 @@ async function setup(page: Page) {
   await page.getByRole("button", { name: "캘린더 연결하기" }).click();
   await expect(page.getByText("연동 완료")).toHaveCount(2);
   await page.getByRole("button", { name: "다음", exact: true }).click();
+  await page
+    .getByRole("checkbox", { name: /AI 개인화 분석 동의/ })
+    .check();
   await page.getByRole("button", { name: "설정 완료" }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(
