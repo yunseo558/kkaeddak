@@ -41,7 +41,7 @@ test("survey, calendar editing, actual plan approval and failed-wake learning", 
     page.getByText("알람이 설정됐어요", { exact: true }),
   ).toBeVisible();
   await page.reload();
-  await page.getByRole("button", { name: "스플래시 건너뛰기" }).click();
+  await expect(page.getByRole("button", { name: "스플래시 건너뛰기" })).toHaveCount(0);
   await expect(
     page.getByText("알람이 설정됐어요", { exact: true }),
   ).toBeVisible();
@@ -143,7 +143,7 @@ test("24시간 데모 세션이 만료되면 일정과 설정을 자동 복구�
   });
 
   await page.reload();
-  await page.getByRole("button", { name: "스플래시 건너뛰기" }).click();
+  await expect(page.getByRole("button", { name: "스플래시 건너뛰기" })).toHaveCount(0);
   await expect
     .poll(
       () =>
@@ -168,7 +168,7 @@ test("short sleep stays approval-based; learned routine applies automatically an
   await page.getByRole("radio", { name: "자동 적용" }).check();
   await page.getByRole("button", { name: "설정 저장" }).click();
   await page.getByRole("link", { name: "홈", exact: true }).click();
-  await page.getByLabel("수면 샘플", { exact: true }).selectOption("300");
+  await page.getByLabel("건강 샘플", { exact: true }).selectOption("300");
   await page.getByRole("button", { name: /다음 자동화 시각으로/ }).click();
   await expect(
     page.getByRole("button", { name: "이 계획 승인" }),

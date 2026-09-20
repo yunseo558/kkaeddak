@@ -39,10 +39,16 @@ export function AppShell({
   homeScene = false,
 }: AppShellProps) {
   const pathname = usePathname();
+  const currentPath = pathname ?? "/";
   const online = useOnlineStatus();
   const authenticated = useCurrentFlowStore((s) => s.demoAuthenticated);
   const connected = useServiceStore((s) => s.calendarConnected);
   const virtualNow = useServiceStore((s) => s.virtualNow);
+  const isSettingsPage = currentPath.startsWith("/settings");
+  const isTabActive = (href: string) =>
+    href === "/"
+      ? currentPath === href
+      : currentPath === href || currentPath.startsWith(`${href}/`);
 
   return (
     <div className={`app-canvas${homeScene ? ` ${homeStyles.shell}` : ""}`}>
@@ -91,16 +97,15 @@ export function AppShell({
                 >
                   <BrandLogo className="brand-logo-header" priority />
                 </Link>
-                <Link
-                  aria-label="마이페이지"
-                  className="header-icon-button"
-                  href="/settings"
-                >
-                  {homeScene ? <ClayIcon name="user" size={34} /> : <svg aria-hidden="true" viewBox="0 0 24 24">
-                    <circle cx="12" cy="8" r="3.5" />
-                    <path d="M5.5 20c.6-4.2 2.8-6.3 6.5-6.3s5.9 2.1 6.5 6.3" />
-                  </svg>}
-                </Link>
+                {!isSettingsPage && (
+                  <Link
+                    aria-label="마이페이지"
+                    className="header-icon-button"
+                    href="/settings"
+                  >
+                    <ClayIcon name="user" size={34} />
+                  </Link>
+                )}
               </header>
             )}
 
@@ -132,33 +137,20 @@ export function AppShell({
           <div className="iphone-home-indicator" aria-hidden="true" />
           {authenticated && pathname !== "/onboarding" && !immersive && (
             <nav className="service-tabbar" aria-label="주 메뉴">
-              {homeScene ? homeTabs.map((tab) => (
-                <Link key={tab.href} href={tab.href} data-active={pathname === tab.href} aria-current={pathname === tab.href ? "page" : undefined}>
-                  <ClayIcon name={tab.icon} size={30} />
-                  <span>{tab.label}</span>
-                </Link>
-              )) : <>
-              <Link data-active={pathname === "/sleep"} href="/sleep">
-                <ClayIcon name="health" size={30} />
-                <span>건강</span>
-              </Link>
-              <Link data-active={pathname === "/calendar"} href="/calendar">
-                <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="15" rx="3" /><path d="M7.5 3.5v4M16.5 3.5v4M3.5 10h17" /></svg>
-                <span>캘린더</span>
-              </Link>
-              <Link className="service-tabbar-home" data-active={pathname === "/"} href="/">
-                <span className="service-tabbar-home-icon"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m4 11 8-7 8 7v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19.5V11Z" /><path d="M9 21v-6h6v6" /></svg></span>
-                <span>홈</span>
-              </Link>
-              <Link data-active={pathname === "/history"} href="/history">
-                <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></svg>
-                <span>기록</span>
-              </Link>
-              <Link data-active={pathname.startsWith("/settings")} href="/settings">
-                <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5" /><path d="M5.5 20c.6-4.2 2.8-6.3 6.5-6.3s5.9 2.1 6.5 6.3" /></svg>
-                <span>마이</span>
-              </Link>
-              </>}
+              {homeTabs.map((tab) => {
+                const active = isTabActive(tab.href);
+                return (
+                  <Link
+                    aria-current={active ? "page" : undefined}
+                    data-active={active}
+                    href={tab.href}
+                    key={tab.href}
+                  >
+                    <ClayIcon name={tab.icon} size={30} />
+                    <span>{tab.label}</span>
+                  </Link>
+                );
+              })}
             </nav>
           )}
         </div>

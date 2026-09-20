@@ -2,39 +2,161 @@
 
 import { useId } from "react";
 
-export type ClayIconName = "home" | "calendar" | "health" | "moon" | "chart" | "user" | "spark";
+export type ClayIconName =
+  | "home"
+  | "calendar"
+  | "health"
+  | "moon"
+  | "chart"
+  | "user"
+  | "spark"
+  | "automation"
+  | "category"
+  | "alarm"
+  | "connection"
+  | "profile"
+  | "privacy";
 
-/** A small, consistent set of softly extruded icons; decorative beside labels. */
-export function ClayIcon({ name, size = 32 }: { name: ClayIconName; size?: number }) {
+type ClayIconProps = {
+  className?: string;
+  name: ClayIconName;
+  size?: number;
+};
+
+/** Matte, pillowy icons shared by navigation, connection cards, and settings. */
+export function ClayIcon({ className, name, size = 32 }: ClayIconProps) {
   const id = useId().replace(/:/g, "");
-  const green = `url(#${id}-green)`;
-  const pink = `url(#${id}-pink)`;
-  const cream = `url(#${id}-cream)`;
+  const shadow = `url(#${id}-shadow)`;
+  const deepShadow = `url(#${id}-deep-shadow)`;
+  const avocado = "#C7E477";
+  const avocadoDark = "#667D31";
+  const pink = "#F58FAC";
+  const pinkDark = "#A83F65";
+  const cream = "#FFF8EB";
+
   return (
-    <svg aria-hidden="true" width={size} height={size} viewBox="0 0 40 40" fill="none">
+    <svg
+      aria-hidden="true"
+      className={`clay-icon${className ? ` ${className}` : ""}`}
+      fill="none"
+      height={size}
+      viewBox="0 0 48 48"
+      width={size}
+    >
       <defs>
-        <linearGradient id={`${id}-green`} x1="8" y1="3" x2="31" y2="39" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#D9EE96" /><stop offset="0.58" stopColor="#BEDD68" /><stop offset="1" stopColor="#9FBD50" />
-        </linearGradient>
-        <linearGradient id={`${id}-pink`} x1="8" y1="3" x2="29" y2="39" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#FFD0DC" /><stop offset="0.6" stopColor="#F5A0B8" /><stop offset="1" stopColor="#D97091" />
-        </linearGradient>
-        <linearGradient id={`${id}-cream`} x1="10" y1="6" x2="30" y2="36" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#FFF9EC" /><stop offset="0.6" stopColor="#F7EFDE" /><stop offset="1" stopColor="#E8DCC6" />
-        </linearGradient>
-        <filter id={`${id}-shadow`} x="-30%" y="-30%" width="170%" height="180%">
-          <feDropShadow dx="0" dy="2" stdDeviation="1.7" floodColor="#766A55" floodOpacity=".16" />
+        <filter id={`${id}-shadow`} x="-35%" y="-35%" width="180%" height="190%">
+          <feDropShadow dx="0" dy="2.4" floodColor="#5C533F" floodOpacity=".17" stdDeviation="1.8" />
+        </filter>
+        <filter id={`${id}-deep-shadow`} x="-35%" y="-35%" width="180%" height="195%">
+          <feDropShadow dx="0" dy="3.2" floodColor="#5C533F" floodOpacity=".2" stdDeviation="2.2" />
         </filter>
       </defs>
-      <g filter={`url(#${id}-shadow)`} stroke="#756A55" strokeOpacity=".1" strokeWidth=".7" strokeLinejoin="round">
-        {name === "home" && <><path d="M8 19h24v13a4 4 0 0 1-4 4H12a4 4 0 0 1-4-4Z" fill={cream} /><path d="m4 18 13-12a4 4 0 0 1 6 0l13 12a3 3 0 0 1-4 4L20 12 8 22a3 3 0 0 1-4-4Z" fill={pink} /><rect x="16" y="24" width="8" height="12" rx="3" fill={green} /></>}
-        {name === "calendar" && <><rect x="6" y="8" width="28" height="28" rx="7" fill={cream} /><path d="M6 17v-3a6 6 0 0 1 6-6h16a6 6 0 0 1 6 6v3Z" fill={pink} /><path d="M13 5v8M27 5v8" stroke="#FAF5E9" strokeWidth="4" strokeLinecap="round" />{[13,20,27].map(x => <rect key={x} x={x-2} y="22" width="4" height="4" rx="1.3" fill={green} />)}<rect x="11" y="29" width="4" height="4" rx="1.3" fill={green} /><rect x="18" y="29" width="4" height="4" rx="1.3" fill={pink} /></>}
-        {name === "health" && <><rect x="5" y="5" width="30" height="30" rx="10" fill={cream} /><path d="M20 30S9 24 9 16.7c0-5.6 7.2-7.5 11-2.6 3.8-4.9 11-3 11 2.6C31 24 20 30 20 30Z" fill={pink} /><path d="M12.5 21h4l2-4.5 3.2 8 2.1-3.5h3.7" stroke="#78943B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></>}
-        {name === "moon" && <path d="M27 6c-12-2-22 8-20 18 2 12 18 16 26 6-15 3-22-13-6-24Z" fill={green} />}
-        {name === "chart" && <><rect x="7" y="21" width="7" height="13" rx="3" fill={pink} /><rect x="17" y="7" width="7" height="27" rx="3.5" fill={green} /><rect x="27" y="15" width="7" height="19" rx="3" fill={pink} /><rect x="4" y="33" width="33" height="4" rx="2" fill={cream} /></>}
-        {name === "user" && <><circle cx="20" cy="20" r="16" fill={green} /><circle cx="20" cy="14" r="6" fill={cream} /><path d="M10 30c0-6 4-9 10-9s10 3 10 9c-5 5-15 5-20 0Z" fill={cream} /></>}
-        {name === "spark" && <><rect x="6" y="7" width="28" height="27" rx="10" fill={pink} /><path d="m20 11 3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" fill={cream} /></>}
-      </g>
+
+      {name === "home" && (
+        <g filter={shadow} strokeLinejoin="round">
+          <path d="M10 22.5h28v16.2a4.3 4.3 0 0 1-4.3 4.3H14.3a4.3 4.3 0 0 1-4.3-4.3Z" fill={cream} />
+          <path d="m5 21 15.6-13.6a5.2 5.2 0 0 1 6.8 0L43 21a3.8 3.8 0 0 1-5 5.7L24 14.5 10 26.7A3.8 3.8 0 0 1 5 21Z" fill={pink} />
+          <rect fill={avocado} height="15" rx="3.8" width="10" x="19" y="28" />
+          <path d="M10.5 21.7 23 10.8" stroke="#FFF" strokeLinecap="round" strokeOpacity=".38" strokeWidth="2.1" />
+        </g>
+      )}
+
+      {name === "calendar" && (
+        <g filter={shadow} strokeLinejoin="round">
+          <rect fill={cream} height="38" rx="10" width="38" x="5" y="7" />
+          <path d="M5 20v-5A8 8 0 0 1 13 7h22a8 8 0 0 1 8 8v5Z" fill={pink} />
+          <path d="M14 5v9M34 5v9" stroke={cream} strokeLinecap="round" strokeWidth="5" />
+          {[14, 24, 34].map((x) => <rect fill={avocado} height="6" key={x} rx="2.2" width="6" x={x - 3} y="26" />)}
+          <rect fill={pink} height="6" rx="2.2" width="6" x="11" y="35" />
+          <rect fill={avocado} height="6" rx="2.2" width="6" x="21" y="35" />
+        </g>
+      )}
+
+      {name === "health" && (
+        <g filter={shadow}>
+          <rect fill={cream} height="40" rx="15" width="40" x="4" y="4" />
+          <path d="M24 38S10 30.7 10 20.7c0-7.5 9.6-9.9 14-3.5 4.4-6.4 14-4 14 3.5C38 30.7 24 38 24 38Z" fill={pink} />
+          <path d="M14 26h5l2.6-6 4.1 10 2.7-4.2H34" stroke={avocadoDark} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
+        </g>
+      )}
+
+      {name === "moon" && (
+        <g filter={shadow}>
+          <path d="M33 6.5C18.6 4 7.8 15.3 10.2 28.2 13 43 33.7 46.3 42 33.7 24.2 37.3 15.8 16.7 33 6.5Z" fill={avocado} />
+          <path d="M18 33c-4.8-6.7-2.5-15.8 4-20.4" stroke="#FFF" strokeLinecap="round" strokeOpacity=".35" strokeWidth="2.2" />
+        </g>
+      )}
+
+      {name === "chart" && (
+        <g filter={shadow}>
+          <rect fill={pink} height="17" rx="4" width="8" x="6" y="25" />
+          <rect fill={avocado} height="33" rx="4" width="8" x="20" y="9" />
+          <rect fill={pink} height="24" rx="4" width="8" x="34" y="18" />
+          <rect fill={cream} height="5" rx="2.5" width="44" x="2" y="41" />
+        </g>
+      )}
+
+      {(name === "user" || name === "profile") && (
+        <g filter={shadow}>
+          {name === "profile" && <rect fill={cream} height="42" rx="15" width="42" x="3" y="3" />}
+          <circle cx="24" cy="24" fill={avocado} r={name === "profile" ? 16 : 20} />
+          <circle cx="24" cy="18.5" fill={cream} r="7" />
+          <path d="M12.5 37.5c1.3-7.4 5.2-11 11.5-11s10.2 3.6 11.5 11c-6 5-17 5-23 0Z" fill={cream} />
+        </g>
+      )}
+
+      {name === "spark" && (
+        <g filter={shadow}>
+          <rect fill={pink} height="38" rx="14" width="38" x="5" y="5" />
+          <path d="m24 10 4.1 9.9L38 24l-9.9 4.1L24 38l-4.1-9.9L10 24l9.9-4.1Z" fill={cream} />
+        </g>
+      )}
+
+      {name === "automation" && (
+        <g filter={deepShadow}>
+          <rect fill={pink} height="42" rx="15" width="42" x="3" y="3" />
+          <rect fill={cream} height="13" rx="6.5" width="29" x="9.5" y="21" />
+          <circle cx="17" cy="27.5" fill={avocadoDark} r="5.2" />
+          <path d="m34.5 9.5 1.6 4 4 1.6-4 1.6-1.6 4-1.6-4-4-1.6 4-1.6Z" fill={cream} />
+        </g>
+      )}
+
+      {name === "category" && (
+        <g filter={deepShadow}>
+          <rect fill={avocado} height="42" rx="15" width="42" x="3" y="3" />
+          {[13, 27].flatMap((x) => [13, 27].map((y) => <rect fill={cream} height="10" key={`${x}-${y}`} rx="3.6" width="10" x={x - 5} y={y - 5} />))}
+          <circle cx="30.5" cy="30.5" fill={pink} r="2.4" />
+        </g>
+      )}
+
+      {name === "alarm" && (
+        <g filter={deepShadow} strokeLinecap="round" strokeLinejoin="round">
+          <rect fill={cream} height="42" rx="15" width="42" x="3" y="3" />
+          <path d="m14 15-4-4M34 15l4-4" stroke={pinkDark} strokeWidth="4.5" />
+          <circle cx="24" cy="26" fill={pink} r="13" />
+          <circle cx="24" cy="26" fill={cream} r="8.2" />
+          <path d="M24 21v5l4 2.5" stroke={avocadoDark} strokeWidth="2.7" />
+          <path d="m17 39-2 3M31 39l2 3" stroke={pinkDark} strokeWidth="3.2" />
+        </g>
+      )}
+
+      {name === "connection" && (
+        <g filter={deepShadow} strokeLinecap="round">
+          <rect fill={avocado} height="42" rx="15" width="42" x="3" y="3" />
+          <path d="m21 30-3 3a7 7 0 1 1-10-10l5-5a7 7 0 0 1 10 0" stroke={cream} strokeWidth="5.5" />
+          <path d="m27 18 3-3a7 7 0 1 1 10 10l-5 5a7 7 0 0 1-10 0" stroke={cream} strokeWidth="5.5" />
+          <path d="m18.5 29.5 11-11" stroke={pinkDark} strokeWidth="3" />
+        </g>
+      )}
+
+      {name === "privacy" && (
+        <g filter={deepShadow} strokeLinecap="round" strokeLinejoin="round">
+          <rect fill="#F7B0C3" height="42" rx="15" width="42" x="3" y="3" />
+          <path d="M14 17h20l-1.5 22h-17Z" fill={cream} />
+          <path d="M12 15h24M19 15v-5h10v5" stroke={pinkDark} strokeWidth="3.4" />
+          <path d="M21 23v9M27 23v9" stroke={pink} strokeWidth="3" />
+        </g>
+      )}
     </svg>
   );
 }

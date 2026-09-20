@@ -79,7 +79,7 @@ test("만료된 저장 세션을 앱 시작 시 복구하고 계획을 재생성
     localStorage.setItem("kkaeddak-demo-session", JSON.stringify(persisted));
   });
   await page.reload();
-  await page.getByRole("button", { name: "스플래시 건너뛰기" }).click();
+  await expect(page.getByRole("button", { name: "스플래시 건너뛰기" })).toHaveCount(0);
 
   await expect(page.getByText("데모 연결을 복구했어요").first()).toBeVisible({
     timeout: 30_000,

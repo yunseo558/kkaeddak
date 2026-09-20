@@ -87,7 +87,7 @@ test("empty plan and long event titles remain readable when generation is unavai
     localStorage.setItem("kkaeddak-service", JSON.stringify(stored));
   });
   await page.reload();
-  await page.getByRole("button", { name: "스플래시 건너뛰기" }).click();
+  await expect(page.getByRole("button", { name: "스플래시 건너뛰기" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "이 계획 승인" })).toBeVisible();
   await capture(page, testInfo, "long-title");
   expect(await page.locator(".app-frame").evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
@@ -101,7 +101,7 @@ test("empty plan and long event titles remain readable when generation is unavai
     else await route.continue();
   });
   await page.reload();
-  await page.getByRole("button", { name: "스플래시 건너뛰기" }).click();
+  await expect(page.getByRole("button", { name: "스플래시 건너뛰기" })).toHaveCount(0);
   await expect(page.getByText("계획 없음", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "계획 다시 만들기" })).toBeEnabled();
   await capture(page, testInfo, "empty-plan");
