@@ -2236,7 +2236,7 @@ body {
   line-height: 1.55;
 }
 .mypage-list-title {
-  margin: 2px 0 -10px;
+  margin: 12px 0 -10px;
   font-size: 15px;
   letter-spacing: -0.02em;
 }
@@ -2252,7 +2252,7 @@ body {
 .mypage-links a {
   display: grid;
   min-height: 70px;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
@@ -2281,37 +2281,19 @@ body {
 }
 .mypage-menu-icon {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
   place-items: center;
-  border-radius: 14px;
-  font-size: 11px;
-  font-weight: 800;
+  border: 0;
+  background: transparent;
 }
 .mypage-menu-icon svg {
-  width: 21px;
-  height: 21px;
+  display: block;
+  width: 46px;
+  height: 46px;
+  overflow: visible;
   fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
-}
-.mypage-menu-icon--pink {
-  background: #fff0f5;
-  color: var(--deep-pink, #b8205a);
-}
-.mypage-menu-icon--avocado {
-  background: #f1f7df;
-  color: #526c24;
-}
-.mypage-menu-icon--cream {
-  background: #fff4e8;
-  color: #966334;
-}
-.mypage-menu-icon--danger {
-  background: #fff0f2;
-  color: var(--danger);
+  stroke: none;
 }
 .mypage-chevron {
   color: #9ca096;
@@ -2933,7 +2915,6 @@ body {
 .service-tabbar-home-icon,
 .calendar-add-button,
 .mypage-avatar,
-.mypage-menu-icon,
 .service-empty-icon,
 .connection-card-heading > span,
 .onboarding-connection-card > div > span {
@@ -2945,7 +2926,6 @@ body {
 .home-clay-status,
 .service-tabbar-home-icon,
 .mypage-avatar,
-.mypage-menu-icon--avocado,
 .service-empty-icon,
 .connection-card-heading > span,
 .onboarding-connection-card > div > span {
@@ -2953,18 +2933,9 @@ body {
 }
 
 .home-plan-target > span,
-.calendar-add-button,
-.mypage-menu-icon--pink {
+.calendar-add-button {
   background: #f8b0c3 !important;
   color: #8f284f;
-}
-
-.mypage-menu-icon--cream {
-  background: #f7ead2 !important;
-}
-
-.mypage-menu-icon--danger {
-  background: #f7c5cf !important;
 }
 
 .service-tabbar-home[data-active="true"] .service-tabbar-home-icon {

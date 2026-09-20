@@ -79,6 +79,9 @@ test("AI 일정 유형과 조기 자동화 설정을 실제 서비스 흐름으�
   await page.getByRole("button", { name: "닫기" }).click();
 
   await page.getByRole("link", { name: "마이", exact: true }).click();
+  await expect(page.getByText("최근 건강 분석")).toHaveCount(0);
+  await expect(page.getByText("제안 알람")).toHaveCount(0);
+  await expect(page.locator(".settings-clay-icon")).toHaveCount(6);
   await expect(page).toHaveScreenshot("mypage.png", {
     animations: "disabled",
   });
