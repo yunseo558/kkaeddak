@@ -16,6 +16,7 @@ import {
 } from "../model/service-policy";
 import {
   decideServicePlan,
+  ensureMockCalendarCoverage,
   generateServicePlan,
   saveServiceOutcome,
   serviceAction,
@@ -96,9 +97,13 @@ export function ServiceHome() {
   }, [store.calendarConnected]);
   useEffect(() => {
     if (!store.calendarConnected) return;
-    const targetDate = addDays(localDate(serviceNow()), 1);
-    if (store.plan?.localDate === targetDate) return;
-    void serviceAction(generateServicePlan);
+    void serviceAction(async () => {
+      await ensureMockCalendarCoverage();
+      const targetDate = addDays(localDate(serviceNow()), 1);
+      if (useServiceStore.getState().plan?.localDate !== targetDate) {
+        await generateServicePlan();
+      }
+    });
   }, [store.calendarConnected, store.plan?.localDate, store.virtualNow]);
 
   const dismissSplash = () => {

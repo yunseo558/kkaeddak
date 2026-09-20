@@ -27,12 +27,25 @@ function nextProtocolAdjustment(
   return current;
 }
 
-function recommendationCopy(result: WakeResult, adjustment: number) {
+function nextAdvanceMinutes(current: number, result: WakeResult) {
+  if (result.outcome === "UNCONFIRMED") return Math.min(30, current + 10);
+  if (result.outcome === "CONFIRMED_LATE") return Math.min(30, current + 5);
+  if (result.outcome === "CONFIRMED_ON_TIME" && result.alarmStepsUsed <= 1) {
+    return Math.max(0, current - 5);
+  }
+  return current;
+}
+
+function recommendationCopy(
+  result: WakeResult,
+  adjustment: number,
+  advanceMinutes: number,
+) {
   if (result.outcome === "CONFIRMED_ON_TIME" && result.alarmStepsUsed <= 1) {
     return "첫 알람 성공을 반영해 다음 계획은 최소 단계를 우선합니다.";
   }
   if (adjustment > 0) {
-    return "재수면 또는 지연 기록을 반영해 다음 계획의 안전 단계를 강화합니다.";
+    return `재수면 또는 지연 기록을 반영해 다음 알람을 ${advanceMinutes}분 더 일찍 시작하고 안전 단계를 강화합니다.`;
   }
   return "사용한 알람 단계를 반영해 다음 계획의 현재 강도를 유지합니다.";
 }
@@ -54,6 +67,7 @@ export async function applyWakeLearning(
       nextRecommendation: recommendationCopy(
         result,
         existing.parameters.protocolAdjustment ?? 0,
+        existing.parameters.recommendedAdvanceMinutes ?? 0,
       ),
     };
   }
@@ -65,6 +79,14 @@ export async function applyWakeLearning(
     parameters.protocolAdjustment ?? 0,
     result,
   );
+  const recommendedAdvanceMinutes = nextAdvanceMinutes(
+    parameters.recommendedAdvanceMinutes ?? 0,
+    result,
+  );
+  const failed =
+    result.outcome === "CONFIRMED_LATE" || result.outcome === "UNCONFIRMED";
+  const firstAlarmSuccess =
+    result.outcome === "CONFIRMED_ON_TIME" && result.alarmStepsUsed <= 1;
   const model: WakeModelRecord = {
     id: "personal",
     baseline: existing?.baseline ?? {},
@@ -81,6 +103,13 @@ export async function applyWakeLearning(
         Number(result.outcome === "CONFIRMED_ON_TIME"),
       learningCount: learningCount + 1,
       protocolAdjustment,
+      recommendedAdvanceMinutes,
+      consecutiveFailureCount: failed
+        ? (parameters.consecutiveFailureCount ?? 0) + 1
+        : 0,
+      consecutiveFirstAlarmSuccesses: firstAlarmSuccess
+        ? (parameters.consecutiveFirstAlarmSuccesses ?? 0) + 1
+        : 0,
       unconfirmedCount:
         (parameters.unconfirmedCount ?? 0) +
         Number(result.outcome === "UNCONFIRMED"),
@@ -94,6 +123,10 @@ export async function applyWakeLearning(
   return {
     applied: true,
     model,
-    nextRecommendation: recommendationCopy(result, protocolAdjustment),
+    nextRecommendation: recommendationCopy(
+      result,
+      protocolAdjustment,
+      recommendedAdvanceMinutes,
+    ),
   };
 }
